@@ -88,8 +88,8 @@ jobs:
       - name: typecheck
         run: pnpm -r typecheck
 
-      - name: test
-        run: pnpm -r test
+      - name: test + coverage (閾値: @ec/api 100% / app 60%)
+        run: pnpm -r test:cov
 
       - name: build
         run: pnpm -r build

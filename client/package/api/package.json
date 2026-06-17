@@ -13,7 +13,8 @@
   },
   "scripts": {
     "gen": "orval --config ./orval.config.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "catalog:"
