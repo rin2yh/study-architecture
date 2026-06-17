@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
 
 import { listProducts, ListProductsResponse } from "@ec/api/product";
 
@@ -10,7 +10,29 @@ export const Route = createFileRoute("/")({
     return ListProductsResponse.parse(data);
   },
   component: Home,
+  pendingComponent: Pending,
+  errorComponent: ErrorView,
 });
+
+function Pending() {
+  return (
+    <div className="mx-auto max-w-2xl p-8 text-gray-500" role="status" aria-live="polite">
+      読み込み中…
+    </div>
+  );
+}
+
+function ErrorView({ error }: ErrorComponentProps) {
+  return (
+    <div className="mx-auto max-w-2xl p-8" role="alert">
+      <h1 className="text-3xl font-bold">エラーが発生しました</h1>
+      <p className="mt-4 text-red-600">商品一覧の取得に失敗しました。</p>
+      <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700">
+        {error.message}
+      </pre>
+    </div>
+  );
+}
 
 function Home() {
   const products = Route.useLoaderData();

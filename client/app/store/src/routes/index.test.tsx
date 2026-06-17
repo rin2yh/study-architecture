@@ -23,7 +23,14 @@ vi.mock("@tanstack/react-start", () => ({
 
 import { Route } from "./index";
 
-const Home = (Route as unknown as { component: () => React.ReactElement }).component;
+const routeOptions = Route as unknown as {
+  component: () => React.ReactElement;
+  pendingComponent: () => React.ReactElement;
+  errorComponent: (props: { error: Error }) => React.ReactElement;
+};
+const Home = routeOptions.component;
+const Pending = routeOptions.pendingComponent;
+const ErrorView = routeOptions.errorComponent;
 
 afterEach(() => {
   cleanup();
@@ -55,5 +62,18 @@ describe("store Home", () => {
 
     expect(screen.getByText("商品一覧")).toBeDefined();
     expect(screen.getByText("商品がありません。")).toBeDefined();
+  });
+});
+
+describe("store route fallbacks", () => {
+  it("pendingComponent はローディング表示を返す", () => {
+    render(<Pending />);
+    expect(screen.getByRole("status").textContent).toContain("読み込み中");
+  });
+
+  it("errorComponent はエラーメッセージを描画する", () => {
+    render(<ErrorView error={new Error("ネットワーク不通")} />);
+    expect(screen.getByRole("alert").textContent).toContain("エラー");
+    expect(screen.getByText("ネットワーク不通")).toBeDefined();
   });
 });
