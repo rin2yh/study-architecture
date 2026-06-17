@@ -1,5 +1,7 @@
 # Known Issues
 
+最終更新: 2026-06-17
+
 ## TanStack Start (Nitro 本番ビルド) の SSR self-request が Docker と相性悪い
 
 - **症状**: `docker compose up` で UI を起動するとブラウザ要求に対し SSR がハング/500。
@@ -18,3 +20,5 @@
   - SSR をオフにして CSR + TanStack Query に切替（ADR 0006 の見直し）
 - **暫定回避**: 開発・検証は host の `pnpm dev` で行う。本番起動は本イシュー解消後に
   改めて Docker E2E を取る。
+- **現状 (2026-06-17)**: 上記の打ち手はいずれも未試行。判断材料が揃ったら ADR 0006
+  (UI ローダ) を Superseded にして CSR + TanStack Query 構成への移行 ADR を起こす。
