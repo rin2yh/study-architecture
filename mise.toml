@@ -1,8 +1,13 @@
 # mise.toml (リポジトリルート) — 横断的な docker compose タスクのみ。
 # Go / Node のバージョンとそれぞれの tasks は server/mise.toml と client/mise.toml に分割。
 
+# 3 ファイル構成: 共通 (compose.yaml) + 社外公開 (compose.external.yaml) + 社内専用 (compose.internal.yaml)
+# COMPOSE_FILE に並べておくと、素の `docker compose` でも全部読まれる。
+[env]
+COMPOSE_FILE = "compose.yaml:compose.external.yaml:compose.internal.yaml"
+
 [tasks.up]
-description = "全サービスを起動 (docker compose up -d --build)"
+description = "全サービスを起動 (社外 + 社内)"
 run = "docker compose up -d --build"
 
 [tasks.down]

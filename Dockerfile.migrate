@@ -1,10 +1,8 @@
 # syntax=docker/dockerfile:1
 #
 # goose マイグレーション実行用のワンショットイメージ。
-# 顧客系 (db-customer) と運用系 (db-ops) で別ディレクトリを使う ([[ADR 0012]])。
-# 対象ディレクトリは compose の command 引数 (-dir /migrations/customer など) で渡す。
-#   docker compose --profile tools run --rm migrate-customer up
-#   docker compose --profile tools run --rm migrate-ops up
+# 各サービスは自身の migration を server/<svc>/db/migration/ に持つ ([[ADR 0013]])。
+# compose 側の command で -dir /migrations/<svc> を渡して切替える。
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -14,6 +12,10 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/goose github.com/pressly/goose/v3/c
 
 FROM alpine:3.20
 COPY --from=build /out/goose /usr/local/bin/goose
-COPY db/migration /migrations
+COPY server/order/db/migration    /migrations/order
+COPY server/payment/db/migration  /migrations/payment
+COPY server/member/db/migration   /migrations/member
+COPY server/product/db/migration  /migrations/product
+COPY server/shipping/db/migration /migrations/shipping
 # GOOSE_DRIVER / GOOSE_DBSTRING は compose の environment で渡す
 ENTRYPOINT ["goose"]

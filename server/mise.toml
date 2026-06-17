@@ -25,40 +25,45 @@ run = [
 ]
 
 # ───────────────────────── マイグレーション ─────────────────────────
-[tasks."migrate:customer"]
-description = "顧客系 DB (db-customer) の goose up"
-dir = ".."
-run = 'go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" up'
+# migration は各サービス内 (server/<svc>/db/migration) に置く ([[ADR 0013]])。
+# 顧客系 (db-customer) 向け: order / payment / member
+# 運用系 (db-ops) 向け:      product / shipping
 
-[tasks."migrate:ops"]
-description = "運用系 DB (db-ops) の goose up"
+[tasks."migrate:order"]
+description = "order の goose up (db-customer)"
 dir = ".."
-run = 'go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" up'
+run = 'go tool goose -dir server/order/db/migration postgres "$DATABASE_URL_CUSTOMER" up'
+
+[tasks."migrate:payment"]
+description = "payment の goose up (db-customer)"
+dir = ".."
+run = 'go tool goose -dir server/payment/db/migration postgres "$DATABASE_URL_CUSTOMER" up'
+
+[tasks."migrate:member"]
+description = "member の goose up (db-customer)"
+dir = ".."
+run = 'go tool goose -dir server/member/db/migration postgres "$DATABASE_URL_CUSTOMER" up'
+
+[tasks."migrate:product"]
+description = "product の goose up (db-ops)"
+dir = ".."
+run = 'go tool goose -dir server/product/db/migration postgres "$DATABASE_URL_OPS" up'
+
+[tasks."migrate:shipping"]
+description = "shipping の goose up (db-ops)"
+dir = ".."
+run = 'go tool goose -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS" up'
 
 [tasks.migrate]
-description = "顧客系 + 運用系の両方を goose up"
-depends = ["migrate:customer", "migrate:ops"]
-run = "echo 'both migrated'"
-
-[tasks."migrate:status:customer"]
-description = "顧客系のマイグレーション適用状況"
-dir = ".."
-run = 'go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" status'
-
-[tasks."migrate:status:ops"]
-description = "運用系のマイグレーション適用状況"
-dir = ".."
-run = 'go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" status'
-
-[tasks."migrate:down:customer"]
-description = "顧客系のマイグレーションを 1 つ戻す"
-dir = ".."
-run = 'go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" down'
-
-[tasks."migrate:down:ops"]
-description = "運用系のマイグレーションを 1 つ戻す"
-dir = ".."
-run = 'go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" down'
+description = "5 サービス分の goose up を順に流す"
+depends = [
+  "migrate:order",
+  "migrate:payment",
+  "migrate:member",
+  "migrate:product",
+  "migrate:shipping",
+]
+run = "echo 'all migrated'"
 
 # ───────────────────────── Go ビルド/検査 ─────────────────────────
 [tasks.build]

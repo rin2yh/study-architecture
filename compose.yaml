@@ -1,16 +1,24 @@
 name: ec-service-based
 
-# Step 0: 分割UI + 直接呼び出し + 2 つの Postgres インスタンス (db-customer / db-ops)
-# 起動順: `mise gen` → `mise up` → `docker compose --profile tools run --rm migrate-customer up` + `migrate-ops up`
+# Step 0 のコア (ネットワーク / DB / backend サービス)。UI は社外 / 社内で分けて
+# compose.external.yaml / compose.internal.yaml に置く。
 #
-# ネットワーク分離 (ADR 0012):
-#   - external (社外公開): 顧客 UI と顧客が呼ぶ全サービス + db-customer
-#   - internal (社内専用): 運用 UI と全サービス + db-customer + db-ops
-#   各サービスがどちらに attach しているかで「社外 → 社内 = 名前解決不可、社内 → 社外 = 可」を実現する。
-#   db-ops と backoffice は internal のみで、社外からは到達できない。
+# 全部立てる:
+#   docker compose -f compose.yaml -f compose.external.yaml -f compose.internal.yaml up -d --build
+# migrate (サービスごと):
+#   docker compose --profile tools run --rm migrate-order
+#   docker compose --profile tools run --rm migrate-payment
+#   docker compose --profile tools run --rm migrate-member
+#   docker compose --profile tools run --rm migrate-product
+#   docker compose --profile tools run --rm migrate-shipping
+
 networks:
   external: {}
   internal: {}
+
+volumes:
+  pg_customer_data:
+  pg_ops_data:
 
 services:
   db-customer:
@@ -47,10 +55,13 @@ services:
       retries: 10
     networks: [internal]
 
-  # ワンショットのマイグレーション実行 (goose)。顧客系と運用系は別ディレクトリ。
-  #   docker compose --profile tools run --rm migrate-customer up
-  #   docker compose --profile tools run --rm migrate-ops up
-  migrate-customer:
+  # migration はサービスごとに独立 ([[ADR 0013]])。
+  # 顧客系 (db-customer) 向け: order / payment / member
+  # 運用系 (db-ops) 向け:      product / shipping
+  # 個別実行例:
+  #   docker compose --profile tools run --rm migrate-order up
+  migrate-order:
+    image: ec-migrate
     build:
       context: .
       dockerfile: Dockerfile.migrate
@@ -61,10 +72,41 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-    command: ["-dir", "/migrations/customer", "up"]
+    command: ["-dir", "/migrations/order", "up"]
     networks: [external, internal]
 
-  migrate-ops:
+  migrate-payment:
+    image: ec-migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    profiles: ["tools"]
+    depends_on:
+      db-customer:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+    command: ["-dir", "/migrations/payment", "up"]
+    networks: [external, internal]
+
+  migrate-member:
+    image: ec-migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    profiles: ["tools"]
+    depends_on:
+      db-customer:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+    command: ["-dir", "/migrations/member", "up"]
+    networks: [external, internal]
+
+  migrate-product:
+    image: ec-migrate
     build:
       context: .
       dockerfile: Dockerfile.migrate
@@ -75,7 +117,22 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-    command: ["-dir", "/migrations/ops", "up"]
+    command: ["-dir", "/migrations/product", "up"]
+    networks: [internal]
+
+  migrate-shipping:
+    image: ec-migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    profiles: ["tools"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+    command: ["-dir", "/migrations/shipping", "up"]
     networks: [internal]
 
   product:
@@ -142,60 +199,3 @@ services:
       db-ops:
         condition: service_healthy
     networks: [external, internal]
-
-  # UI: React Router v7 (Node)。サーバ側ローダから同一ネットワークの Go サービスを
-  # http://<svc>:8080 で呼ぶ。ブラウザは UI:port のみ叩くため CORS 不要 (ADR 0006)。
-  store:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        APP: store
-    environment:
-      PORT: "5173"
-      HOST: "0.0.0.0"
-      NODE_ENV: production
-      PRODUCT_API_URL: http://product:8080
-      ORDER_API_URL: http://order:8080
-      PAYMENT_API_URL: http://payment:8080
-    ports: ["5173:5173"]
-    depends_on: [product, order, payment]
-    networks: [external]
-
-  mypage:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        APP: mypage
-    environment:
-      PORT: "5174"
-      HOST: "0.0.0.0"
-      NODE_ENV: production
-      MEMBER_API_URL: http://member:8080
-      ORDER_API_URL: http://order:8080
-      SHIPPING_API_URL: http://shipping:8080
-    ports: ["5174:5174"]
-    depends_on: [member, order, shipping]
-    networks: [external]
-
-  backoffice:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        APP: backoffice
-    environment:
-      PORT: "5175"
-      HOST: "0.0.0.0"
-      NODE_ENV: production
-      PRODUCT_API_URL: http://product:8080
-      ORDER_API_URL: http://order:8080
-      SHIPPING_API_URL: http://shipping:8080
-    ports: ["5175:5175"]
-    depends_on: [product, order, shipping]
-    networks: [internal]
-
-volumes:
-  pg_customer_data:
-  pg_ops_data:

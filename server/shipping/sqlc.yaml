@@ -3,7 +3,7 @@ sql:
   - engine: "postgresql"
     # 中央集約した goose マイグレーションをそのまま schema 入力にする（SSOT）。
     # sqlc は -- +goose Down 以降を無視してパースする。
-    schema: "../../db/migration/ops"
+    schema: "db/migration"
     queries: "db/query"
     gen:
       go:

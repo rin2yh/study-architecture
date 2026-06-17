@@ -1,0 +1,20 @@
+# 社内専用 (運用向け) UI。backoffice は internal ネットワークだけに attach する。
+# 共通の network / DB / backend は compose.yaml 側に定義。
+
+services:
+  backoffice:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        APP: backoffice
+    environment:
+      PORT: "5175"
+      HOST: "0.0.0.0"
+      NODE_ENV: production
+      PRODUCT_API_URL: http://product:8080
+      ORDER_API_URL: http://order:8080
+      SHIPPING_API_URL: http://shipping:8080
+    ports: ["5175:5175"]
+    depends_on: [product, order, shipping]
+    networks: [internal]

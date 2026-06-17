@@ -1,6 +1,6 @@
 # ADR 0004: 共有 Postgres + ドメインごとの schema 分離
 
-- Status: Accepted (「単一インスタンス」前提は [[0012]] で 2 インスタンス (db-customer / db-ops) に分割。schema 分離方針自体は維持)
+- Status: Accepted (「単一インスタンス」前提は [[0012]]、migration の「中央集約」前提は [[0013]] でそれぞれ更新。schema 分離方針自体は維持)
 - Date: 2026-06-17
 
 ## Context

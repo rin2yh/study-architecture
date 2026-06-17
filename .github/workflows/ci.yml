@@ -49,7 +49,7 @@ jobs:
           echo "client=$client" | tee -a "$GITHUB_OUTPUT"
 
   server:
-    name: "server-${{ matrix.service }}"
+    name: server-${{ matrix.service }}
     needs: changes
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-24.04
@@ -64,8 +64,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: fmt:check
-        run: test -z "$(gofmt -l server/)" || (gofmt -l server/ && exit 1)
+      - name: format
+        run: test -z "$(go fmt ./server/...)"
 
       - name: vet
         run: go vet ./server/${{ matrix.service }}/... ./server/internal/...
@@ -73,25 +73,25 @@ jobs:
       # 該当サービス + server/internal の共通基盤 (httperror 等) を対象に、
       # 手書きパッケージ (api/db/di と main.go を除外) のみを分母にカバレッジ計測。
       # -race は cgo を要するため workflow env の CGO_ENABLED=0 を上書きする。
-      - name: "test + coverage"
+      # 結合テストはこの job では走らせない (-short)。
+      - name: coverage
         env:
           CGO_ENABLED: "1"
         run: |
           svc=${{ matrix.service }}
           pkgs=$(go list ./server/$svc/... ./server/internal/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
-          go test ./server/$svc/... ./server/internal/... -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          go test ./server/$svc/... ./server/internal/... -short -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           go tool cover -func=cover.out | tail -1
 
-      - name: upload coverage
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: server-coverage-${{ matrix.service }}
           path: cover.out
           if-no-files-found: error
 
   client:
-    name: "client-${{ matrix.package }}"
+    name: client-${{ matrix.package }}
     needs: changes
     if: needs.changes.outputs.client == 'true'
     runs-on: ubuntu-24.04
@@ -122,20 +122,20 @@ jobs:
       - name: lint
         run: pnpm lint
 
-      - name: format:check
+      - name: format
         run: pnpm format:check
 
       - name: typecheck
         run: pnpm -F "${{ matrix.package }}" run --if-present typecheck
 
-      - name: "test + coverage"
+      - name: coverage
         run: pnpm -F "${{ matrix.package }}" test:cov
 
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
   coverage:
-    name: report coverage (octocov)
+    name: coverage
     needs: server
     if: needs.changes.outputs.server == 'true' && always() && needs.server.result == 'success'
     runs-on: ubuntu-24.04
@@ -146,13 +146,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: download coverage artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: server-coverage-*
           path: coverage
 
-      - name: merge coverage profiles
+      - name: merge
         run: |
           go install github.com/wadey/gocovmerge@latest
           gocovmerge coverage/server-coverage-*/cover.out > cover.out
@@ -161,13 +160,12 @@ jobs:
       - uses: k1LoW/octocov-action@b3b6ee60482a667950f87553abf1df63217235d9 # v1.5.1
 
   integration:
-    name: integration tests (real DB)
+    name: integration
     needs: changes
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-24.04
-    # 顧客系 (db-customer) と運用系 (db-ops) の Postgres を立てて、build tag `integration` を
-    # 持つテスト (//go:build integration) のみ実行する。Issue #3 で testcontainers ベースの
-    # 統合テストを実装する受け皿。現状は対象テストが無く no-op として pass する。
+    # 顧客系 (db-customer) と運用系 (db-ops) を立てて結合テストを実行する。Issue #3 の受け皿。
+    # 通常テストは -short で結合をスキップする想定。ここでは -short を付けずに全部実行する。
     services:
       db-customer:
         image: postgres:17-alpine
@@ -203,12 +201,15 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: migrate (customer + ops)
+      - name: migrate
         run: |
-          go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" up
+          go tool goose -dir server/order/db/migration   postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -dir server/payment/db/migration postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -dir server/member/db/migration  postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -dir server/product/db/migration postgres "$DATABASE_URL_OPS"      up
+          go tool goose -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS"     up
 
-      - name: integration test
+      - name: test
         env:
           CGO_ENABLED: "1"
-        run: go test ./server/... -tags integration -race -count=1
+        run: go test ./server/... -race -count=1

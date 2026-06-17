@@ -57,7 +57,7 @@ StrictHandler / RegisterHandlers を生成し、各サービスの `main.go` は
 - **Connect / gRPC-Gateway 系**: 契約は protobuf。本プロジェクトは OpenAPI が SSOT
   ([[0002]]) なので合わない。
 
-## 適用順序
+## Rollout
 
 - 各サービスの `oapi-codegen.yaml` を `gin-server: true` に変更
 - `mise gen` で再生成 (sqlc → oapi-codegen → kessoku の順は変わらない)
