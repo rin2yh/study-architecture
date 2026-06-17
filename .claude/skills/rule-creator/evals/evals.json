@@ -1,0 +1,40 @@
+{
+  "skill_name": "rule-creator",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "API ハンドラ（application/packages/web/src/server 配下）では、必ずリクエストの入力バリデーションを行う、という決まりをプロジェクトのルールとして追加してほしいです。このルールはサーバーのハンドラ系ファイルだけに効くようにしたいです。",
+      "expected_output": ".claude/rules/ 配下に置く想定の Markdown ルールファイル。フロントマターに paths: で server 配下にマッチする glob を指定し、本文は日本語で理由付きの規約。",
+      "files": [],
+      "expectations": [
+        "成果物は .claude/rules/ 配下に置く想定の Markdown ルールファイルである（CLAUDE.md 本体に直書きしていない）",
+        "YAML フロントマターでパススコープが指定されており、キー名が正しく paths である（globs/appliesTo 等の誤ったキーではない）",
+        "paths の glob が server 配下（application/packages/web/src/server 等）のファイルにマッチする妥当な指定になっている",
+        "規約本文が日本語で書かれ、なぜそうするかの理由（why）が含まれている"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "コード中のユーザー向けの文言（UIに出るメッセージなど）は常に日本語にする、という方針をプロジェクトのルールに残しておきたいです。特定のファイル種別に限らず、常に効いてほしいです。",
+      "expected_output": ".claude/rules/ 配下の Markdown ルールファイル。常時適用したいので paths フロントマターは付けない。日本語＋理由付き。",
+      "files": [],
+      "expectations": [
+        "成果物は .claude/rules/ 配下に置く想定の Markdown ルールファイルである",
+        "常時適用の意図に沿って、不要な paths フロントマターを付けていない（パススコープせず全セッションで読み込まれる形にしている）",
+        "規約本文が日本語で書かれ、理由（why）が含まれている"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "テストファイル（*.test.ts）では外部APIへの実通信を禁止してモックする、という規約を追加したいです。テストファイルにだけ効くようにしてください。",
+      "expected_output": ".claude/rules/ 配下の Markdown ルール。paths は **/*.test.ts 等で test ファイルにマッチ。既存の .claude/rules/test.md があるため、新規乱立ではなく追記/統合を検討していること。",
+      "files": [],
+      "expectations": [
+        "成果物は .claude/rules/ 配下に置く想定の Markdown ルールファイルである",
+        "YAML フロントマターの paths が **/*.test.ts 等、テストファイルにマッチする glob になっている",
+        "既存の .claude/rules/test.md の存在を確認し、別ファイル乱立ではなく追記・統合を検討した形跡がある",
+        "規約本文が日本語で書かれ、理由（why）が含まれている"
+      ]
+    }
+  ]
+}
