@@ -11,8 +11,10 @@ const makeFetch =
       ...init,
       headers: { "content-type": "application/json", ...init?.headers },
     });
-    const body =
-      res.status === 204 || res.status === 205 || res.body === null ? undefined : await res.json();
+    const body: unknown =
+      res.status === 204 || res.status === 205 || res.body === null
+        ? undefined
+        : ((await res.json()) as unknown);
     if (!res.ok) {
       throw new Error(`request to ${url} failed: ${res.status} ${res.statusText}`);
     }
