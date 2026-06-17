@@ -30,15 +30,15 @@ run = [
 # ───────────────────────── マイグレーション ─────────────────────────
 [tasks.migrate]
 description = "DB マイグレーションを最新まで適用 (goose up)"
-run = 'go tool goose -dir db/migrations postgres "$DATABASE_URL" up'
+run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" up'
 
 [tasks."migrate:status"]
 description = "マイグレーション適用状況"
-run = 'go tool goose -dir db/migrations postgres "$DATABASE_URL" status'
+run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" status'
 
 [tasks."migrate:down"]
 description = "マイグレーションを1つ戻す (goose down)"
-run = 'go tool goose -dir db/migrations postgres "$DATABASE_URL" down'
+run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" down'
 
 # ───────────────────────── Docker Compose ─────────────────────────
 [tasks.up]
@@ -68,17 +68,44 @@ run = "go vet ./..."
 
 [tasks.fmt]
 description = "gofmt 整形"
-run = "gofmt -w services/ "
+run = "gofmt -w server/ "
 
 [tasks."fmt:check"]
 description = "未整形ファイルを検出（CI 用）"
-run = 'test -z "$(gofmt -l services/)" || (gofmt -l services/ && exit 1)'
+run = 'test -z "$(gofmt -l server/)" || (gofmt -l server/ && exit 1)'
 
 [tasks.tidy]
 description = "go mod tidy"
 run = "go mod tidy"
 
+[tasks.cover]
+description = "テストカバレッジ計測（生成コード api/db/di を分母から除外）"
+# 生成コード(*.gen.go / internal/db / internal/di の inject_band.go)は
+# go test ./server/... に -coverprofile を付けると 0% で分母に含まれてしまう。
+# -coverpkg で手書きパッケージ(handler/repository/main)のみを分母に指定して除外する。
+run = [
+  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$' | paste -sd, -)",
+  "go tool cover -func=cover.out | tail -1",
+]
+
 [tasks.ci]
 description = "CI 相当 (fmt:check → vet → test)"
 depends = ["fmt:check", "vet", "test"]
 run = "echo 'CI OK'"
+
+# ───────────────────────── UI (TanStack Start / pnpm workspace) ─────────────────────────
+[tasks."ui:install"]
+description = "client workspace の依存をインストール"
+run = "pnpm -C client install"
+
+[tasks."ui:gen"]
+description = "@ec/api の orval 生成（OpenAPI → client + zod）"
+run = "pnpm -C client api:gen"
+
+[tasks."ui:build"]
+description = "全 app をビルド + 型チェック"
+run = ["pnpm -C client -r build", "pnpm -C client -r typecheck"]
+
+[tasks."ui:lint"]
+description = "oxlint + oxfmt チェック"
+run = ["pnpm -C client lint", "pnpm -C client format:check"]

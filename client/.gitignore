@@ -1,0 +1,3 @@
+# vitest カバレッジ出力(各ワークスペース)
+coverage
+**/coverage

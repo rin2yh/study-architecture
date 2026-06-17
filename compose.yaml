@@ -39,7 +39,7 @@ services:
   product:
     build:
       context: .
-      dockerfile: services/product/Dockerfile
+      dockerfile: server/product/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
       HTTP_ADDR: ":8080"
@@ -51,7 +51,7 @@ services:
   order:
     build:
       context: .
-      dockerfile: services/order/Dockerfile
+      dockerfile: server/order/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
       HTTP_ADDR: ":8080"
@@ -63,7 +63,7 @@ services:
   payment:
     build:
       context: .
-      dockerfile: services/payment/Dockerfile
+      dockerfile: server/payment/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
       HTTP_ADDR: ":8080"
@@ -75,7 +75,7 @@ services:
   member:
     build:
       context: .
-      dockerfile: services/member/Dockerfile
+      dockerfile: server/member/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
       HTTP_ADDR: ":8080"
@@ -87,7 +87,7 @@ services:
   shipping:
     build:
       context: .
-      dockerfile: services/shipping/Dockerfile
+      dockerfile: server/shipping/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
       HTTP_ADDR: ":8080"
@@ -96,8 +96,57 @@ services:
       db:
         condition: service_healthy
 
-  # UI（storefront / mypage / admin）は後続イテレーションで追加（TanStack Start）。
-  # ADR 0005 参照。ブラウザ直接呼び出し → 将来 BFF/ファサードへ。
+  # UI: TanStack Start (Node)。サーバ側ローダ/サーバ関数から同一ネットワークの
+  # Go サービスを http://<svc>:8080 で呼ぶ。ブラウザは UI:port のみ叩くため CORS 不要（ADR 0006）。
+  store:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        APP: store
+    environment:
+      # TanStack Start のサーバ関数は SSR 時に Host ヘッダのポートへ self-fetch するため、
+      # listen ポートを公開ポートに一致させる（不一致だと ECONNREFUSED）。
+      PORT: "5173"
+      HOST: "0.0.0.0"
+      NODE_ENV: production
+      PRODUCT_API_URL: http://product:8080
+      ORDER_API_URL: http://order:8080
+      PAYMENT_API_URL: http://payment:8080
+    ports: ["5173:5173"]
+    depends_on: [product, order, payment]
+
+  mypage:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        APP: mypage
+    environment:
+      PORT: "5174"
+      HOST: "0.0.0.0"
+      NODE_ENV: production
+      MEMBER_API_URL: http://member:8080
+      ORDER_API_URL: http://order:8080
+      SHIPPING_API_URL: http://shipping:8080
+    ports: ["5174:5174"]
+    depends_on: [member, order, shipping]
+
+  backoffice:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        APP: backoffice
+    environment:
+      PORT: "5175"
+      HOST: "0.0.0.0"
+      NODE_ENV: production
+      PRODUCT_API_URL: http://product:8080
+      ORDER_API_URL: http://order:8080
+      SHIPPING_API_URL: http://shipping:8080
+    ports: ["5175:5175"]
+    depends_on: [product, order, shipping]
 
 volumes:
   pg_data:

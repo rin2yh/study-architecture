@@ -12,6 +12,6 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/goose github.com/pressly/goose/v3/c
 
 FROM alpine:3.20
 COPY --from=build /out/goose /usr/local/bin/goose
-COPY db/migrations /migrations
+COPY db/migration /migrations
 # GOOSE_DRIVER / GOOSE_DBSTRING は compose の environment で渡す
 ENTRYPOINT ["goose", "-dir", "/migrations"]
