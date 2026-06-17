@@ -1,16 +1,17 @@
 name: ec-service-based
 
-# Step 0 のコア (ネットワーク / DB / backend サービス)。UI は社外 / 社内で分けて
-# compose.external.yaml / compose.internal.yaml に置く。
+# Step 0 のコア (ネットワーク / 顧客 DB / backend サービス)。
+# 社外専用 UI は compose.external.yaml、社内専用リソース (db-ops / backoffice) は compose.internal.yaml。
 #
 # 全部立てる:
 #   docker compose -f compose.yaml -f compose.external.yaml -f compose.internal.yaml up -d --build
-# migrate (サービスごと):
+#
+# マイグレーションは ([[ADR 0013]]) CI/CD でデプロイ前に流す方針。ローカルから手動で適用したい
+# ときは `mise run migrate:<svc>` か、以下の compose ジョブを使う:
 #   docker compose --profile tools run --rm migrate-order
 #   docker compose --profile tools run --rm migrate-payment
 #   docker compose --profile tools run --rm migrate-member
-#   docker compose --profile tools run --rm migrate-product
-#   docker compose --profile tools run --rm migrate-shipping
+# (db-ops 向け migrate-product / migrate-shipping は compose.internal.yaml 側にある)
 
 networks:
   external: {}
@@ -18,7 +19,6 @@ networks:
 
 volumes:
   pg_customer_data:
-  pg_ops_data:
 
 services:
   db-customer:
@@ -38,28 +38,7 @@ services:
       retries: 10
     networks: [external, internal]
 
-  db-ops:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
-      POSTGRES_DB: ec_ops
-    ports:
-      - "5433:5432"
-    volumes:
-      - pg_ops_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    networks: [internal]
-
-  # migration はサービスごとに独立 ([[ADR 0013]])。
-  # 顧客系 (db-customer) 向け: order / payment / member
-  # 運用系 (db-ops) 向け:      product / shipping
-  # 個別実行例:
-  #   docker compose --profile tools run --rm migrate-order up
+  # 顧客系 (db-customer) 向け migration ([[ADR 0013]])。image は ec-migrate を共有して build 1 回。
   migrate-order:
     image: ec-migrate
     build:
@@ -104,36 +83,6 @@ services:
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
     command: ["-dir", "/migrations/member", "up"]
     networks: [external, internal]
-
-  migrate-product:
-    image: ec-migrate
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    profiles: ["tools"]
-    depends_on:
-      db-ops:
-        condition: service_healthy
-    environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-    command: ["-dir", "/migrations/product", "up"]
-    networks: [internal]
-
-  migrate-shipping:
-    image: ec-migrate
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    profiles: ["tools"]
-    depends_on:
-      db-ops:
-        condition: service_healthy
-    environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-    command: ["-dir", "/migrations/shipping", "up"]
-    networks: [internal]
 
   product:
     build:

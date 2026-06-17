@@ -1,7 +1,60 @@
-# 社内専用 (運用向け) UI。backoffice は internal ネットワークだけに attach する。
-# 共通の network / DB / backend は compose.yaml 側に定義。
+# 社内専用 (運用向け) リソース。
+# - 運用 UI (backoffice)
+# - 運用 DB (db-ops) と volume (pg_ops_data)
+# 共通の network 定義は compose.yaml 側。
+
+volumes:
+  pg_ops_data:
 
 services:
+  db-ops:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ec
+      POSTGRES_PASSWORD: ec_pass
+      POSTGRES_DB: ec_ops
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_ops_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+
+  # 運用系 (db-ops) 向け migration ([[ADR 0013]])。
+  migrate-product:
+    image: ec-migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    profiles: ["tools"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+    command: ["-dir", "/migrations/product", "up"]
+    networks: [internal]
+
+  migrate-shipping:
+    image: ec-migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    profiles: ["tools"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+    command: ["-dir", "/migrations/shipping", "up"]
+    networks: [internal]
+
   backoffice:
     build:
       context: ./client

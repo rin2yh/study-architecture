@@ -24,9 +24,18 @@
   - **db-customer** に流す: `order` / `payment` / `member`
   - **db-ops** に流す:      `product` / `shipping`
 - sqlc の入力 schema は各サービスの `sqlc.yaml` で `schema: "db/migration"` (自身) を指す。
-- compose では `migrate-<svc>` のジョブを 5 つ持ち、各オーナーが
-  `docker compose --profile tools run --rm migrate-<svc> up` で個別に流せる。
-- mise でも `migrate:<svc>` を 5 つ、`migrate` で順次束ねる。
+- マイグレーションは **アプリ起動と分離して** 流す。アプリ起動時の自動マイグレーションは
+  しない:
+  - 複数インスタンスのデプロイで競合する
+  - migrate 失敗で起動できないとロールアウトのアトミック性が崩れる
+  - ローリングデプロイ時に「新アプリ + 古い schema」「古いアプリ + 新 schema」の窓ができる
+  - 高権限 (DDL) を全インスタンスに持たせる必要が出てしまう
+- 流す場所:
+  - **CI/CD パイプライン**: deploy step の手前で `go tool goose -dir server/<svc>/db/migration up`
+    を流す (本番運用の本筋)
+  - **ローカル開発**: `mise run migrate:<svc>` (host から goose) か、compose の
+    `docker compose --profile tools run --rm migrate-<svc>` で 1 サービスずつ流す
+- compose の migrate ジョブは `image: ec-migrate` を共有して build を 1 回で済ます。
 
 ## Consequences
 
@@ -47,10 +56,13 @@
   に移動する。
 - 各サービスに `00001_init_schema.sql` (CREATE SCHEMA) と `00002_<table>.sql` (CREATE TABLE)
   を置く。
-- `Dockerfile.migrate` は `server/<svc>/db/migration` を `/migrations/<svc>` に COPY する。
-- `compose.yaml` の migrate ジョブを `migrate-order` / `migrate-payment` / `migrate-member` /
-  `migrate-product` / `migrate-shipping` の 5 つにする。
-- `server/mise.toml` の migrate task も同じく 5 つに分け、`mise run migrate` で順次束ねる。
+- `Dockerfile.migrate` は 5 サービスの `db/migration/` を `/migrations/<svc>` に COPY する
+  単一の image を作る (`image: ec-migrate` を compose の 5 ジョブで共有して build 1 回)。
+- compose の `migrate-<svc>` (顧客系は `compose.yaml`、運用系は `compose.internal.yaml`) は
+  `profiles: ["tools"]` を付けて up の対象外にしておく。
+- `server/mise.toml` の `migrate:<svc>` で host の goose を直接叩く逃げ道も用意する。
+  `mise run migrate` で 5 サービス分を順次束ねる。
+- CI の integration job では migrate step で 5 サービス分を順に流してから test を実行する。
 
 ## Alternatives considered
 

@@ -135,6 +135,7 @@ jobs:
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-24.04
     # 顧客系 (db-customer) と運用系 (db-ops) を立てて結合テストを実行する。Issue #3 の受け皿。
+    # migration はテスト側 (testcontainers / アプリ起動時 [[ADR 0013]]) で実施する想定。
     # 通常テストは -short で結合をスキップする想定。ここでは -short を付けずに全部実行する。
     services:
       db-customer:
@@ -173,11 +174,11 @@ jobs:
 
       - name: migrate
         run: |
-          go tool goose -dir server/order/db/migration   postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir server/payment/db/migration postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir server/member/db/migration  postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir server/product/db/migration postgres "$DATABASE_URL_OPS"      up
-          go tool goose -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS"     up
+          go tool goose -dir server/order/db/migration    postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -dir server/payment/db/migration  postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -dir server/member/db/migration   postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -dir server/product/db/migration  postgres "$DATABASE_URL_OPS"      up
+          go tool goose -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS"      up
 
       - name: test
         env:
