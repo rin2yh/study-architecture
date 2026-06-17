@@ -1,46 +1,6 @@
-# mise.toml — ツールバージョン固定 + タスクランナー（git コミット対象）
-# docs: https://mise.jdx.dev/configuration.html / https://mise.jdx.dev/tasks/
-#
-# コード生成ツール(oapi-codegen / kessoku / sqlc / goose)は go.mod の tool ディレクティブで
-# 管理し `go tool <name>` で実行する（バージョンは go.mod に固定）。よって [tools] は言語のみ。
+# mise.toml (リポジトリルート) — 横断的な docker compose タスクのみ。
+# Go / Node のバージョンとそれぞれの tasks は server/mise.toml と client/mise.toml に分割。
 
-[tools]
-go = "1.26"   # 1.26.x 最新
-node = "22"   # 後続UI(TanStack Start)向け。22 LTS 最新
-# 静的解析を厳密にするなら golangci-lint を追加（任意）:
-# "aqua:golangci/golangci-lint" = "2"
-
-[env]
-CGO_ENABLED = "0"
-# ホストから goose / 各種ツールが叩く DSN（compose 内サービスは db:5432 を使う）
-DATABASE_URL = "postgres://ec:ec_pass@localhost:5432/ec?sslmode=disable"
-
-# ───────────────────────── コード生成 ─────────────────────────
-# 依存順序が重要: sqlc(DB) → oapi-codegen(API) → kessoku(DI)。
-# kessoku は handler が oapi の interface を実装するため必ず最後。
-[tasks.gen]
-description = "コード生成一式 (sqlc → oapi-codegen → kessoku)"
-run = [
-  "go generate -run sqlc ./...",
-  "go generate -run oapi-codegen ./...",
-  "go generate -run kessoku ./...",
-  "go mod tidy",
-]
-
-# ───────────────────────── マイグレーション ─────────────────────────
-[tasks.migrate]
-description = "DB マイグレーションを最新まで適用 (goose up)"
-run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" up'
-
-[tasks."migrate:status"]
-description = "マイグレーション適用状況"
-run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" status'
-
-[tasks."migrate:down"]
-description = "マイグレーションを1つ戻す (goose down)"
-run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" down'
-
-# ───────────────────────── Docker Compose ─────────────────────────
 [tasks.up]
 description = "全サービスを起動 (docker compose up -d --build)"
 run = "docker compose up -d --build"
@@ -52,60 +12,3 @@ run = "docker compose down"
 [tasks.logs]
 description = "ログ追従"
 run = "docker compose logs -f"
-
-# ───────────────────────── Go ビルド/検査 ─────────────────────────
-[tasks.build]
-description = "全サービスをビルド"
-run = "go build ./..."
-
-[tasks.test]
-description = "テスト実行"
-run = "go test ./... -race -count=1"
-
-[tasks.vet]
-description = "go vet"
-run = "go vet ./..."
-
-[tasks.fmt]
-description = "gofmt 整形"
-run = "gofmt -w server/ "
-
-[tasks."fmt:check"]
-description = "未整形ファイルを検出（CI 用）"
-run = 'test -z "$(gofmt -l server/)" || (gofmt -l server/ && exit 1)'
-
-[tasks.tidy]
-description = "go mod tidy"
-run = "go mod tidy"
-
-[tasks.cover]
-description = "テストカバレッジ計測（生成コード api/db/di と main.go を分母から除外）"
-# 生成コード(*.gen.go / internal/db / internal/di) は -coverpkg から除外する。
-# 各サービスの main.go (server/<svc> パッケージ) も実 DB 起動が無いとカバー不能な
-# DI 経路を含むため除外し、handler/repository/httperror のみを分母にする。
-run = [
-  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)",
-  "go tool cover -func=cover.out | tail -1",
-]
-
-[tasks.ci]
-description = "CI 相当 (fmt:check → vet → test)"
-depends = ["fmt:check", "vet", "test"]
-run = "echo 'CI OK'"
-
-# ───────────────────────── UI (TanStack Start / pnpm workspace) ─────────────────────────
-[tasks."ui:install"]
-description = "client workspace の依存をインストール"
-run = "pnpm -C client install"
-
-[tasks."ui:gen"]
-description = "@ec/api の orval 生成（OpenAPI → client + zod）"
-run = "pnpm -C client api:gen"
-
-[tasks."ui:build"]
-description = "全 app をビルド + 型チェック"
-run = ["pnpm -C client -r build", "pnpm -C client -r typecheck"]
-
-[tasks."ui:lint"]
-description = "oxlint + oxfmt チェック"
-run = ["pnpm -C client lint", "pnpm -C client format:check"]

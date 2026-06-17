@@ -1,0 +1,27 @@
+# octocov: server サイドのカバレッジ集約と report 出力
+# 各サービスの cover.out を gocovmerge した結果 (cover.out) を解析する。
+coverage:
+  paths:
+    - cover.out
+  acceptable: 60%
+
+codeToTestRatio:
+  code:
+    - "server/**/*.go"
+    - "!server/**/*_test.go"
+    - "!server/**/api.gen.go"
+    - "!server/**/internal/db/**"
+    - "!server/**/internal/di/inject_band.go"
+  test:
+    - "server/**/*_test.go"
+
+testExecutionTime:
+  if: "false"
+
+# PR には diff 込みのコメント、push (main) では Step Summary のみ。
+comment:
+  if: is_pull_request
+  hideFooterLink: false
+
+summary:
+  if: "true"

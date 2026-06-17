@@ -1,0 +1,28 @@
+# mise.toml (client) — Node を固定し UI (React Router v7) 用の pnpm タスクをまとめる。
+
+[tools]
+node = "22"
+
+[tasks.install]
+description = "client workspace の依存をインストール"
+run = "pnpm install"
+
+[tasks.gen]
+description = "@ec/api の orval 生成 (OpenAPI → client + zod)"
+run = "pnpm --filter @ec/api gen"
+
+[tasks.build]
+description = "全 app をビルド + 型チェック"
+run = ["pnpm -r build", "pnpm -r typecheck"]
+
+[tasks.lint]
+description = "oxlint + oxfmt チェック"
+run = ["pnpm lint", "pnpm format:check"]
+
+[tasks.test]
+description = "vitest 実行"
+run = "pnpm -r test"
+
+[tasks.cover]
+description = "vitest カバレッジ計測"
+run = "pnpm -r test:cov"
