@@ -12,9 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
-	"github.com/rin2yh/study-service-base-architecture/server/payment/api"
-	"github.com/rin2yh/study-service-base-architecture/server/payment/internal/di"
+	"github.com/rin2yh/study-architecture/server/internal/httperror"
+	"github.com/rin2yh/study-architecture/server/payment/api"
+	"github.com/rin2yh/study-architecture/server/payment/internal/di"
 )
 
 func main() {

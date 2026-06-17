@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/rin2yh/study-service-base-architecture/server/payment/api"
-	"github.com/rin2yh/study-service-base-architecture/server/payment/internal/repository"
+	"github.com/rin2yh/study-architecture/server/payment/api"
+	"github.com/rin2yh/study-architecture/server/payment/internal/repository"
 )
 
 type Handler struct {

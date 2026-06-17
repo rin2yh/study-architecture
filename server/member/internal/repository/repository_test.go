@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/rin2yh/study-service-base-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
 // fakeQuerier は db.Querier を満たし、Repository.q へ差し替えて DB なしで検証する。

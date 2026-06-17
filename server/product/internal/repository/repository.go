@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/rin2yh/study-service-base-architecture/server/product/internal/db"
+	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
 // interface にすることで handler のテストでスタブへ差し替えられる。

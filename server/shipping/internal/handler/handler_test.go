@@ -12,9 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
-	"github.com/rin2yh/study-service-base-architecture/server/shipping/api"
-	"github.com/rin2yh/study-service-base-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/internal/httperror"
+	"github.com/rin2yh/study-architecture/server/shipping/api"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
 func init() {

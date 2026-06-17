@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/rin2yh/study-service-base-architecture/server/order/api"
-	"github.com/rin2yh/study-service-base-architecture/server/order/internal/repository"
+	"github.com/rin2yh/study-architecture/server/order/api"
+	"github.com/rin2yh/study-architecture/server/order/internal/repository"
 )
 
 type Handler struct {

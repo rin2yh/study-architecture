@@ -1,4 +1,4 @@
-module github.com/rin2yh/study-service-base-architecture
+module github.com/rin2yh/study-architecture
 
 go 1.26.2
 

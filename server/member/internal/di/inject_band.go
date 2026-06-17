@@ -5,8 +5,8 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
-	"github.com/rin2yh/study-service-base-architecture/server/member/internal/handler"
-	"github.com/rin2yh/study-service-base-architecture/server/member/internal/repository"
+	"github.com/rin2yh/study-architecture/server/member/internal/handler"
+	"github.com/rin2yh/study-architecture/server/member/internal/repository"
 )
 
 func InitHandler(ctx context.Context) (*handler.Handler, error) {

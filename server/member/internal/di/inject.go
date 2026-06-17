@@ -5,8 +5,8 @@ package di
 import (
 	"github.com/mazrean/kessoku"
 
-	"github.com/rin2yh/study-service-base-architecture/server/member/internal/handler"
-	"github.com/rin2yh/study-service-base-architecture/server/member/internal/repository"
+	"github.com/rin2yh/study-architecture/server/member/internal/handler"
+	"github.com/rin2yh/study-architecture/server/member/internal/repository"
 )
 
 // Async でラップした NewPool は I/O を伴うため並列初期化対象になり、

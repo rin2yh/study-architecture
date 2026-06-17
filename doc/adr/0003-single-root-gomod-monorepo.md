@@ -13,8 +13,8 @@
 **単一ルート go.mod** を採用し、`go.work` は持たない。
 
 ```
-study-service-base-architecture/
-├── go.mod / go.sum            # ルート1個。module github.com/rin2yh/study-service-base-architecture
+study-architecture/
+├── go.mod / go.sum            # ルート1個。module github.com/rin2yh/study-architecture
 ├── db/migration/             # 中央集約マイグレーション（goose, schema 修飾）
 ├── server/<svc>/
 │   ├── api/                   # openapi.yaml + oapi-codegen 生成
