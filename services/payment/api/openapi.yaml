@@ -1,0 +1,61 @@
+openapi: 3.0.3
+info:
+  title: Payment Service API
+  version: 0.1.0
+  description: 決済ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /payments:
+    get:
+      operationId: listPayments
+      summary: 決済一覧
+      tags: [payment]
+      responses:
+        "200":
+          description: 決済の配列
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    Payment:
+      type: object
+      required: [id, orderId, amountCents, method, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        orderId:
+          type: integer
+          format: int64
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time

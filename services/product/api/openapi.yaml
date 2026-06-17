@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Product Service API
+  version: 0.1.0
+  description: 商品ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /products:
+    get:
+      operationId: listProducts
+      summary: 商品一覧
+      tags: [product]
+      responses:
+        "200":
+          description: 商品の配列
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    Product:
+      type: object
+      required: [id, sku, name, priceCents, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        sku:
+          type: string
+        name:
+          type: string
+        priceCents:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time

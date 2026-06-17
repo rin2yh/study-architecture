@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+#
+# goose マイグレーション実行用のワンショットイメージ。
+# goose は go.mod の tool 依存にあるためモジュールからビルドできる（CGO 不要）。
+#   docker compose run --rm migrate up
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -o /out/goose github.com/pressly/goose/v3/cmd/goose
+
+FROM alpine:3.20
+COPY --from=build /out/goose /usr/local/bin/goose
+COPY db/migrations /migrations
+# GOOSE_DRIVER / GOOSE_DBSTRING は compose の environment で渡す
+ENTRYPOINT ["goose", "-dir", "/migrations"]

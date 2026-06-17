@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
+#
+# 標準ライブラリ net/http (Go 1.22+ ServeMux) 向けの strict server を生成する。
+# フレームワーク非依存方針のため chi/echo 系は付けない。
+package: api
+output: api.gen.go
+generate:
+  models: true # OpenAPI schema -> Go struct
+  std-http-server: true # net/http ServeMux ベースのサーバ
+  strict-server: true # 型安全な StrictServerInterface
+output-options:
+  skip-prune: false

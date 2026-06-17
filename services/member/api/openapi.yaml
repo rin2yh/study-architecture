@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: Member Service API
+  version: 0.1.0
+  description: 会員ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /members:
+    get:
+      operationId: listMembers
+      summary: 会員一覧
+      tags: [member]
+      responses:
+        "200":
+          description: 会員の配列
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    Member:
+      type: object
+      required: [id, email, displayName, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        displayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time

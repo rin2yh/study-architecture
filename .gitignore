@@ -1,0 +1,24 @@
+# 生成コード（api.gen.go / internal/db / inject_band.go）は再現性とDockerビルド簡素化のため
+# コミットする方針。よってここでは ignore しない（生成は `mise gen`）。
+
+# ビルド成果物
+/bin/
+*.exe
+*.out
+coverage.out
+
+# 環境変数（ローカル機密）
+.env
+.env.local
+
+# mise ローカル上書き
+mise.local.toml
+
+# Node / UI（後続）
+node_modules/
+dist/
+.vite/
+
+# OS / エディタ
+.DS_Store
+*.swp
