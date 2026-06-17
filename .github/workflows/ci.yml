@@ -16,12 +16,35 @@ env:
   CGO_ENABLED: "0"
 
 jobs:
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'server/**'
+              - 'go.mod'
+              - 'go.sum'
+              - '.github/workflows/ci.yml'
+            client:
+              - 'client/**'
+              - '.github/workflows/ci.yml'
+
   server:
     name: server (Go)
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
           cache: true
@@ -32,14 +55,12 @@ jobs:
       - name: vet
         run: go vet ./...
 
-      - name: test
-        run: go test ./... -race -count=1
-
-      - name: coverage (手書きパッケージのみ分母)
-        # 生成物 (api/db/di) と各 main.go (DI/起動経路) を分母から除いた実カバレッジ
+      # 手書きパッケージ (api/db/di と main.go を除外) のみを分母にカバレッジ計測。
+      # -race + -covermode=atomic で同じ go test 呼び出しに統合 (元の test ステップを廃止)。
+      - name: test + coverage
         run: |
           pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
-          go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          go test ./server/... -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           go tool cover -func=cover.out | tail -1
 
       - name: coverage threshold (60%)
@@ -51,7 +72,7 @@ jobs:
 
       - name: upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: server-coverage
           path: cover.out
@@ -59,18 +80,20 @@ jobs:
 
   client:
     name: client (pnpm)
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: client
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: 11
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -88,7 +111,7 @@ jobs:
       - name: typecheck
         run: pnpm -r typecheck
 
-      - name: test + coverage (閾値: @ec/api 100% / app 60%)
+      - name: "test + coverage (閾値: @ec/api 100% / app 60%)"
         run: pnpm -r test:cov
 
       - name: build
