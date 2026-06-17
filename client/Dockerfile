@@ -15,15 +15,21 @@ COPY . .
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 RUN pnpm --filter "$APP" build
+# 対象 app の production deps のみを含む独立した node_modules を /deploy に出す
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm --filter "$APP" --prod --legacy deploy /deploy
 
-# Nitro node-server の .output は自己完結（追加の node_modules 不要）
+# tanstackStart() の SSR build 出力 (dist/) を、リポジトリ直下の薄い Node http サーバ
+# (start-server.mjs) から起動する。nitro/vite を併用しないため self-fetch deadlock なし。
 FROM node:22-slim AS runtime
 ARG APP
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
-COPY --from=build /repo/app/${APP}/.output ./.output
+COPY --from=build /repo/start-server.mjs /start-server.mjs
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /repo/app/${APP}/dist ./dist
 USER node
 EXPOSE 3000
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "/start-server.mjs"]

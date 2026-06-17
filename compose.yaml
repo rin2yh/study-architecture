@@ -105,8 +105,8 @@ services:
       args:
         APP: store
     environment:
-      # TanStack Start のサーバ関数は SSR 時に Host ヘッダのポートへ self-fetch するため、
-      # listen ポートを公開ポートに一致させる（不一致だと ECONNREFUSED）。
+      # start-server.mjs が listen する。compose 直接公開ポート (5173/5174/5175) と
+      # 一致させておくと curl http://localhost:<port> でそのまま叩ける。
       PORT: "5173"
       HOST: "0.0.0.0"
       NODE_ENV: production

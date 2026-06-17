@@ -2,7 +2,9 @@
 
 最終更新: 2026-06-17
 
-## TanStack Start (Nitro 本番ビルド) の SSR self-request が Docker と相性悪い
+> 完了済みの問題は本ファイルから記録目的で残しているが、現在再現しない。
+
+## (RESOLVED 2026-06-17) TanStack Start (Nitro 本番ビルド) の SSR self-request が Docker と相性悪い
 
 - **症状**: `docker compose up` で UI を起動するとブラウザ要求に対し SSR がハング/500。
   - `localhost:5173/` → `AbortError`, `[::1]:5173/` → 500 (`fetch failed`)
@@ -43,7 +45,18 @@
 - 結論: 現在の `nitro/vite` + `@tanstack/react-start/plugin/vite` の組み合わせでは
   production build における SSR エントリ rewrite が走らない可能性が高い。upstream の
   挙動を追う必要があるためこのまま open とする。
-- 次の打ち手候補:
-  - 上流の修正待ち / 1.169.x 以降に上げて再検証 (minimumReleaseAge 経過後)
-  - `src/start.ts` で `createStart()` を明示し entry を制御する手順を追加
-  - 最終手段として CSR + Nitro `routeRules` proxy に切替 (ADR 0006 改訂)
+### 解決 (2026-06-17)
+
+`nitro/vite` plugin を併用せず `tanstackStart()` のみで SSR build を作り、出力された
+`dist/server/server.js` (default export = `{ async fetch(req) }`) を リポジトリ直下の
+薄い Node http サーバ (`client/start-server.mjs`) から listen する構成に切替。
+self-fetch 経路を完全に絶ったため Docker 内のデッドロックは発生しない。
+
+- `client/app/<app>/vite.config.ts`: `nitro()` plugin を除去
+- `client/start-server.mjs`: `dist/client/` を静的配信、それ以外を SSR handler へ dispatch
+- `client/app/<app>/package.json`: `start` を `node ../../start-server.mjs` に変更
+- `client/Dockerfile`: `pnpm deploy --prod --legacy` で対象 app の production 依存だけ
+  抜き出し、`start-server.mjs` + `dist/` + `node_modules` を runtime に COPY
+
+`docker compose up store/mypage/backoffice` で `localhost:5173/5174/5175` の SSR HTML が
+正常に返ることを確認 (各々 200ms 前後)。
