@@ -10,8 +10,8 @@
 
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
-import { createReadStream, statSync } from "node:fs";
-import { extname, resolve } from "node:path";
+import { createReadStream, readdirSync, statSync } from "node:fs";
+import { extname, posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
 
@@ -42,30 +42,45 @@ const MIME = {
   ".woff2": "font/woff2",
 };
 
+// dist/client/ は Docker container 内で immutable のため、起動時に 1 度だけ走査して
+// pathname → {file, size, mime, immutable} の Map を作る。リクエスト時は同期 stat
+// せず Map lookup だけで応答する。
+function buildStaticMap(dir, urlBase = "") {
+  const map = new Map();
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = resolve(dir, entry.name);
+    const urlPath = posix.join(urlBase, entry.name);
+    if (entry.isDirectory()) {
+      for (const [k, v] of buildStaticMap(fullPath, urlPath)) map.set(k, v);
+    } else if (entry.isFile()) {
+      map.set("/" + urlPath, {
+        file: fullPath,
+        size: statSync(fullPath).size,
+        mime: MIME[extname(entry.name).toLowerCase()] ?? "application/octet-stream",
+        immutable: urlPath.startsWith("assets/"),
+      });
+    }
+  }
+  return map;
+}
+
+const STATIC = buildStaticMap(CLIENT_DIR);
+
 function tryServeStatic(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") return false;
-  const url = new URL(req.url, "http://_");
-  const pathname = decodeURIComponent(url.pathname);
-  if (pathname.includes("\0") || pathname.includes("..")) return false;
-  const filePath = resolve(CLIENT_DIR, "." + pathname);
-  let st;
-  try {
-    st = statSync(filePath);
-  } catch {
-    return false;
-  }
-  if (!st.isFile()) return false;
-  const mime = MIME[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+  const pathname = decodeURIComponent(new URL(req.url, "http://_").pathname);
+  const entry = STATIC.get(pathname);
+  if (!entry) return false;
   res.statusCode = 200;
-  res.setHeader("Content-Type", mime);
-  res.setHeader("Content-Length", st.size);
-  if (pathname.startsWith("/assets/")) {
+  res.setHeader("Content-Type", entry.mime);
+  res.setHeader("Content-Length", entry.size);
+  if (entry.immutable) {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
   }
   if (req.method === "HEAD") {
     res.end();
   } else {
-    createReadStream(filePath).pipe(res);
+    createReadStream(entry.file).pipe(res);
   }
   return true;
 }
