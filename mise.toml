@@ -79,12 +79,12 @@ description = "go mod tidy"
 run = "go mod tidy"
 
 [tasks.cover]
-description = "テストカバレッジ計測（生成コード api/db/di を分母から除外）"
-# 生成コード(*.gen.go / internal/db / internal/di の inject_band.go)は
-# go test ./server/... に -coverprofile を付けると 0% で分母に含まれてしまう。
-# -coverpkg で手書きパッケージ(handler/repository/main)のみを分母に指定して除外する。
+description = "テストカバレッジ計測（生成コード api/db/di と main.go を分母から除外）"
+# 生成コード(*.gen.go / internal/db / internal/di) は -coverpkg から除外する。
+# 各サービスの main.go (server/<svc> パッケージ) も実 DB 起動が無いとカバー不能な
+# DI 経路を含むため除外し、handler/repository/httperror のみを分母にする。
 run = [
-  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$' | paste -sd, -)",
+  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)",
   "go tool cover -func=cover.out | tail -1",
 ]
 

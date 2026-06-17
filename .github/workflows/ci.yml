@@ -36,9 +36,9 @@ jobs:
         run: go test ./... -race -count=1
 
       - name: coverage (手書きパッケージのみ分母)
-        # 生成物 (api/db/di) を分母から除いた実カバレッジを cover.out へ
+        # 生成物 (api/db/di) と各 main.go (DI/起動経路) を分母から除いた実カバレッジ
         run: |
-          pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$' | paste -sd, -)
+          pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
           go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           go tool cover -func=cover.out | tail -1
 

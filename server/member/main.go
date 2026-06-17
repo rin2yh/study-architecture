@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
 	"github.com/rin2yh/study-service-base-architecture/server/member/api"
 	"github.com/rin2yh/study-service-base-architecture/server/member/internal/di"
@@ -32,14 +34,18 @@ func run() error {
 		return err
 	}
 
-	si := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
+	gin.SetMode(gin.ReleaseMode)
+	engine := gin.New()
+	engine.Use(gin.Recovery())
+	si := api.NewStrictHandlerWithOptions(h, nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
+		HandlerErrorFunc:         httperror.HandlerErrorHandler,
 		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
 	})
-	mux := http.NewServeMux()
+	api.RegisterHandlers(engine, si)
 	srv := &http.Server{
 		Addr:              httpAddr(),
-		Handler:           api.HandlerFromMux(si, mux),
+		Handler:           engine,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

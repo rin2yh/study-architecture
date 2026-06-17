@@ -9,12 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
 	"github.com/rin2yh/study-service-base-architecture/server/shipping/api"
 	"github.com/rin2yh/study-service-base-architecture/server/shipping/internal/db"
 )
+
+func init() {
+	gin.SetMode(gin.TestMode)
+}
 
 type stubRepo struct {
 	shipments []db.ShippingShipment
@@ -26,11 +31,14 @@ func (s stubRepo) ListShipments(context.Context) ([]db.ShippingShipment, error) 
 }
 
 func newServer(repo stubRepo) http.Handler {
-	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictHTTPServerOptions{
+	engine := gin.New()
+	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
+		HandlerErrorFunc:         httperror.HandlerErrorHandler,
 		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
 	})
-	return api.HandlerFromMux(si, http.NewServeMux())
+	api.RegisterHandlers(engine, si)
+	return engine
 }
 
 func TestGetHealthz(t *testing.T) {

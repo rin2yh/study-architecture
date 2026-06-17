@@ -6,65 +6,77 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
-func TestWriteJSON(t *testing.T) {
+func init() {
+	gin.SetMode(gin.TestMode)
+}
+
+func newCtx() (*gin.Context, *httptest.ResponseRecorder) {
 	rec := httptest.NewRecorder()
-	writeJSON(rec, http.StatusTeapot, "i_am_a_teapot", "short and stout")
-
-	if rec.Code != http.StatusTeapot {
-		t.Fatalf("status = %d, want 418", rec.Code)
-	}
-	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
-		t.Fatalf("content-type = %q", ct)
-	}
-
-	var got Response
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if got.Code != "i_am_a_teapot" || got.Message != "short and stout" {
-		t.Fatalf("body = %+v", got)
-	}
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+	return c, rec
 }
 
 func TestRequestErrorHandler(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	RequestErrorHandler(rec, req, errors.New("missing required field"))
+	c, rec := newCtx()
+	RequestErrorHandler(c, errors.New("missing required field"))
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
-	var got Response
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
+		t.Fatalf("content-type = %q", ct)
+	}
+	var body Response
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Code != "bad_request" {
-		t.Fatalf("code = %q", got.Code)
+	if body.Code != "bad_request" {
+		t.Fatalf("code = %q", body.Code)
 	}
-	if got.Message != "missing required field" {
-		t.Fatalf("message = %q", got.Message)
+	if body.Message != "missing required field" {
+		t.Fatalf("message = %q", body.Message)
 	}
 }
 
-func TestResponseErrorHandler(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	ResponseErrorHandler(rec, req, errors.New("connection refused"))
+func TestHandlerErrorHandler(t *testing.T) {
+	c, rec := newCtx()
+	HandlerErrorHandler(c, errors.New("connection refused"))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
 	}
-	var got Response
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+	var body Response
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Code != "internal" {
-		t.Fatalf("code = %q", got.Code)
+	if body.Code != "internal" {
+		t.Fatalf("code = %q, want internal", body.Code)
 	}
-	// 内部エラーの素文言を露出してはいけない。
-	if got.Message == "connection refused" {
-		t.Fatalf("message must not expose internal: %q", got.Message)
+	if body.Message == "connection refused" {
+		t.Fatalf("message must not expose internal: %q", body.Message)
+	}
+}
+
+func TestResponseErrorHandler(t *testing.T) {
+	c, rec := newCtx()
+	ResponseErrorHandler(c, errors.New("encode fail"))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	var body Response
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body.Code != "internal" {
+		t.Fatalf("code = %q, want internal", body.Code)
+	}
+	if body.Message == "encode fail" {
+		t.Fatalf("message must not expose internal: %q", body.Message)
 	}
 }

@@ -9,12 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
 	"github.com/rin2yh/study-service-base-architecture/server/order/api"
 	"github.com/rin2yh/study-service-base-architecture/server/order/internal/db"
 )
+
+func init() {
+	gin.SetMode(gin.TestMode)
+}
 
 type stubRepo struct {
 	orders []db.OrderOrder
@@ -26,11 +31,14 @@ func (s stubRepo) ListOrders(context.Context) ([]db.OrderOrder, error) {
 }
 
 func newServer(repo stubRepo) http.Handler {
-	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictHTTPServerOptions{
+	engine := gin.New()
+	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
+		HandlerErrorFunc:         httperror.HandlerErrorHandler,
 		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
 	})
-	return api.HandlerFromMux(si, http.NewServeMux())
+	api.RegisterHandlers(engine, si)
+	return engine
 }
 
 func TestGetHealthz(t *testing.T) {
