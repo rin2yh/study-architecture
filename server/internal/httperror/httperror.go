@@ -17,8 +17,8 @@ type Response struct {
 	Message string `json:"message"`
 }
 
-// JSON は status と code/message から JSON エラーを書き出す。
-func JSON(w http.ResponseWriter, status int, code, message string) {
+// writeJSON は status と code/message から JSON エラーを書き出す。
+func writeJSON(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(Response{Code: code, Message: message})
@@ -29,7 +29,7 @@ func JSON(w http.ResponseWriter, status int, code, message string) {
 // 入力に依存する文言なのでメッセージは露出させてよい。
 func RequestErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	slog.WarnContext(r.Context(), "request rejected", "error", err, "path", r.URL.Path)
-	JSON(w, http.StatusBadRequest, "bad_request", err.Error())
+	writeJSON(w, http.StatusBadRequest, "bad_request", err.Error())
 }
 
 // ResponseErrorHandler は oapi-codegen の ResponseErrorHandlerFunc 用。
@@ -37,5 +37,5 @@ func RequestErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 // 内部詳細はクライアントへ露出させない。
 func ResponseErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	slog.ErrorContext(r.Context(), "handler error", "error", err, "path", r.URL.Path)
-	JSON(w, http.StatusInternalServerError, "internal", "internal server error")
+	writeJSON(w, http.StatusInternalServerError, "internal", "internal server error")
 }

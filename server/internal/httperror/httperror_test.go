@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-func TestJSON(t *testing.T) {
+func TestWriteJSON(t *testing.T) {
 	rec := httptest.NewRecorder()
-	JSON(rec, http.StatusTeapot, "i_am_a_teapot", "short and stout")
+	writeJSON(rec, http.StatusTeapot, "i_am_a_teapot", "short and stout")
 
 	if rec.Code != http.StatusTeapot {
 		t.Fatalf("status = %d, want 418", rec.Code)
