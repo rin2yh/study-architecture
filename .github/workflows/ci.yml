@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CGO_ENABLED: "0"
+
+jobs:
+  server:
+    name: server (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: fmt:check
+        run: test -z "$(gofmt -l server/)" || (gofmt -l server/ && exit 1)
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./... -race -count=1
+
+      - name: coverage (手書きパッケージのみ分母)
+        # 生成物 (api/db/di) を分母から除いた実カバレッジを cover.out へ
+        run: |
+          pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$' | paste -sd, -)
+          go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          go tool cover -func=cover.out | tail -1
+
+      - name: coverage threshold (60%)
+        run: |
+          total=$(go tool cover -func=cover.out | awk '/^total:/ {sub("%",""); print $3}')
+          threshold=60
+          echo "coverage: $total% (threshold: $threshold%)"
+          awk -v t="$total" -v th="$threshold" 'BEGIN { if (t+0 < th+0) { exit 1 } }'
+
+      - name: upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage
+          path: cover.out
+          if-no-files-found: ignore
+
+  client:
+    name: client (pnpm)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        run: pnpm lint
+
+      - name: format:check
+        run: pnpm format:check
+
+      - name: typecheck
+        run: pnpm -r typecheck
+
+      - name: test
+        run: pnpm -r test
+
+      - name: build
+        run: pnpm -r build
