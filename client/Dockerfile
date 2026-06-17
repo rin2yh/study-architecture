@@ -2,7 +2,7 @@
 #
 # 3つの UI(app/*) 共通の単一 Dockerfile。ビルド対象は APP 引数で切替える。
 # ビルドコンテキストは client/（pnpm workspace ルート）:
-#   docker build -f client/Dockerfile --build-arg APP=storefront -t ec-storefront ./client
+#   docker build -f client/Dockerfile --build-arg APP=store -t ec-store ./client
 # 生成コード(package/api/src)はコミット済みのため Docker 内で codegen は行わない。
 ARG APP
 
