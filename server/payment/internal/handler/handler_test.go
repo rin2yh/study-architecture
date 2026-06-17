@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
 	"github.com/rin2yh/study-service-base-architecture/server/payment/api"
 	"github.com/rin2yh/study-service-base-architecture/server/payment/internal/db"
 )
@@ -25,7 +26,10 @@ func (s stubRepo) ListPayments(context.Context) ([]db.PaymentPayment, error) {
 }
 
 func newServer(repo stubRepo) http.Handler {
-	si := api.NewStrictHandler(New(repo), nil)
+	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
+		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
+	})
 	return api.HandlerFromMux(si, http.NewServeMux())
 }
 
@@ -77,5 +81,18 @@ func TestListPaymentsError(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
+		t.Fatalf("content-type = %q, want application/json", ct)
+	}
+	var body httperror.Response
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body.Code != "internal" {
+		t.Fatalf("code = %q, want internal", body.Code)
+	}
+	if body.Message == "db failure" {
+		t.Fatalf("message must not expose internal error: %q", body.Message)
 	}
 }

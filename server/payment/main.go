@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rin2yh/study-service-base-architecture/server/internal/httperror"
 	"github.com/rin2yh/study-service-base-architecture/server/payment/api"
 	"github.com/rin2yh/study-service-base-architecture/server/payment/internal/di"
 )
@@ -31,7 +32,10 @@ func run() error {
 		return err
 	}
 
-	si := api.NewStrictHandler(h, nil)
+	si := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
+		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
+	})
 	mux := http.NewServeMux()
 	srv := &http.Server{
 		Addr:              httpAddr(),
