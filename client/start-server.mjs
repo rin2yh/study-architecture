@@ -43,28 +43,26 @@ const MIME = {
 };
 
 // dist/client/ は Docker container 内で immutable のため、起動時に 1 度だけ走査して
-// pathname → {file, size, mime, immutable} の Map を作る。リクエスト時は同期 stat
-// せず Map lookup だけで応答する。
-function buildStaticMap(dir, urlBase = "") {
-  const map = new Map();
+// pathname → {file, size, mime} の Map を作る。リクエスト時は同期 stat せず Map
+// lookup だけで応答する。
+function buildStaticMap(dir, map, urlBase = "/") {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = resolve(dir, entry.name);
     const urlPath = posix.join(urlBase, entry.name);
     if (entry.isDirectory()) {
-      for (const [k, v] of buildStaticMap(fullPath, urlPath)) map.set(k, v);
+      buildStaticMap(fullPath, map, urlPath);
     } else if (entry.isFile()) {
-      map.set("/" + urlPath, {
+      map.set(urlPath, {
         file: fullPath,
         size: statSync(fullPath).size,
         mime: MIME[extname(entry.name).toLowerCase()] ?? "application/octet-stream",
-        immutable: urlPath.startsWith("assets/"),
       });
     }
   }
   return map;
 }
 
-const STATIC = buildStaticMap(CLIENT_DIR);
+const STATIC = buildStaticMap(CLIENT_DIR, new Map());
 
 function tryServeStatic(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") return false;
@@ -74,7 +72,9 @@ function tryServeStatic(req, res) {
   res.statusCode = 200;
   res.setHeader("Content-Type", entry.mime);
   res.setHeader("Content-Length", entry.size);
-  if (entry.immutable) {
+  // Vite/TanStack Start の hashed asset は不変として長期キャッシュ可能。規約 (/assets/*)
+  // は build 側の事実で、Map 構築時ではなく serve 時に判定して結合を弱める。
+  if (pathname.startsWith("/assets/")) {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
   }
   if (req.method === "HEAD") {
