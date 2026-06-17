@@ -1,42 +1,13 @@
-import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
-
 import { listOrders, ListOrdersResponse } from "@ec/api/order";
+import type { Route } from "./+types/home";
 
-export const Route = createFileRoute("/")({
-  // ローダは SSR 時にサーバ側で実行される。mutator が env から service URL を注入する orval
-  // クライアントで order を直接呼び、生成 zod で検証する。
-  loader: async () => {
-    const { data } = await listOrders();
-    return ListOrdersResponse.parse(data);
-  },
-  component: Home,
-  pendingComponent: Pending,
-  errorComponent: ErrorView,
-});
-
-function Pending() {
-  return (
-    <div className="mx-auto max-w-3xl p-8 text-gray-500" role="status" aria-live="polite">
-      読み込み中…
-    </div>
-  );
+export async function loader() {
+  const { data } = await listOrders();
+  return ListOrdersResponse.parse(data);
 }
 
-function ErrorView({ error }: ErrorComponentProps) {
-  return (
-    <div className="mx-auto max-w-3xl p-8" role="alert">
-      <h1 className="text-3xl font-bold">エラーが発生しました</h1>
-      <p className="mt-4 text-red-600">注文履歴の取得に失敗しました。</p>
-      <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700">
-        {error.message}
-      </pre>
-    </div>
-  );
-}
-
-function Home() {
-  const orders = Route.useLoaderData();
-
+export default function Home({ loaderData }: Route.ComponentProps) {
+  const orders = loaderData;
   return (
     <div className="mx-auto max-w-3xl p-8">
       <h1 className="text-3xl font-bold">注文履歴</h1>
@@ -65,6 +36,27 @@ function Home() {
         </tbody>
       </table>
       {orders.length === 0 && <p className="mt-6 text-gray-500">注文履歴がありません。</p>}
+    </div>
+  );
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const message = error instanceof Error ? error.message : "unknown error";
+  return (
+    <div className="mx-auto max-w-3xl p-8" role="alert">
+      <h1 className="text-3xl font-bold">エラーが発生しました</h1>
+      <p className="mt-4 text-red-600">注文履歴の取得に失敗しました。</p>
+      <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700">
+        {message}
+      </pre>
+    </div>
+  );
+}
+
+export function HydrateFallback() {
+  return (
+    <div className="mx-auto max-w-3xl p-8 text-gray-500" role="status" aria-live="polite">
+      読み込み中…
     </div>
   );
 }

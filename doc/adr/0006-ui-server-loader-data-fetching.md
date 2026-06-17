@@ -1,6 +1,6 @@
 # ADR 0006: UI のデータ取得はサーバ側ローダ + orval(zod)
 
-- Status: Accepted
+- Status: Accepted (FW は [[0005]] → [[0011]] により React Router v7 へ置換、本 ADR の方針 (サーバ側ローダ + orval/zod) は維持)
 - Date: 2026-06-17
 
 ## Context

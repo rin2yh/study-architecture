@@ -116,8 +116,8 @@ doc/adr/                  # 設計判断
 ```sh
 cd client
 pnpm install
-pnpm api:gen        # server/<svc>/api/openapi.yaml → package/api/src/**（client + zod）
-pnpm -r build       # 各 app を vite build → .output/server/index.mjs (Nitro node-server)
+pnpm --filter @ec/api gen   # server/<svc>/api/openapi.yaml → package/api/src/**（client + zod）
+pnpm -r build               # 各 app を vite build → dist/server/server.js
 pnpm -r typecheck   # tsc --noEmit
 pnpm lint           # oxlint
 pnpm format         # oxfmt

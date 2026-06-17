@@ -10,7 +10,6 @@ FROM node:22-slim AS build
 ARG APP
 RUN corepack enable
 WORKDIR /repo
-# 依存はワークスペース全体を解決（allowBuilds で esbuild 等のビルドを許可）
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
@@ -19,17 +18,15 @@ RUN pnpm --filter "$APP" build
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm --filter "$APP" --prod --legacy deploy /deploy
 
-# tanstackStart() の SSR build 出力 (dist/) を、リポジトリ直下の薄い Node http サーバ
-# (start-server.mjs) から起動する。nitro/vite を併用しないため self-fetch deadlock なし。
+# react-router build (build/client + build/server/index.js) を @react-router/serve で listen する。
 FROM node:22-slim AS runtime
 ARG APP
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
-COPY --from=build /repo/start-server.mjs /start-server.mjs
 COPY --from=build /deploy/node_modules ./node_modules
-COPY --from=build /repo/app/${APP}/dist ./dist
+COPY --from=build /repo/app/${APP}/build ./build
 USER node
 EXPOSE 3000
-CMD ["node", "/start-server.mjs"]
+CMD ["node_modules/.bin/react-router-serve", "./build/server/index.js"]

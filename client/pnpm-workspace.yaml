@@ -9,33 +9,28 @@ allowBuilds:
   esbuild: false
 
 catalog:
+  "@react-router/dev": 7.17.0
+  "@react-router/node": 7.17.0
+  "@react-router/serve": 7.17.0
   "@tailwindcss/vite": 4.3.0
   "@tailwindcss/typography": 0.5.20
-  "@tanstack/react-devtools": 0.10.5
-  "@tanstack/react-query": 5.101.0
-  "@tanstack/react-query-devtools": 5.101.0
-  "@tanstack/react-router": 1.170.15
-  "@tanstack/react-router-devtools": 1.167.0
-  "@tanstack/react-router-ssr-query": 1.167.1
-  "@tanstack/react-start": 1.168.25
-  "@tanstack/router-plugin": 1.168.18
-  "@tanstack/devtools-vite": 0.7.0
-  "@tanstack/router-cli": 1.167.17
   "@testing-library/dom": 10.4.1
   "@testing-library/react": 16.3.2
   "@types/node": 22.19.20
   "@types/react": 19.2.17
   "@types/react-dom": 19.2.3
   "@vitejs/plugin-react": 6.0.2
+  "@vitest/coverage-v8": 4.1.8
+  isbot: 5.1.41
+  jsdom: 28.1.0
   lucide-react: 0.545.0
-  nitro: npm:nitro-nightly@4.0.0-20251010-091516-7cafddba
   react: 19.2.7
   react-dom: 19.2.7
+  react-router: 7.17.0
   tailwindcss: 4.3.0
-  jsdom: 28.1.0
   typescript: 6.0.3
   vite: 8.0.16
+  "vite-tsconfig-paths": 6.1.1
   vitest: 4.1.8
-  "@vitest/coverage-v8": 4.1.8
   zod: 4.4.3
   orval: 8.16.0

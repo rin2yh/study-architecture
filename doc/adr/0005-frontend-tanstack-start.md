@@ -1,6 +1,6 @@
 # ADR 0005: フロントエンドは TanStack Start（BFF を見据える）
 
-- Status: Accepted
+- Status: Superseded by [[0011]]
 - Date: 2026-06-17
 
 ## Context

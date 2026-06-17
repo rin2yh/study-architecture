@@ -143,12 +143,9 @@ vite.config.ts.timestamp-*
 .vite/
 
 
-# ── TanStack Start / Nitro / Vite build output ──
-.output
-.nitro
-.tanstack
-.vinxi
-.wrangler
+# ── React Router v7 / Vite build output ──
+build
+.react-router
 .vite
 dist-ssr
 *.local

@@ -2,7 +2,6 @@
   "name": "ec-uis",
   "private": true,
   "scripts": {
-    "api:gen": "pnpm --filter @ec/api gen",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "oxlint",
