@@ -7,8 +7,9 @@ go = "1.26"
 
 [env]
 CGO_ENABLED = "0"
-# ホストから goose / 各種ツールが叩く DSN (compose 内サービスは db:5432 を使う)
-DATABASE_URL = "postgres://ec:ec_pass@localhost:5432/ec?sslmode=disable"
+# ホストから goose を叩く DSN ([[ADR 0012]] で顧客系 / 運用系 を分離)。
+DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable"
+DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable"
 
 # 各 task は cd .. でリポジトリルートを cwd にし、go list / generate のパス指定を素直に書ける形にする。
 
@@ -24,20 +25,40 @@ run = [
 ]
 
 # ───────────────────────── マイグレーション ─────────────────────────
+[tasks."migrate:customer"]
+description = "顧客系 DB (db-customer) の goose up"
+dir = ".."
+run = 'go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" up'
+
+[tasks."migrate:ops"]
+description = "運用系 DB (db-ops) の goose up"
+dir = ".."
+run = 'go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" up'
+
 [tasks.migrate]
-description = "DB マイグレーションを最新まで適用 (goose up)"
-dir = ".."
-run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" up'
+description = "顧客系 + 運用系の両方を goose up"
+depends = ["migrate:customer", "migrate:ops"]
+run = "echo 'both migrated'"
 
-[tasks."migrate:status"]
-description = "マイグレーション適用状況"
+[tasks."migrate:status:customer"]
+description = "顧客系のマイグレーション適用状況"
 dir = ".."
-run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" status'
+run = 'go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" status'
 
-[tasks."migrate:down"]
-description = "マイグレーションを1つ戻す (goose down)"
+[tasks."migrate:status:ops"]
+description = "運用系のマイグレーション適用状況"
 dir = ".."
-run = 'go tool goose -dir db/migration postgres "$DATABASE_URL" down'
+run = 'go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" status'
+
+[tasks."migrate:down:customer"]
+description = "顧客系のマイグレーションを 1 つ戻す"
+dir = ".."
+run = 'go tool goose -dir db/migration/customer postgres "$DATABASE_URL_CUSTOMER" down'
+
+[tasks."migrate:down:ops"]
+description = "運用系のマイグレーションを 1 つ戻す"
+dir = ".."
+run = 'go tool goose -dir db/migration/ops postgres "$DATABASE_URL_OPS" down'
 
 # ───────────────────────── Go ビルド/検査 ─────────────────────────
 [tasks.build]

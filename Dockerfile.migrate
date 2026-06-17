@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
 #
 # goose マイグレーション実行用のワンショットイメージ。
-# goose は go.mod の tool 依存にあるためモジュールからビルドできる（CGO 不要）。
-#   docker compose run --rm migrate up
+# 顧客系 (db-customer) と運用系 (db-ops) で別ディレクトリを使う ([[ADR 0012]])。
+# 対象ディレクトリは compose の command 引数 (-dir /migrations/customer など) で渡す。
+#   docker compose --profile tools run --rm migrate-customer up
+#   docker compose --profile tools run --rm migrate-ops up
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -14,4 +16,4 @@ FROM alpine:3.20
 COPY --from=build /out/goose /usr/local/bin/goose
 COPY db/migration /migrations
 # GOOSE_DRIVER / GOOSE_DBSTRING は compose の environment で渡す
-ENTRYPOINT ["goose", "-dir", "/migrations"]
+ENTRYPOINT ["goose"]

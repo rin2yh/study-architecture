@@ -1,103 +1,150 @@
 name: ec-service-based
 
-# Step 0: 分割UI（後続） / 直接呼び出し / 共有DB（schema 分離）
-# 起動順: `mise gen`(コード生成) → `mise up` → `docker compose run --rm migrate up`（または `mise migrate`）
+# Step 0: 分割UI + 直接呼び出し + 2 つの Postgres インスタンス (db-customer / db-ops)
+# 起動順: `mise gen` → `mise up` → `docker compose --profile tools run --rm migrate-customer up` + `migrate-ops up`
+#
+# ネットワーク分離 (ADR 0012):
+#   - external (社外公開): 顧客 UI と顧客が呼ぶ全サービス + db-customer
+#   - internal (社内専用): 運用 UI と全サービス + db-customer + db-ops
+#   各サービスがどちらに attach しているかで「社外 → 社内 = 名前解決不可、社内 → 社外 = 可」を実現する。
+#   db-ops と backoffice は internal のみで、社外からは到達できない。
+networks:
+  external: {}
+  internal: {}
 
 services:
-  db:
+  db-customer:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: ec
       POSTGRES_PASSWORD: ec_pass
-      POSTGRES_DB: ec
+      POSTGRES_DB: ec_customer
     ports:
       - "5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_customer_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ec -d ec"]
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
       interval: 5s
       timeout: 3s
       retries: 10
+    networks: [external, internal]
 
-  # ワンショットのマイグレーション実行（goose）。
-  #   docker compose run --rm migrate up      # 最新まで適用
-  #   docker compose run --rm migrate status  # 状況確認
-  migrate:
+  db-ops:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ec
+      POSTGRES_PASSWORD: ec_pass
+      POSTGRES_DB: ec_ops
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_ops_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+
+  # ワンショットのマイグレーション実行 (goose)。顧客系と運用系は別ディレクトリ。
+  #   docker compose --profile tools run --rm migrate-customer up
+  #   docker compose --profile tools run --rm migrate-ops up
+  migrate-customer:
     build:
       context: .
       dockerfile: Dockerfile.migrate
     profiles: ["tools"]
     depends_on:
-      db:
+      db-customer:
         condition: service_healthy
     environment:
       GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
-    command: ["up"]
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+    command: ["-dir", "/migrations/customer", "up"]
+    networks: [external, internal]
+
+  migrate-ops:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    profiles: ["tools"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+    command: ["-dir", "/migrations/ops", "up"]
+    networks: [internal]
 
   product:
     build:
       context: .
       dockerfile: server/product/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
+      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
       HTTP_ADDR: ":8080"
     ports: ["8001:8080"]
     depends_on:
-      db:
+      db-ops:
         condition: service_healthy
+    networks: [external, internal]
 
   order:
     build:
       context: .
       dockerfile: server/order/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
+      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
       HTTP_ADDR: ":8080"
     ports: ["8002:8080"]
     depends_on:
-      db:
+      db-customer:
         condition: service_healthy
+    networks: [external, internal]
 
   payment:
     build:
       context: .
       dockerfile: server/payment/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
+      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
       HTTP_ADDR: ":8080"
     ports: ["8003:8080"]
     depends_on:
-      db:
+      db-customer:
         condition: service_healthy
+    networks: [external, internal]
 
   member:
     build:
       context: .
       dockerfile: server/member/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
+      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
       HTTP_ADDR: ":8080"
     ports: ["8004:8080"]
     depends_on:
-      db:
+      db-customer:
         condition: service_healthy
+    networks: [external, internal]
 
   shipping:
     build:
       context: .
       dockerfile: server/shipping/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db:5432/ec?sslmode=disable
+      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
       HTTP_ADDR: ":8080"
     ports: ["8005:8080"]
     depends_on:
-      db:
+      db-ops:
         condition: service_healthy
+    networks: [external, internal]
 
-  # UI: TanStack Start (Node)。サーバ側ローダ/サーバ関数から同一ネットワークの
-  # Go サービスを http://<svc>:8080 で呼ぶ。ブラウザは UI:port のみ叩くため CORS 不要（ADR 0006）。
+  # UI: React Router v7 (Node)。サーバ側ローダから同一ネットワークの Go サービスを
+  # http://<svc>:8080 で呼ぶ。ブラウザは UI:port のみ叩くため CORS 不要 (ADR 0006)。
   store:
     build:
       context: ./client
@@ -105,8 +152,6 @@ services:
       args:
         APP: store
     environment:
-      # start-server.mjs が listen する。compose 直接公開ポート (5173/5174/5175) と
-      # 一致させておくと curl http://localhost:<port> でそのまま叩ける。
       PORT: "5173"
       HOST: "0.0.0.0"
       NODE_ENV: production
@@ -115,6 +160,7 @@ services:
       PAYMENT_API_URL: http://payment:8080
     ports: ["5173:5173"]
     depends_on: [product, order, payment]
+    networks: [external]
 
   mypage:
     build:
@@ -131,6 +177,7 @@ services:
       SHIPPING_API_URL: http://shipping:8080
     ports: ["5174:5174"]
     depends_on: [member, order, shipping]
+    networks: [external]
 
   backoffice:
     build:
@@ -147,6 +194,8 @@ services:
       SHIPPING_API_URL: http://shipping:8080
     ports: ["5175:5175"]
     depends_on: [product, order, shipping]
+    networks: [internal]
 
 volumes:
-  pg_data:
+  pg_customer_data:
+  pg_ops_data:
