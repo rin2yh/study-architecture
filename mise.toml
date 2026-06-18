@@ -20,7 +20,7 @@ run = "./scripts/migrate.sh"
 
 [tasks.down]
 description = "全サービスを停止"
-run = "docker compose --profile external --profile internal --profile tools down"
+run = "docker compose --profile external --profile internal down"
 
 [tasks.logs]
 description = "ログ追従"

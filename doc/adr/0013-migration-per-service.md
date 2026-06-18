@@ -30,14 +30,13 @@
   - migrate 失敗で起動できないとロールアウトのアトミック性が崩れる
   - ローリングデプロイ時に「新アプリ + 古い schema」「古いアプリ + 新 schema」の窓ができる
   - 高権限 (DDL) を全インスタンスに持たせる必要が出てしまう
-- 流す場所:
-  - **CI/CD パイプライン**: deploy step の手前で `go tool goose -dir server/<svc>/db/migration up`
-    を流す (本番運用の本筋)
-  - **ローカル開発**: `mise run migrate:<svc>` (host から goose) か、compose の
-    `docker compose --profile tools run --rm migrate-<svc>` で 1 サービスずつ流す
-- compose の migrate ジョブは `image: ec-migrate` を共有して build を 1 回で済ます。
+- 流し方は `scripts/migrate.sh` 1 本に集約する。中身は host から `go tool goose -table
+  goose_<svc>_version -dir server/<svc>/db/migration postgres <DSN> up` を 5 サービス分
+  順に呼ぶだけ。専用 container は作らない (`go` ツールチェインがあれば足りる)。
+  - **CI/CD パイプライン**: deploy step の手前で `./scripts/migrate.sh` を流す
+  - **ローカル開発**: `mise run migrate` か `./scripts/migrate.sh order` で個別実行
 - 顧客系 3 サービスが同じ `db-customer` を共有するため、goose の version 管理表は
-  サービス別に **`goose_<svc>_version`** で分ける (compose / mise / CI で同じ規約)。
+  サービス別に **`goose_<svc>_version`** で分ける (script / CI で同じ規約)。
 
 ## Consequences
 
@@ -58,13 +57,11 @@
   に移動する。
 - 各サービスに `00001_init_schema.sql` (CREATE SCHEMA) と `00002_<table>.sql` (CREATE TABLE)
   を置く。
-- `Dockerfile.migrate` は 5 サービスの `db/migration/` を `/migrations/<svc>` に COPY する
-  単一の image を作る (`image: ec-migrate` を compose の 5 ジョブで共有して build 1 回)。
-- compose の `migrate-<svc>` (顧客系は `compose.yaml`、運用系は `compose.internal.yaml`) は
-  `profiles: ["tools"]` を付けて up の対象外にしておく。
-- `server/mise.toml` の `migrate:<svc>` で host の goose を直接叩く逃げ道も用意する。
-  `mise run migrate` で 5 サービス分を順次束ねる。
-- CI の integration job では migrate step で 5 サービス分を順に流してから test を実行する。
+- `scripts/migrate.sh` 1 本で host から `go tool goose` を 5 サービス分順に流す。
+  default DSN (`localhost:5432` / `localhost:5433`) を script 内で持つので、ローカルでも
+  CI でも env 設定なしに動かせる。
+- CI の integration job では `docker compose up -d --wait db-customer db-ops` で DB を立ててから
+  `./scripts/migrate.sh` を流し、その後で `go test` を実行する。
 
 ## Alternatives considered
 

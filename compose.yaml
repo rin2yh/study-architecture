@@ -8,34 +8,6 @@ volumes:
   pg_customer_data:
   pg_ops_data:
 
-x-migrate-customer: &migrate-customer
-  image: ec-migrate
-  build:
-    context: .
-    dockerfile: infra/migrate/Dockerfile
-  profiles: ["tools"]
-  depends_on:
-    db-customer:
-      condition: service_healthy
-  environment:
-    GOOSE_DRIVER: postgres
-    GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-  networks: [internal]
-
-x-migrate-ops: &migrate-ops
-  image: ec-migrate
-  build:
-    context: .
-    dockerfile: infra/migrate/Dockerfile
-  profiles: ["tools"]
-  depends_on:
-    db-ops:
-      condition: service_healthy
-  environment:
-    GOOSE_DRIVER: postgres
-    GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-  networks: [internal]
-
 services:
   edge-proxy:
     image: nginx:1.27-alpine
@@ -82,26 +54,6 @@ services:
       timeout: 3s
       retries: 10
     networks: [internal]
-
-  migrate-order:
-    <<: *migrate-customer
-    command: ["-table", "goose_order_version", "-dir", "/migrations/order", "up"]
-
-  migrate-payment:
-    <<: *migrate-customer
-    command: ["-table", "goose_payment_version", "-dir", "/migrations/payment", "up"]
-
-  migrate-member:
-    <<: *migrate-customer
-    command: ["-table", "goose_member_version", "-dir", "/migrations/member", "up"]
-
-  migrate-product:
-    <<: *migrate-ops
-    command: ["-table", "goose_product_version", "-dir", "/migrations/product", "up"]
-
-  migrate-shipping:
-    <<: *migrate-ops
-    command: ["-table", "goose_shipping_version", "-dir", "/migrations/shipping", "up"]
 
   product:
     build:
