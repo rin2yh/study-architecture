@@ -124,6 +124,11 @@ jobs:
         run: ./scripts/migrate.sh
 
       - name: test
+        # repository の結合テストは DATABASE_URL_{CUSTOMER,OPS} が無いと skip されるので、
+        # compose で立てた DB の DSN (migrate.sh と同じ default) を渡す。
+        env:
+          DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
+          DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
         run: |
           pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
           go test ./server/... -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"

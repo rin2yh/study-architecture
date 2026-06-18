@@ -2,46 +2,125 @@ package repository
 
 import (
 	"context"
-	"errors"
+	"os"
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-// fakeQuerier は db.Querier を満たし、Repository.q へ差し替えて DB なしで検証する。
-type fakeQuerier struct {
-	rows []db.OrderOrder
-	err  error
+// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても
+// 実 SQL が schema と噛み合うかは検証できない。ここでは DATABASE_URL_CUSTOMER が指す
+// 実 DB (compose の db-customer / CI の service) へ接続して結合テストする。
+//
+// ビルドタグは使わず、-short 実行時 (per-service の単体ジョブ) と DSN 未設定時に
+// skip することで、DB が無い環境でも `go test ./...` が通るようにしている。
+func testDSN(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skip integration test in -short mode")
+	}
+	dsn := os.Getenv("DATABASE_URL_CUSTOMER")
+	if dsn == "" {
+		t.Skip("skip integration test: DATABASE_URL_CUSTOMER is not set")
+	}
+	return dsn
 }
 
-func (f fakeQuerier) ListOrders(context.Context) ([]db.OrderOrder, error) {
-	return f.rows, f.err
+func openTestDB(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Fatalf("ping: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// seedOrders は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
+func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO "order".orders (member_id, status, total_cents) VALUES ($1, $2, $3)`,
+			r.MemberID, r.Status, r.TotalCents); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
 }
 
 func TestRepositoryListOrders(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	r := &Repository{q: fakeQuerier{rows: []db.OrderOrder{
-		{ID: 1, MemberID: 42, Status: "pending", TotalCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}}
-
-	got, err := r.ListOrders(context.Background())
-	if err != nil {
-		t.Fatalf("ListOrders: %v", err)
+	type args struct {
+		seed []db.OrderOrder
 	}
-	if len(got) != 1 || got[0].Status != "pending" {
-		t.Fatalf("unexpected rows: %+v", got)
+	type want struct {
+		statuses []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "正常系 id 昇順 (登録順) に複数件返す",
+			args: args{seed: []db.OrderOrder{
+				{MemberID: 1, Status: "pending", TotalCents: 1980},
+				{MemberID: 2, Status: "paid", TotalCents: 2980},
+			}},
+			want: want{statuses: []string{"pending", "paid"}},
+		},
+		{
+			name: "準正常系 0 件なら空スライス (nil でない)",
+			args: args{seed: nil},
+			want: want{statuses: []string{}},
+		},
+	}
+
+	pool := openTestDB(t)
+	r := NewRepository(pool)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seedOrders(t, pool, tt.args.seed...)
+
+			got, err := r.ListOrders(context.Background())
+			if err != nil {
+				t.Fatalf("ListOrders: %v", err)
+			}
+			if got == nil {
+				t.Fatal("ListOrders: want non-nil slice (emit_empty_slices)")
+			}
+			if len(got) != len(tt.want.statuses) {
+				t.Fatalf("len = %d, want %d (%+v)", len(got), len(tt.want.statuses), got)
+			}
+			for i, status := range tt.want.statuses {
+				if got[i].Status != status {
+					t.Fatalf("rows[%d].Status = %q, want %q", i, got[i].Status, status)
+				}
+			}
+		})
 	}
 }
 
+// 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListOrdersError(t *testing.T) {
-	want := errors.New("query failed")
-	r := &Repository{q: fakeQuerier{err: want}}
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	pool.Close()
 
-	if _, err := r.ListOrders(context.Background()); !errors.Is(err, want) {
-		t.Fatalf("err = %v, want %v", err, want)
+	r := NewRepository(pool)
+	if _, err := r.ListOrders(context.Background()); err == nil {
+		t.Fatal("ListOrders: want error from closed pool")
 	}
 }
 

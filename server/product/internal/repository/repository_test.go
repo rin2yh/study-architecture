@@ -2,46 +2,125 @@ package repository
 
 import (
 	"context"
-	"errors"
+	"os"
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-// fakeQuerier は db.Querier を満たし、Repository.q へ差し替えて DB なしで検証する。
-type fakeQuerier struct {
-	rows []db.ProductProduct
-	err  error
+// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても
+// 実 SQL が schema と噛み合うかは検証できない。ここでは DATABASE_URL_OPS が指す
+// 実 DB (compose の db-ops / CI の service) へ接続して結合テストする。
+//
+// ビルドタグは使わず、-short 実行時 (per-service の単体ジョブ) と DSN 未設定時に
+// skip することで、DB が無い環境でも `go test ./...` が通るようにしている。
+func testDSN(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skip integration test in -short mode")
+	}
+	dsn := os.Getenv("DATABASE_URL_OPS")
+	if dsn == "" {
+		t.Skip("skip integration test: DATABASE_URL_OPS is not set")
+	}
+	return dsn
 }
 
-func (f fakeQuerier) ListProducts(context.Context) ([]db.ProductProduct, error) {
-	return f.rows, f.err
+func openTestDB(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Fatalf("ping: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// seedProducts は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
+func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...db.ProductProduct) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE product.products RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO product.products (sku, name, price_cents) VALUES ($1, $2, $3)`,
+			r.Sku, r.Name, r.PriceCents); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
 }
 
 func TestRepositoryListProducts(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	r := &Repository{q: fakeQuerier{rows: []db.ProductProduct{
-		{ID: 1, Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}}
-
-	got, err := r.ListProducts(context.Background())
-	if err != nil {
-		t.Fatalf("ListProducts: %v", err)
+	type args struct {
+		seed []db.ProductProduct
 	}
-	if len(got) != 1 || got[0].Sku != "SKU-1" {
-		t.Fatalf("unexpected rows: %+v", got)
+	type want struct {
+		skus []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "正常系 id 昇順 (登録順) に複数件返す",
+			args: args{seed: []db.ProductProduct{
+				{Sku: "SKU-1", Name: "商品1", PriceCents: 1980},
+				{Sku: "SKU-2", Name: "商品2", PriceCents: 2980},
+			}},
+			want: want{skus: []string{"SKU-1", "SKU-2"}},
+		},
+		{
+			name: "準正常系 0 件なら空スライス (nil でない)",
+			args: args{seed: nil},
+			want: want{skus: []string{}},
+		},
+	}
+
+	pool := openTestDB(t)
+	r := NewRepository(pool)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seedProducts(t, pool, tt.args.seed...)
+
+			got, err := r.ListProducts(context.Background())
+			if err != nil {
+				t.Fatalf("ListProducts: %v", err)
+			}
+			if got == nil {
+				t.Fatal("ListProducts: want non-nil slice (emit_empty_slices)")
+			}
+			if len(got) != len(tt.want.skus) {
+				t.Fatalf("len = %d, want %d (%+v)", len(got), len(tt.want.skus), got)
+			}
+			for i, sku := range tt.want.skus {
+				if got[i].Sku != sku {
+					t.Fatalf("rows[%d].Sku = %q, want %q", i, got[i].Sku, sku)
+				}
+			}
+		})
 	}
 }
 
+// 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListProductsError(t *testing.T) {
-	want := errors.New("query failed")
-	r := &Repository{q: fakeQuerier{err: want}}
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	pool.Close()
 
-	if _, err := r.ListProducts(context.Background()); !errors.Is(err, want) {
-		t.Fatalf("err = %v, want %v", err, want)
+	r := NewRepository(pool)
+	if _, err := r.ListProducts(context.Background()); err == nil {
+		t.Fatal("ListProducts: want error from closed pool")
 	}
 }
 

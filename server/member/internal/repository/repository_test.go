@@ -2,46 +2,125 @@ package repository
 
 import (
 	"context"
-	"errors"
+	"os"
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-// fakeQuerier は db.Querier を満たし、Repository.q へ差し替えて DB なしで検証する。
-type fakeQuerier struct {
-	rows []db.MemberMember
-	err  error
+// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても
+// 実 SQL が schema と噛み合うかは検証できない。ここでは DATABASE_URL_CUSTOMER が指す
+// 実 DB (compose の db-customer / CI の service) へ接続して結合テストする。
+//
+// ビルドタグは使わず、-short 実行時 (per-service の単体ジョブ) と DSN 未設定時に
+// skip することで、DB が無い環境でも `go test ./...` が通るようにしている。
+func testDSN(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skip integration test in -short mode")
+	}
+	dsn := os.Getenv("DATABASE_URL_CUSTOMER")
+	if dsn == "" {
+		t.Skip("skip integration test: DATABASE_URL_CUSTOMER is not set")
+	}
+	return dsn
 }
 
-func (f fakeQuerier) ListMembers(context.Context) ([]db.MemberMember, error) {
-	return f.rows, f.err
+func openTestDB(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Fatalf("ping: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// seedMembers は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
+func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO member.members (email, display_name) VALUES ($1, $2)`,
+			r.Email, r.DisplayName); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
 }
 
 func TestRepositoryListMembers(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	r := &Repository{q: fakeQuerier{rows: []db.MemberMember{
-		{ID: 1, Email: "user@example.com", DisplayName: "サンプル会員", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}}
-
-	got, err := r.ListMembers(context.Background())
-	if err != nil {
-		t.Fatalf("ListMembers: %v", err)
+	type args struct {
+		seed []db.MemberMember
 	}
-	if len(got) != 1 || got[0].Email != "user@example.com" {
-		t.Fatalf("unexpected rows: %+v", got)
+	type want struct {
+		emails []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "正常系 id 昇順 (登録順) に複数件返す",
+			args: args{seed: []db.MemberMember{
+				{Email: "a@example.com", DisplayName: "会員A"},
+				{Email: "b@example.com", DisplayName: "会員B"},
+			}},
+			want: want{emails: []string{"a@example.com", "b@example.com"}},
+		},
+		{
+			name: "準正常系 0 件なら空スライス (nil でない)",
+			args: args{seed: nil},
+			want: want{emails: []string{}},
+		},
+	}
+
+	pool := openTestDB(t)
+	r := NewRepository(pool)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seedMembers(t, pool, tt.args.seed...)
+
+			got, err := r.ListMembers(context.Background())
+			if err != nil {
+				t.Fatalf("ListMembers: %v", err)
+			}
+			if got == nil {
+				t.Fatal("ListMembers: want non-nil slice (emit_empty_slices)")
+			}
+			if len(got) != len(tt.want.emails) {
+				t.Fatalf("len = %d, want %d (%+v)", len(got), len(tt.want.emails), got)
+			}
+			for i, email := range tt.want.emails {
+				if got[i].Email != email {
+					t.Fatalf("rows[%d].Email = %q, want %q", i, got[i].Email, email)
+				}
+			}
+		})
 	}
 }
 
+// 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListMembersError(t *testing.T) {
-	want := errors.New("query failed")
-	r := &Repository{q: fakeQuerier{err: want}}
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	pool.Close()
 
-	if _, err := r.ListMembers(context.Background()); !errors.Is(err, want) {
-		t.Fatalf("err = %v, want %v", err, want)
+	r := NewRepository(pool)
+	if _, err := r.ListMembers(context.Background()); err == nil {
+		t.Fatal("ListMembers: want error from closed pool")
 	}
 }
 

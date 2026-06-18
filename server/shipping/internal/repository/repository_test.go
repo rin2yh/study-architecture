@@ -2,46 +2,125 @@ package repository
 
 import (
 	"context"
-	"errors"
+	"os"
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
-// fakeQuerier は db.Querier を満たし、Repository.q へ差し替えて DB なしで検証する。
-type fakeQuerier struct {
-	rows []db.ShippingShipment
-	err  error
+// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても
+// 実 SQL が schema と噛み合うかは検証できない。ここでは DATABASE_URL_OPS が指す
+// 実 DB (compose の db-ops / CI の service) へ接続して結合テストする。
+//
+// ビルドタグは使わず、-short 実行時 (per-service の単体ジョブ) と DSN 未設定時に
+// skip することで、DB が無い環境でも `go test ./...` が通るようにしている。
+func testDSN(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skip integration test in -short mode")
+	}
+	dsn := os.Getenv("DATABASE_URL_OPS")
+	if dsn == "" {
+		t.Skip("skip integration test: DATABASE_URL_OPS is not set")
+	}
+	return dsn
 }
 
-func (f fakeQuerier) ListShipments(context.Context) ([]db.ShippingShipment, error) {
-	return f.rows, f.err
+func openTestDB(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Fatalf("ping: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// seedShipments は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
+func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...db.ShippingShipment) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status) VALUES ($1, $2, $3, $4)`,
+			r.OrderID, r.Carrier, r.TrackingNo, r.Status); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
 }
 
 func TestRepositoryListShipments(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	r := &Repository{q: fakeQuerier{rows: []db.ShippingShipment{
-		{ID: 1, OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}}
-
-	got, err := r.ListShipments(context.Background())
-	if err != nil {
-		t.Fatalf("ListShipments: %v", err)
+	type args struct {
+		seed []db.ShippingShipment
 	}
-	if len(got) != 1 || got[0].TrackingNo != "TRK-1" {
-		t.Fatalf("unexpected rows: %+v", got)
+	type want struct {
+		trackingNos []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "正常系 id 昇順 (登録順) に複数件返す",
+			args: args{seed: []db.ShippingShipment{
+				{OrderID: 1, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"},
+				{OrderID: 2, Carrier: "佐川急便", TrackingNo: "TRK-2", Status: "pending"},
+			}},
+			want: want{trackingNos: []string{"TRK-1", "TRK-2"}},
+		},
+		{
+			name: "準正常系 0 件なら空スライス (nil でない)",
+			args: args{seed: nil},
+			want: want{trackingNos: []string{}},
+		},
+	}
+
+	pool := openTestDB(t)
+	r := NewRepository(pool)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seedShipments(t, pool, tt.args.seed...)
+
+			got, err := r.ListShipments(context.Background())
+			if err != nil {
+				t.Fatalf("ListShipments: %v", err)
+			}
+			if got == nil {
+				t.Fatal("ListShipments: want non-nil slice (emit_empty_slices)")
+			}
+			if len(got) != len(tt.want.trackingNos) {
+				t.Fatalf("len = %d, want %d (%+v)", len(got), len(tt.want.trackingNos), got)
+			}
+			for i, no := range tt.want.trackingNos {
+				if got[i].TrackingNo != no {
+					t.Fatalf("rows[%d].TrackingNo = %q, want %q", i, got[i].TrackingNo, no)
+				}
+			}
+		})
 	}
 }
 
+// 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListShipmentsError(t *testing.T) {
-	want := errors.New("query failed")
-	r := &Repository{q: fakeQuerier{err: want}}
+	pool, err := pgxpool.New(context.Background(), testDSN(t))
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	pool.Close()
 
-	if _, err := r.ListShipments(context.Background()); !errors.Is(err, want) {
-		t.Fatalf("err = %v, want %v", err, want)
+	r := NewRepository(pool)
+	if _, err := r.ListShipments(context.Background()); err == nil {
+		t.Fatal("ListShipments: want error from closed pool")
 	}
 }
 
