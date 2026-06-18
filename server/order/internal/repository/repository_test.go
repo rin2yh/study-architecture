@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/rin2yh/study-architecture/server/internal/testdb"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
@@ -83,9 +83,11 @@ func TestRepositoryListOrders(t *testing.T) {
 }
 
 func TestRepositoryListOrdersError(t *testing.T) {
-	r := NewRepository(testdb.OpenClosed(t, dbEnv))
-	if _, err := r.ListOrders(context.Background()); err == nil {
-		t.Fatal("ListOrders: want error from closed pool")
+	r := NewRepository(testdb.Open(t, dbEnv))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := r.ListOrders(ctx); err == nil {
+		t.Fatal("ListOrders: want error from canceled context")
 	}
 }
 

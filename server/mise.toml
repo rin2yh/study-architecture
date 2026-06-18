@@ -44,7 +44,7 @@ run = "go mod tidy"
 description = "テストカバレッジ計測"
 dir = ".."
 run = [
-  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/testdb$|/server/[a-z]+$' | paste -sd, -)",
+  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/test/db$|/server/[a-z]+$' | paste -sd, -)",
   "go tool cover -func=cover.out | tail -1",
 ]
 

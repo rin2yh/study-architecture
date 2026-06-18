@@ -37,7 +37,9 @@ run = "./scripts/migrate.sh"
 description = "DB を立てて結合テストまで含めて実行"
 depends = ["up:db", "migrate"]
 env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
-run = "go test ./server/... -race -count=1"
+# -p 1: 同一サービスの repository / handler パッケージが同じ table を共有するため、
+# パッケージを並列実行すると TRUNCATE/seed が競合する。逐次実行で直列化する。
+run = "go test ./server/... -race -count=1 -p 1"
 
 [tasks.down]
 description = "全サービスを停止"

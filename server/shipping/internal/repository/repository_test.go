@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/rin2yh/study-architecture/server/internal/testdb"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
@@ -83,9 +83,11 @@ func TestRepositoryListShipments(t *testing.T) {
 }
 
 func TestRepositoryListShipmentsError(t *testing.T) {
-	r := NewRepository(testdb.OpenClosed(t, dbEnv))
-	if _, err := r.ListShipments(context.Background()); err == nil {
-		t.Fatal("ListShipments: want error from closed pool")
+	r := NewRepository(testdb.Open(t, dbEnv))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := r.ListShipments(ctx); err == nil {
+		t.Fatal("ListShipments: want error from canceled context")
 	}
 }
 

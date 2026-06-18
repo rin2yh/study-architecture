@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
-	"github.com/rin2yh/study-architecture/server/internal/testdb"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 	"github.com/rin2yh/study-architecture/server/member/internal/handler"
