@@ -24,7 +24,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/stub"
 )
 
-// assertErrorCode は共通エラー JSON ({code,message}) の code を検証する。
 func assertErrorCode(t *testing.T, body []byte, wantCode string) {
 	t.Helper()
 	var e struct {
@@ -66,7 +65,6 @@ func TestGetHealthz(t *testing.T) {
 	}
 }
 
-// handler は presentation 層なので、HTTP → handler → repository → 実 DB を通して検証する。
 func TestListProducts(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, "DATABASE_URL_OPS")
@@ -131,7 +129,7 @@ func TestGetProduct(t *testing.T) {
 	}
 	type want struct {
 		status int
-		code   string // "" のとき成功 (Product body を検証)
+		code   string
 	}
 	tests := []struct {
 		name string
@@ -173,7 +171,7 @@ func TestCreateProduct(t *testing.T) {
 	}
 	type want struct {
 		status int
-		code   string // "" のとき成功 (201 + Product body を検証)
+		code   string
 	}
 	tests := []struct {
 		name string

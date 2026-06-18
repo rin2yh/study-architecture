@@ -17,12 +17,8 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても実 SQL が
-// schema と噛み合うかは検証できない。List は DATABASE_URL_CUSTOMER が指す実 DB へ接続して
-// 結合テストする。skip 条件は testdb 参照。
 const dbEnv = "DATABASE_URL_CUSTOMER"
 
-// fakeQuerier は Get/Create のエラー正規化 (dberr) を DB なしで検証するための注入点。
 type fakeQuerier struct {
 	rows   []db.MemberMember
 	member db.MemberMember
@@ -113,7 +109,7 @@ func TestRepositoryGetMember(t *testing.T) {
 	type args struct{ q fakeQuerier }
 	type want struct {
 		id  int64
-		err error // errors.Is で照合。nil は成功
+		err error
 	}
 	tests := []struct {
 		name string
@@ -149,7 +145,7 @@ func TestRepositoryCreateMember(t *testing.T) {
 	type args struct{ q fakeQuerier }
 	type want struct {
 		id  int64
-		err error // errors.Is で照合。nil は成功
+		err error
 	}
 	tests := []struct {
 		name string
