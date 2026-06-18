@@ -96,8 +96,8 @@ func TestListOrdersError(t *testing.T) {
 	}
 }
 
-// 結合: HTTP → handler → repository → 実 DB を通して 200 と JSON が返ることを確認する
-// (handler は presentation 層なので実 DB を通した経路でも検証する)。skip 条件は testdb 参照。
+// handler は presentation 層なので、stub だけでなく実 DB を通した経路でも検証する
+// (skip 条件は testdb 参照)。
 func TestListOrdersWithDB(t *testing.T) {
 	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
 	ctx := context.Background()

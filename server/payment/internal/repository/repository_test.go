@@ -15,7 +15,6 @@ import (
 // db-customer / CI の service) へ接続して結合テストする。skip 条件は testdb 参照。
 const dbEnv = "DATABASE_URL_CUSTOMER"
 
-// seedPayments は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
 func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
 	t.Helper()
 	ctx := context.Background()
@@ -83,7 +82,6 @@ func TestRepositoryListPayments(t *testing.T) {
 	}
 }
 
-// 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListPaymentsError(t *testing.T) {
 	r := NewRepository(testdb.OpenClosed(t, dbEnv))
 	if _, err := r.ListPayments(context.Background()); err == nil {

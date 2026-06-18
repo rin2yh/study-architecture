@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Open は envVar (DATABASE_URL_CUSTOMER / DATABASE_URL_OPS) が指す実 DB へ接続する。
 func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	t.Helper()
 	pool := openOrSkip(t, envVar)

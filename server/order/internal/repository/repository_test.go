@@ -15,7 +15,6 @@ import (
 // db-customer / CI の service) へ接続して結合テストする。skip 条件は testdb 参照。
 const dbEnv = "DATABASE_URL_CUSTOMER"
 
-// seedOrders は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()
 	ctx := context.Background()
@@ -83,7 +82,6 @@ func TestRepositoryListOrders(t *testing.T) {
 	}
 }
 
-// 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListOrdersError(t *testing.T) {
 	r := NewRepository(testdb.OpenClosed(t, dbEnv))
 	if _, err := r.ListOrders(context.Background()); err == nil {
