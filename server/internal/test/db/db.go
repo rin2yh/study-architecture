@@ -9,8 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Open は envVar が指す実 DB へ接続する。envVar は必須の契約で、未設定なら接続に失敗して
-// Fatal になる (skip はしない)。-short での skip は test/skip パッケージで別に行う。
+// Open は envVar が指す実 DB へ接続する。envVar は必須の契約で、未設定なら Fatal (skip しない)。
 func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	t.Helper()
 	pool, err := pgxpool.New(context.Background(), os.Getenv(envVar))
