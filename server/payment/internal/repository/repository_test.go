@@ -12,6 +12,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
@@ -55,7 +56,7 @@ func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
 }
 
 func TestRepositoryListPayments(t *testing.T) {
-	testdb.SkipShort(t)
+	skip.Short(t)
 	tests := []struct {
 		name string
 		seed []db.PaymentPayment
@@ -96,7 +97,7 @@ func TestRepositoryListPayments(t *testing.T) {
 }
 
 func TestRepositoryListPaymentsError(t *testing.T) {
-	testdb.SkipShort(t)
+	skip.Short(t)
 	r := NewRepository(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

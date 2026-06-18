@@ -16,6 +16,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
@@ -65,14 +66,22 @@ func TestGetHealthz(t *testing.T) {
 	}
 }
 
+// handler は presentation 層なので、HTTP → handler → repository → 実 DB を通して検証する。
 func TestListOrders(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	repo := stub.Repo{Orders: []db.OrderOrder{
-		{ID: 1, MemberID: 10, Status: "paid", TotalCents: 5000, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO "order".orders (member_id, status, total_cents) VALUES ($1, $2, $3)`,
+		int64(10), "paid", int64(5000)); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
 
 	rec := httptest.NewRecorder()
-	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
+	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -81,11 +90,8 @@ func TestListOrders(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(got) != 1 {
-		t.Fatalf("len = %d, want 1", len(got))
-	}
-	if got[0].MemberId != 10 || got[0].Status != "paid" || got[0].TotalCents != 5000 || !got[0].CreatedAt.Equal(now) {
-		t.Fatalf("unexpected order: %+v", got[0])
+	if len(got) != 1 || got[0].MemberId != 10 || got[0].Status != "paid" || got[0].TotalCents != 5000 {
+		t.Fatalf("unexpected order: %+v", got)
 	}
 }
 
@@ -110,36 +116,6 @@ func TestListOrdersError(t *testing.T) {
 	}
 	if body.Message == "db failure" {
 		t.Fatalf("message must not expose internal error: %q", body.Message)
-	}
-}
-
-// handler は presentation 層なので、stub だけでなく実 DB を通した経路でも検証する
-// (skip 条件は testdb 参照)。
-func TestListOrdersWithDB(t *testing.T) {
-	testdb.SkipShort(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
-	ctx := context.Background()
-	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
-		t.Fatalf("truncate: %v", err)
-	}
-	if _, err := pool.Exec(ctx,
-		`INSERT INTO "order".orders (member_id, status, total_cents) VALUES ($1, $2, $3)`,
-		int64(10), "paid", int64(5000)); err != nil {
-		t.Fatalf("insert: %v", err)
-	}
-
-	rec := httptest.NewRecorder()
-	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-	var got []api.Order
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if len(got) != 1 || got[0].MemberId != 10 || got[0].Status != "paid" || got[0].TotalCents != 5000 {
-		t.Fatalf("unexpected order: %+v", got)
 	}
 }
 

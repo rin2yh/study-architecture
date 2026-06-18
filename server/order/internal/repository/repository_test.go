@@ -12,6 +12,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
@@ -55,7 +56,7 @@ func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 }
 
 func TestRepositoryListOrders(t *testing.T) {
-	testdb.SkipShort(t)
+	skip.Short(t)
 	tests := []struct {
 		name string
 		seed []db.OrderOrder
@@ -96,7 +97,7 @@ func TestRepositoryListOrders(t *testing.T) {
 }
 
 func TestRepositoryListOrdersError(t *testing.T) {
-	testdb.SkipShort(t)
+	skip.Short(t)
 	r := NewRepository(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

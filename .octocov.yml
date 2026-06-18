@@ -10,7 +10,7 @@ codeToTestRatio:
     - "!server/**/api.gen.go"
     - "!server/**/internal/db/**"
     - "!server/**/internal/di/inject_band.go"
-    - "!server/**/internal/test/db/**"
+    - "!server/**/internal/test/**"
   test:
     - "server/**/*_test.go"
 
