@@ -1,8 +1,4 @@
-// Package db は repository / handler の実 DB 結合テスト用の接続ヘルパー。
-//
-// ビルドタグ (//go:build integration) は使わず、-short 実行時 (per-service の単体ジョブ)
-// と DSN 未設定時に t.Skip する。これにより DB が無い環境でも `go test ./...` が通り、
-// DB を渡したジョブ (server-integration / mise run test:integration) でだけ実行される。
+// Package db は repository / handler の実 DB 結合テスト用ヘルパー。
 package db
 
 import (
@@ -13,22 +9,26 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Open(t *testing.T, envVar string) *pgxpool.Pool {
+// SkipShort は -short 実行時に結合テストを skip する。DB を持たない per-service の単体ジョブは
+// -short で回るため、各結合テストの先頭で呼んで skip させる (skip 判定を Open に持たせない)。
+func SkipShort(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("skip integration test in -short mode")
 	}
-	dsn := os.Getenv(envVar)
-	if dsn == "" {
-		t.Skipf("skip integration test: %s is not set", envVar)
-	}
-	pool, err := pgxpool.New(context.Background(), dsn)
+}
+
+// Open は envVar が指す実 DB へ接続する。envVar は必須の契約で、未設定なら接続に失敗して
+// Fatal になる (skip はしない)。-short での skip は SkipShort で別に行う。
+func Open(t *testing.T, envVar string) *pgxpool.Pool {
+	t.Helper()
+	pool, err := pgxpool.New(context.Background(), os.Getenv(envVar))
 	if err != nil {
 		t.Fatalf("pgxpool.New: %v", err)
 	}
 	if err := pool.Ping(context.Background()); err != nil {
 		pool.Close()
-		t.Fatalf("ping: %v", err)
+		t.Fatalf("ping (%s): %v", envVar, err)
 	}
 	t.Cleanup(pool.Close)
 	return pool

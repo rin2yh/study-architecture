@@ -56,6 +56,7 @@ func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 }
 
 func TestRepositoryListMembers(t *testing.T) {
+	testdb.SkipShort(t)
 	tests := []struct {
 		name string
 		seed []db.MemberMember
@@ -96,6 +97,7 @@ func TestRepositoryListMembers(t *testing.T) {
 }
 
 func TestRepositoryListMembersError(t *testing.T) {
+	testdb.SkipShort(t)
 	r := NewRepository(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

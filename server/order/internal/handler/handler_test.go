@@ -116,6 +116,7 @@ func TestListOrdersError(t *testing.T) {
 // handler は presentation 層なので、stub だけでなく実 DB を通した経路でも検証する
 // (skip 条件は testdb 参照)。
 func TestListOrdersWithDB(t *testing.T) {
+	testdb.SkipShort(t)
 	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
 	ctx := context.Background()
 	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {

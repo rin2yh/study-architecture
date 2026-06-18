@@ -55,6 +55,7 @@ func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 }
 
 func TestRepositoryListOrders(t *testing.T) {
+	testdb.SkipShort(t)
 	tests := []struct {
 		name string
 		seed []db.OrderOrder
@@ -95,6 +96,7 @@ func TestRepositoryListOrders(t *testing.T) {
 }
 
 func TestRepositoryListOrdersError(t *testing.T) {
+	testdb.SkipShort(t)
 	r := NewRepository(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

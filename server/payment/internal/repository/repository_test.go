@@ -55,6 +55,7 @@ func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
 }
 
 func TestRepositoryListPayments(t *testing.T) {
+	testdb.SkipShort(t)
 	tests := []struct {
 		name string
 		seed []db.PaymentPayment
@@ -95,6 +96,7 @@ func TestRepositoryListPayments(t *testing.T) {
 }
 
 func TestRepositoryListPaymentsError(t *testing.T) {
+	testdb.SkipShort(t)
 	r := NewRepository(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
