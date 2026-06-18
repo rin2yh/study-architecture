@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -68,7 +67,7 @@ func TestGetHealthz(t *testing.T) {
 func TestListProducts(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, "DATABASE_URL_OPS")
-	ctx := context.Background()
+	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE product.products RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}

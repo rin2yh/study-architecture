@@ -39,7 +39,7 @@ func (f fakeQuerier) CreateMember(context.Context, db.CreateMemberParams) (db.Me
 
 func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestRepositoryListMembers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			seedMembers(t, pool, tt.seed...)
 
-			got, err := r.ListMembers(context.Background())
+			got, err := r.ListMembers(t.Context())
 			if err != nil {
 				t.Fatalf("ListMembers: %v", err)
 			}
@@ -96,7 +96,7 @@ func TestRepositoryListMembers(t *testing.T) {
 func TestRepositoryListMembersError(t *testing.T) {
 	skip.Short(t)
 	r := NewRepository(testdb.Open(t, dbEnv))
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListMembers(ctx); err == nil {
 		t.Fatal("ListMembers: want error from canceled context")
@@ -122,7 +122,7 @@ func TestRepositoryGetMember(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).GetMember(context.Background(), 1)
+			got, err := (&Repository{q: tt.args.q}).GetMember(t.Context(), 1)
 			if tt.want.err != nil {
 				if !errors.Is(err, tt.want.err) {
 					t.Fatalf("err = %v, want %v", err, tt.want.err)
@@ -158,7 +158,7 @@ func TestRepositoryCreateMember(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).CreateMember(context.Background(), db.CreateMemberParams{})
+			got, err := (&Repository{q: tt.args.q}).CreateMember(t.Context(), db.CreateMemberParams{})
 			if tt.want.err != nil {
 				if !errors.Is(err, tt.want.err) {
 					t.Fatalf("err = %v, want %v", err, tt.want.err)
@@ -177,13 +177,13 @@ func TestRepositoryCreateMember(t *testing.T) {
 
 func TestNewPool(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
-	if _, err := NewPool(context.Background()); err == nil {
+	if _, err := NewPool(t.Context()); err == nil {
 		t.Fatal("NewPool: want error when DATABASE_URL is empty")
 	}
 
 	// ダミー DSN。pgxpool.New は遅延接続なので実際の接続は行われず error にならない。
 	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
-	pool, err := NewPool(context.Background())
+	pool, err := NewPool(t.Context())
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestNewPool(t *testing.T) {
 
 func TestNewRepository(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
-	pool, err := NewPool(context.Background())
+	pool, err := NewPool(t.Context())
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
