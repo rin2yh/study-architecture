@@ -1,7 +1,6 @@
-package handler
+package handler_test
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,38 +11,27 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/rin2yh/study-architecture/server/internal/httperror"
+	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/product/api"
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
+	"github.com/rin2yh/study-architecture/server/product/internal/handler"
+	"github.com/rin2yh/study-architecture/server/product/internal/stub"
 )
 
 func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-type stubRepo struct {
-	products []db.ProductProduct
-	err      error
-}
-
-func (s stubRepo) ListProducts(context.Context) ([]db.ProductProduct, error) {
-	return s.products, s.err
-}
-
-func newServer(repo stubRepo) http.Handler {
+func newServer(repo stub.Repo) http.Handler {
 	engine := gin.New()
-	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictGinServerOptions{
-		RequestErrorHandlerFunc:  httperror.BadRequest,
-		HandlerErrorFunc:         httperror.Internal,
-		ResponseErrorHandlerFunc: httperror.Internal,
-	})
-	api.RegisterHandlers(engine, si)
+	engine.Use(middleware.ErrorJSON())
+	api.RegisterHandlers(engine, handler.New(repo))
 	return engine
 }
 
 func TestGetHealthz(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newServer(stubRepo{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	newServer(stub.Repo{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -59,7 +47,7 @@ func TestGetHealthz(t *testing.T) {
 
 func TestListProducts(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	repo := stubRepo{products: []db.ProductProduct{
+	repo := stub.Repo{Products: []db.ProductProduct{
 		{ID: 1, Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
 	}}
 
@@ -82,7 +70,7 @@ func TestListProducts(t *testing.T) {
 }
 
 func TestListProductsError(t *testing.T) {
-	repo := stubRepo{err: errors.New("db failure")}
+	repo := stub.Repo{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
 	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
@@ -93,7 +81,10 @@ func TestListProductsError(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
 		t.Fatalf("content-type = %q, want application/json", ct)
 	}
-	var body httperror.Response
+	var body struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}

@@ -1,7 +1,9 @@
 package handler
 
 import (
-	"context"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/repository"
@@ -11,22 +13,23 @@ type Handler struct {
 	repo repository.ShipmentRepository
 }
 
-var _ api.StrictServerInterface = (*Handler)(nil)
+var _ api.ServerInterface = (*Handler)(nil)
 
 func New(repo repository.ShipmentRepository) *Handler {
 	return &Handler{repo: repo}
 }
 
-func (h *Handler) GetHealthz(_ context.Context, _ api.GetHealthzRequestObject) (api.GetHealthzResponseObject, error) {
-	return api.GetHealthz200JSONResponse{Status: "ok"}, nil
+func (h *Handler) GetHealthz(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func (h *Handler) ListShipments(ctx context.Context, _ api.ListShipmentsRequestObject) (api.ListShipmentsResponseObject, error) {
-	rows, err := h.repo.ListShipments(ctx)
+func (h *Handler) ListShipments(c *gin.Context) {
+	rows, err := h.repo.ListShipments(c.Request.Context())
 	if err != nil {
-		return nil, err
+		_ = c.Error(err)
+		return
 	}
-	out := make(api.ListShipments200JSONResponse, 0, len(rows))
+	out := make([]api.Shipment, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, api.Shipment{
 			Id:         r.ID,
@@ -37,5 +40,5 @@ func (h *Handler) ListShipments(ctx context.Context, _ api.ListShipmentsRequestO
 			CreatedAt:  r.CreatedAt.Time,
 		})
 	}
-	return out, nil
+	c.JSON(http.StatusOK, out)
 }

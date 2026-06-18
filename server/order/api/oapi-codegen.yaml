@@ -1,11 +1,8 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
-#
-# Gin 向けの strict server を生成する ([[ADR 0010]] により std-http-server から切替)。
 package: api
 output: api.gen.go
 generate:
-  models: true # OpenAPI schema -> Go struct
-  gin-server: true # gin.Engine ベースのサーバ
-  strict-server: true # 型安全な StrictServerInterface
+  models: true
+  gin-server: true
 output-options:
   skip-prune: false

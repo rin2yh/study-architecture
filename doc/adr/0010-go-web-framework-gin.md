@@ -19,17 +19,21 @@
 ## Decision
 
 **Gin (`github.com/gin-gonic/gin`) を採用**する。oapi-codegen の `gin-server` で
-StrictHandler / RegisterHandlers を生成し、各サービスの `main.go` は
-`gin.New()` (or `gin.Default()`) に StrictHandler を登録する形にする。
+`gin-server` 非 strict 形式で `ServerInterface (func(c *gin.Context))` と
+`RegisterHandlers` を生成し、各サービスの `main.go` は `gin.New()` に
+`engine.Use(middleware.ErrorJSON())` でエラー整形ミドルウェアを噛ませて
+`api.RegisterHandlers(engine, handler.New(...))` する。
 
-- 5 サービスの `server/<svc>/api/oapi-codegen.yaml` を `std-http-server: true`
-  から `gin-server: true` に変更し `mise gen` で再生成する。
-- `httperror.RequestErrorHandler` / `ResponseErrorHandler` は引き続き
-  `func(w http.ResponseWriter, r *http.Request, err error)` シグネチャで利用可
-  (oapi-codegen の StrictHandler が net/http 互換のためそのまま渡せる)。
-- 共通 middleware (例: `gin.Recovery()`, `slog` リクエストログ, CORS) は
-  サービス間で共有する必要が出れば `server/internal/ginx`(命名仮) に集約する。
-  今は各 `main.go` 内で完結させる。
+- 5 サービスの `server/<svc>/api/oapi-codegen.yaml` で `gin-server: true` を有効化、
+  strict は使わない。
+- エラーレスポンス整形は `server/internal/middleware.ErrorJSON()` 1 箇所に集約する。
+  handler 側は `c.Error(err)` で gin の error stack に積むだけ。ミドルウェアが
+  `gin.ErrorTypeBind|Public` を 400 (文言透過)、それ以外を 500 (内部詳細を隠す)
+  として整形する。
+- strict server (型安全な StrictGinServerOptions + 3 つの hook) は使わない。
+  契約駆動の compile-time チェックは弱まるが、エラー整形をミドルウェア 1 箇所に
+  集約できるメリットを優先する。Step 1 以降で必要になれば `strict-server: true`
+  に戻す余地は残す (oapi-codegen.yaml の 1 行で切替)。
 
 ## Consequences
 

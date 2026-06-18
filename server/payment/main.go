@@ -12,9 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/di"
-	"github.com/rin2yh/study-architecture/server/internal/httperror"
 )
 
 func main() {
@@ -36,12 +36,8 @@ func run() error {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-	si := api.NewStrictHandlerWithOptions(h, nil, api.StrictGinServerOptions{
-		RequestErrorHandlerFunc:  httperror.BadRequest,
-		HandlerErrorFunc:         httperror.Internal,
-		ResponseErrorHandlerFunc: httperror.Internal,
-	})
-	api.RegisterHandlers(engine, si)
+	engine.Use(middleware.ErrorJSON())
+	api.RegisterHandlers(engine, h)
 	srv := &http.Server{
 		Addr:              ":80",
 		Handler:           engine,

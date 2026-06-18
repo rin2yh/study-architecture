@@ -1,7 +1,9 @@
 package handler
 
 import (
-	"context"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/repository"
@@ -11,22 +13,23 @@ type Handler struct {
 	repo repository.PaymentRepository
 }
 
-var _ api.StrictServerInterface = (*Handler)(nil)
+var _ api.ServerInterface = (*Handler)(nil)
 
 func New(repo repository.PaymentRepository) *Handler {
 	return &Handler{repo: repo}
 }
 
-func (h *Handler) GetHealthz(_ context.Context, _ api.GetHealthzRequestObject) (api.GetHealthzResponseObject, error) {
-	return api.GetHealthz200JSONResponse{Status: "ok"}, nil
+func (h *Handler) GetHealthz(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func (h *Handler) ListPayments(ctx context.Context, _ api.ListPaymentsRequestObject) (api.ListPaymentsResponseObject, error) {
-	rows, err := h.repo.ListPayments(ctx)
+func (h *Handler) ListPayments(c *gin.Context) {
+	rows, err := h.repo.ListPayments(c.Request.Context())
 	if err != nil {
-		return nil, err
+		_ = c.Error(err)
+		return
 	}
-	out := make(api.ListPayments200JSONResponse, 0, len(rows))
+	out := make([]api.Payment, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, api.Payment{
 			Id:          r.ID,
@@ -37,5 +40,5 @@ func (h *Handler) ListPayments(ctx context.Context, _ api.ListPaymentsRequestObj
 			CreatedAt:   r.CreatedAt.Time,
 		})
 	}
-	return out, nil
+	c.JSON(http.StatusOK, out)
 }
