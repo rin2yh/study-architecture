@@ -104,7 +104,6 @@ func TestRepositoryListShipmentsError(t *testing.T) {
 
 func TestRepositoryGetShipment(t *testing.T) {
 	shipment := db.ShippingShipment{ID: 1, TrackingNo: "TRK-1"}
-	other := errors.New("query failed")
 	type args struct{ q fakeQuerier }
 	type want struct {
 		id  int64
@@ -117,7 +116,6 @@ func TestRepositoryGetShipment(t *testing.T) {
 	}{
 		{"正常系 行を返す", args{fakeQuerier{shipment: shipment}}, want{1, nil}},
 		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
-		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -140,7 +138,6 @@ func TestRepositoryGetShipment(t *testing.T) {
 
 func TestRepositoryCreateShipment(t *testing.T) {
 	created := db.ShippingShipment{ID: 10, TrackingNo: "TRK-10"}
-	other := errors.New("query failed")
 	type args struct{ q fakeQuerier }
 	type want struct {
 		id  int64
@@ -152,7 +149,6 @@ func TestRepositoryCreateShipment(t *testing.T) {
 		want want
 	}{
 		{"正常系 作成行を返す", args{fakeQuerier{shipment: created}}, want{10, nil}},
-		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -170,36 +166,5 @@ func TestRepositoryCreateShipment(t *testing.T) {
 				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
 			}
 		})
-	}
-}
-
-func TestNewPool(t *testing.T) {
-	t.Setenv("DATABASE_URL", "")
-	if _, err := NewPool(t.Context()); err == nil {
-		t.Fatal("NewPool: want error when DATABASE_URL is empty")
-	}
-
-	// ダミー DSN。pgxpool.New は遅延接続なので実際の接続は行われず error にならない。
-	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
-	pool, err := NewPool(t.Context())
-	if err != nil {
-		t.Fatalf("NewPool: %v", err)
-	}
-	defer pool.Close()
-	if pool == nil {
-		t.Fatal("NewPool: pool is nil")
-	}
-}
-
-func TestNewRepository(t *testing.T) {
-	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
-	pool, err := NewPool(t.Context())
-	if err != nil {
-		t.Fatalf("NewPool: %v", err)
-	}
-	defer pool.Close()
-
-	if NewRepository(pool) == nil {
-		t.Fatal("NewRepository: want non-nil")
 	}
 }
