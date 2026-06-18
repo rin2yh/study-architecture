@@ -13,6 +13,7 @@
   },
   "scripts": {
     "gen": "orval --config ./orval.config.ts",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:cov": "vitest run --coverage"
   },
@@ -23,6 +24,7 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "orval": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   }
 }

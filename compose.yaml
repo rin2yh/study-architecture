@@ -1,13 +1,18 @@
 name: ec-service-based
 
-# Step 0 のコア (ネットワーク / 顧客 DB / backend サービス)。
+# Step 0 のコア (ネットワーク / 顧客 DB / backend サービス / edge-proxy)。
 # 社外専用 UI は compose.external.yaml、社内専用リソース (db-ops / backoffice) は compose.internal.yaml。
 #
 # 全部立てる:
 #   docker compose -f compose.yaml -f compose.external.yaml -f compose.internal.yaml up -d --build
 #
+# 社外→社内アクセスは edge-proxy (reverse proxy) 経由 ([[ADR 0012]])。
+# - 顧客 UI (external) → edge-proxy:80 → backend (internal) を `location /<svc>/` で振り分け
+# - 運用 UI (internal) → backend (internal) 直接
+# - DB はどちらも internal 側でのみ到達可能
+#
 # マイグレーションは ([[ADR 0013]]) CI/CD でデプロイ前に流す方針。ローカルから手動で適用したい
-# ときは `mise run migrate:<svc>` か、以下の compose ジョブを使う:
+# ときは `mise run migrate:<svc>` か:
 #   docker compose --profile tools run --rm migrate-order
 #   docker compose --profile tools run --rm migrate-payment
 #   docker compose --profile tools run --rm migrate-member
@@ -21,6 +26,19 @@ volumes:
   pg_customer_data:
 
 services:
+  # 社外と社内の唯一の橋渡し役。「両方の network に attach する」のは proxy のみ。
+  edge-proxy:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./infra/edge-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [external, internal]
+    depends_on: [product, order, payment, member, shipping]
+
   db-customer:
     image: postgres:17-alpine
     environment:
@@ -36,7 +54,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks: [external, internal]
+    networks: [internal]
 
   # 顧客系 (db-customer) 向け migration ([[ADR 0013]])。image は ec-migrate を共有して build 1 回。
   migrate-order:
@@ -51,8 +69,8 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-    command: ["-dir", "/migrations/order", "up"]
-    networks: [external, internal]
+    command: ["-table", "goose_order_version", "-dir", "/migrations/order", "up"]
+    networks: [internal]
 
   migrate-payment:
     image: ec-migrate
@@ -66,8 +84,8 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-    command: ["-dir", "/migrations/payment", "up"]
-    networks: [external, internal]
+    command: ["-table", "goose_payment_version", "-dir", "/migrations/payment", "up"]
+    networks: [internal]
 
   migrate-member:
     image: ec-migrate
@@ -81,8 +99,8 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-    command: ["-dir", "/migrations/member", "up"]
-    networks: [external, internal]
+    command: ["-table", "goose_member_version", "-dir", "/migrations/member", "up"]
+    networks: [internal]
 
   product:
     build:
@@ -95,7 +113,7 @@ services:
     depends_on:
       db-ops:
         condition: service_healthy
-    networks: [external, internal]
+    networks: [internal]
 
   order:
     build:
@@ -108,7 +126,7 @@ services:
     depends_on:
       db-customer:
         condition: service_healthy
-    networks: [external, internal]
+    networks: [internal]
 
   payment:
     build:
@@ -121,7 +139,7 @@ services:
     depends_on:
       db-customer:
         condition: service_healthy
-    networks: [external, internal]
+    networks: [internal]
 
   member:
     build:
@@ -134,7 +152,7 @@ services:
     depends_on:
       db-customer:
         condition: service_healthy
-    networks: [external, internal]
+    networks: [internal]
 
   shipping:
     build:
@@ -147,4 +165,4 @@ services:
     depends_on:
       db-ops:
         condition: service_healthy
-    networks: [external, internal]
+    networks: [internal]

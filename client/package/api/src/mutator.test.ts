@@ -21,7 +21,7 @@ describe("mutator productFetch", () => {
 
   it("(a) ok のとき data/status/headers を返し、baseURL を前置する", async () => {
     const headers = new Headers({ "content-type": "application/json" });
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -48,7 +48,7 @@ describe("mutator productFetch", () => {
   });
 
   it("(b) 非ok のとき throw する", async () => {
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
@@ -64,7 +64,7 @@ describe("mutator productFetch", () => {
   });
 
   it("(c) 204 のとき data=undefined を返す", async () => {
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: true,
       status: 204,
       statusText: "No Content",
@@ -83,7 +83,7 @@ describe("mutator productFetch", () => {
 
   it("env 未設定のとき baseURL は空文字になる", async () => {
     delete process.env.PRODUCT_API_URL;
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: true,
       status: 200,
       statusText: "OK",

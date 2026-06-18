@@ -173,12 +173,13 @@ jobs:
           cache: true
 
       - name: migrate
+        # 顧客系の 3 サービスは db-customer を共有するため、goose の version 表をサービス別に分けて衝突を避ける。
         run: |
-          go tool goose -dir server/order/db/migration    postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir server/payment/db/migration  postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir server/member/db/migration   postgres "$DATABASE_URL_CUSTOMER" up
-          go tool goose -dir server/product/db/migration  postgres "$DATABASE_URL_OPS"      up
-          go tool goose -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS"      up
+          go tool goose -table goose_order_version    -dir server/order/db/migration    postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -table goose_payment_version  -dir server/payment/db/migration  postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -table goose_member_version   -dir server/member/db/migration   postgres "$DATABASE_URL_CUSTOMER" up
+          go tool goose -table goose_product_version  -dir server/product/db/migration  postgres "$DATABASE_URL_OPS"      up
+          go tool goose -table goose_shipping_version -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS"      up
 
       - name: test
         env:

@@ -1,5 +1,6 @@
-# 社外公開 (顧客向け) UI。store / mypage は external ネットワークだけに attach する。
-# 共通の network / DB / backend は compose.yaml 側に定義。
+# 社外公開 (顧客向け) UI。store / mypage は external ネットワークのみに attach し、
+# backend へは edge-proxy 経由でアクセスする ([[ADR 0012]] reverse proxy パターン)。
+# 共通の network / DB / backend は compose.yaml 側。
 
 services:
   store:
@@ -12,11 +13,13 @@ services:
       PORT: "5173"
       HOST: "0.0.0.0"
       NODE_ENV: production
-      PRODUCT_API_URL: http://product:8080
-      ORDER_API_URL: http://order:8080
-      PAYMENT_API_URL: http://payment:8080
+      PRODUCT_API_URL: http://edge-proxy/product
+      ORDER_API_URL: http://edge-proxy/order
+      PAYMENT_API_URL: http://edge-proxy/payment
     ports: ["5173:5173"]
-    depends_on: [product, order, payment]
+    depends_on:
+      edge-proxy:
+        condition: service_healthy
     networks: [external]
 
   mypage:
@@ -29,9 +32,11 @@ services:
       PORT: "5174"
       HOST: "0.0.0.0"
       NODE_ENV: production
-      MEMBER_API_URL: http://member:8080
-      ORDER_API_URL: http://order:8080
-      SHIPPING_API_URL: http://shipping:8080
+      MEMBER_API_URL: http://edge-proxy/member
+      ORDER_API_URL: http://edge-proxy/order
+      SHIPPING_API_URL: http://edge-proxy/shipping
     ports: ["5174:5174"]
-    depends_on: [member, order, shipping]
+    depends_on:
+      edge-proxy:
+        condition: service_healthy
     networks: [external]

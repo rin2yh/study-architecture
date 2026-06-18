@@ -37,7 +37,7 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-    command: ["-dir", "/migrations/product", "up"]
+    command: ["-table", "goose_product_version", "-dir", "/migrations/product", "up"]
     networks: [internal]
 
   migrate-shipping:
@@ -52,7 +52,7 @@ services:
     environment:
       GOOSE_DRIVER: postgres
       GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-    command: ["-dir", "/migrations/shipping", "up"]
+    command: ["-table", "goose_shipping_version", "-dir", "/migrations/shipping", "up"]
     networks: [internal]
 
   backoffice:
