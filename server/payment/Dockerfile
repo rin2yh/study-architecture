@@ -16,5 +16,5 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/payment ./server/payment
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/payment /payment
-EXPOSE 8080
+EXPOSE 80
 ENTRYPOINT ["/payment"]

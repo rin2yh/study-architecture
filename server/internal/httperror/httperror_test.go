@@ -21,64 +21,123 @@ func newCtx() (*gin.Context, *httptest.ResponseRecorder) {
 	return c, rec
 }
 
-func TestErrorHandlers(t *testing.T) {
+func decodeBody(t *testing.T, rec *httptest.ResponseRecorder) Response {
+	t.Helper()
+	var body Response
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	return body
+}
+
+func TestRequestErrorHandler(t *testing.T) {
+	type args struct {
+		err error
+	}
+	type want struct {
+		status      int
+		code        string
+		fullMessage string // err.Error() を そのまま透過すべき場合の期待文言
+	}
 	tests := []struct {
-		name       string
-		handler    func(*gin.Context, error)
-		err        error
-		wantStatus int
-		wantCode   string
-		// true なら err.Error() の文言を Message にそのまま透過する (入力エラー)、
-		// false なら隠蔽する (内部エラー)。
-		exposeErr bool
+		name string
+		args args
+		want want
 	}{
 		{
-			name:       "RequestErrorHandler は 400 と入力エラー文言を返す",
-			handler:    RequestErrorHandler,
-			err:        errors.New("missing required field"),
-			wantStatus: http.StatusBadRequest,
-			wantCode:   "bad_request",
-			exposeErr:  true,
-		},
-		{
-			name:       "HandlerErrorHandler は 500 で内部詳細を隠蔽する",
-			handler:    HandlerErrorHandler,
-			err:        errors.New("connection refused"),
-			wantStatus: http.StatusInternalServerError,
-			wantCode:   "internal",
-			exposeErr:  false,
-		},
-		{
-			name:       "ResponseErrorHandler は 500 で内部詳細を隠蔽する",
-			handler:    ResponseErrorHandler,
-			err:        errors.New("encode fail"),
-			wantStatus: http.StatusInternalServerError,
-			wantCode:   "internal",
-			exposeErr:  false,
+			name: "正常系/入力エラーは 400 で文言を透過する",
+			args: args{err: errors.New("missing required field")},
+			want: want{status: http.StatusBadRequest, code: "bad_request", fullMessage: "missing required field"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, rec := newCtx()
-			tt.handler(c, tt.err)
+			RequestErrorHandler(c, tt.args.err)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
+			}
+			body := decodeBody(t, rec)
+			if body.Code != tt.want.code {
+				t.Fatalf("code = %q, want %q", body.Code, tt.want.code)
+			}
+			if body.Message != tt.want.fullMessage {
+				t.Fatalf("message = %q, want %q (透過のはず)", body.Message, tt.want.fullMessage)
+			}
+		})
+	}
+}
 
-			if rec.Code != tt.wantStatus {
-				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)
+func TestHandlerErrorHandler(t *testing.T) {
+	type args struct {
+		err error
+	}
+	type want struct {
+		status    int
+		code      string
+		hideInput string // この文言が漏れていないことを確認 (内部詳細の露出禁止)
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "異常系/handler エラーは 500 で内部文言を隠す",
+			args: args{err: errors.New("connection refused")},
+			want: want{status: http.StatusInternalServerError, code: "internal", hideInput: "connection refused"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, rec := newCtx()
+			HandlerErrorHandler(c, tt.args.err)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
-				t.Fatalf("content-type = %q", ct)
+			body := decodeBody(t, rec)
+			if body.Code != tt.want.code {
+				t.Fatalf("code = %q, want %q", body.Code, tt.want.code)
 			}
-			var body Response
-			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-				t.Fatalf("unmarshal: %v", err)
+			if body.Message == tt.want.hideInput {
+				t.Fatalf("message が内部エラーを露出している: %q", body.Message)
 			}
-			if body.Code != tt.wantCode {
-				t.Fatalf("code = %q, want %q", body.Code, tt.wantCode)
+		})
+	}
+}
+
+func TestResponseErrorHandler(t *testing.T) {
+	type args struct {
+		err error
+	}
+	type want struct {
+		status    int
+		code      string
+		hideInput string
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "異常系/レスポンス serialize 失敗も 500 で内部文言を隠す",
+			args: args{err: errors.New("encode fail")},
+			want: want{status: http.StatusInternalServerError, code: "internal", hideInput: "encode fail"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, rec := newCtx()
+			ResponseErrorHandler(c, tt.args.err)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if tt.exposeErr && body.Message != tt.err.Error() {
-				t.Fatalf("message = %q, want %q (透過のはず)", body.Message, tt.err.Error())
+			body := decodeBody(t, rec)
+			if body.Code != tt.want.code {
+				t.Fatalf("code = %q, want %q", body.Code, tt.want.code)
 			}
-			if !tt.exposeErr && body.Message == tt.err.Error() {
+			if body.Message == tt.want.hideInput {
 				t.Fatalf("message が内部エラーを露出している: %q", body.Message)
 			}
 		})

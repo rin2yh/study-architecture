@@ -17,6 +17,9 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/httperror"
 )
 
+// コンテナ内では :80 固定。ホストへの公開ポートは compose の ports でマッピングする。
+const addr = ":80"
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("member service terminated", "error", err)
@@ -44,7 +47,7 @@ func run() error {
 	})
 	api.RegisterHandlers(engine, si)
 	srv := &http.Server{
-		Addr:              httpAddr(),
+		Addr:              addr,
 		Handler:           engine,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -61,11 +64,4 @@ func run() error {
 		return err
 	}
 	return nil
-}
-
-func httpAddr() string {
-	if addr := os.Getenv("HTTP_ADDR"); addr != "" {
-		return addr
-	}
-	return ":8080"
 }

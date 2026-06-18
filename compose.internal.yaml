@@ -102,8 +102,7 @@ services:
       dockerfile: server/product/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8001:8080"]
+    ports: ["8001:80"]
     depends_on:
       db-ops:
         condition: service_healthy
@@ -115,8 +114,7 @@ services:
       dockerfile: server/order/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8002:8080"]
+    ports: ["8002:80"]
     depends_on:
       db-customer:
         condition: service_healthy
@@ -128,8 +126,7 @@ services:
       dockerfile: server/payment/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8003:8080"]
+    ports: ["8003:80"]
     depends_on:
       db-customer:
         condition: service_healthy
@@ -141,8 +138,7 @@ services:
       dockerfile: server/member/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8004:8080"]
+    ports: ["8004:80"]
     depends_on:
       db-customer:
         condition: service_healthy
@@ -154,8 +150,7 @@ services:
       dockerfile: server/shipping/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8005:8080"]
+    ports: ["8005:80"]
     depends_on:
       db-ops:
         condition: service_healthy

@@ -14,13 +14,13 @@ DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable"
 # 各 task は cd .. でリポジトリルートを cwd にし、go list / generate のパス指定を素直に書ける形にする。
 
 # ───────────────────────── コード生成 ─────────────────────────
+# go generate ./... で全部走る。package walk 順 (api → internal/db → internal/di) で
+# 自然に sqlc / oapi-codegen → kessoku の順に解決されるため `-run` で分ける必要はない。
 [tasks.gen]
-description = "コード生成一式 (sqlc → oapi-codegen → kessoku)"
+description = "コード生成一式 (go generate)"
 dir = ".."
 run = [
-  "go generate -run sqlc ./...",
-  "go generate -run oapi-codegen ./...",
-  "go generate -run kessoku ./...",
+  "go generate ./...",
   "go mod tidy",
 ]
 

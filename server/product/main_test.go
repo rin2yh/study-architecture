@@ -4,29 +4,34 @@ import (
 	"testing"
 )
 
-func TestHttpAddr(t *testing.T) {
+func TestRun(t *testing.T) {
+	type args struct {
+		databaseURL string
+	}
+	type want struct {
+		wantErr bool
+	}
 	tests := []struct {
 		name string
-		env  string
-		want string
+		args args
+		want want
 	}{
-		{"empty env falls back to :8080", "", ":8080"},
-		{"explicit env is used as-is", ":9999", ":9999"},
+		{
+			name: "異常系/DATABASE_URL 未指定で di.InitHandler が失敗し起動前に error",
+			args: args{databaseURL: ""},
+			want: want{wantErr: true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("HTTP_ADDR", tt.env)
-			if got := httpAddr(); got != tt.want {
-				t.Fatalf("httpAddr() = %q, want %q", got, tt.want)
+			t.Setenv("DATABASE_URL", tt.args.databaseURL)
+			err := run()
+			if tt.want.wantErr && err == nil {
+				t.Fatal("run(): want error")
+			}
+			if !tt.want.wantErr && err != nil {
+				t.Fatalf("run() = %v, want nil", err)
 			}
 		})
-	}
-}
-
-func TestRunInitError(t *testing.T) {
-	// DATABASE_URL を空にすると di.InitHandler→NewPool がエラーを返し、run() はサーバ起動前に error を返す。
-	t.Setenv("DATABASE_URL", "")
-	if err := run(); err == nil {
-		t.Fatal("run(): want error when DATABASE_URL is empty")
 	}
 }

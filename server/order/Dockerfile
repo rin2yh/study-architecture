@@ -16,5 +16,5 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/order ./server/order
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/order /order
-EXPOSE 8080
+EXPOSE 80
 ENTRYPOINT ["/order"]
