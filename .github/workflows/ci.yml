@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-    paths:
+    paths: &trigger-paths
       - "server/**"
       - "client/**"
       - "scripts/**"
@@ -12,14 +12,7 @@ on:
       - ".github/workflows/ci.yml"
       - "compose.yaml"
   pull_request:
-    paths:
-      - "server/**"
-      - "client/**"
-      - "scripts/**"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/ci.yml"
-      - "compose.yaml"
+    paths: *trigger-paths
 
 permissions:
   contents: read
