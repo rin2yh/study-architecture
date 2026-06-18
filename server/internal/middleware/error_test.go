@@ -57,6 +57,7 @@ func TestErrorJSON(t *testing.T) {
 		{"準正常系 Conflict は 409 conflict", args{middleware.Conflict("email already exists"), 0}, want{http.StatusConflict, "conflict", "email already exists"}},
 		{"準正常系 Unprocessable は 422 unprocessable_entity", args{middleware.Unprocessable("price must be positive"), 0}, want{http.StatusUnprocessableEntity, "unprocessable_entity", "price must be positive"}},
 		{"準正常系 NewError は任意の status/code を透過", args{middleware.NewError(http.StatusTooManyRequests, "rate_limited", "slow down"), 0}, want{http.StatusTooManyRequests, "rate_limited", "slow down"}},
+		{"準正常系 5xx の AppError はサーバ起因としてログ", args{middleware.NewError(http.StatusBadGateway, "upstream", "bad gateway"), 0}, want{http.StatusBadGateway, "upstream", "bad gateway"}},
 
 		// 異常系
 		{"異常系 Bind エラーは 400 bad_request で文言透過", args{errors.New("invalid body"), gin.ErrorTypeBind}, want{http.StatusBadRequest, "bad_request", "invalid body"}},
