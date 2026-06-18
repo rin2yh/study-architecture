@@ -1,8 +1,10 @@
 name: ec-service-based
 
 networks:
-  external: {}
-  internal: {}
+  external-public: {}
+  external-private: {}
+  internal-public: {}
+  internal-private: {}
 
 volumes:
   pg_customer_data:
@@ -18,7 +20,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks: [external, internal]
+    networks: [external-public, external-private, internal-private]
     depends_on: [product, order, payment, member, shipping]
 
   db-customer:
@@ -36,7 +38,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks: [internal]
+    networks: [external-private]
 
   db-ops:
     image: postgres:17-alpine
@@ -53,7 +55,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks: [internal]
+    networks: [internal-private]
 
   product:
     build:
@@ -65,7 +67,7 @@ services:
     depends_on:
       db-ops:
         condition: service_healthy
-    networks: [internal]
+    networks: [internal-private]
 
   order:
     build:
@@ -77,7 +79,7 @@ services:
     depends_on:
       db-customer:
         condition: service_healthy
-    networks: [internal]
+    networks: [external-private]
 
   payment:
     build:
@@ -89,7 +91,7 @@ services:
     depends_on:
       db-customer:
         condition: service_healthy
-    networks: [internal]
+    networks: [external-private]
 
   member:
     build:
@@ -101,7 +103,7 @@ services:
     depends_on:
       db-customer:
         condition: service_healthy
-    networks: [internal]
+    networks: [external-private]
 
   shipping:
     build:
@@ -113,7 +115,7 @@ services:
     depends_on:
       db-ops:
         condition: service_healthy
-    networks: [internal]
+    networks: [internal-private]
 
   store:
     profiles: ["external"]
@@ -133,7 +135,7 @@ services:
     depends_on:
       edge-proxy:
         condition: service_healthy
-    networks: [external]
+    networks: [external-public]
 
   mypage:
     profiles: ["external"]
@@ -153,8 +155,11 @@ services:
     depends_on:
       edge-proxy:
         condition: service_healthy
-    networks: [external]
+    networks: [external-public]
 
+  # 社内 admin gateway: 社内 LAN (internal-public) に公開され、自身は社内 DB
+  # (internal-private) と顧客系 backend (external-private) に手を伸ばす 3 attach の
+  # マルチホーム container。これが「社内 → 社外 OK」経路の表現。
   backoffice:
     profiles: ["internal"]
     build:
@@ -171,4 +176,4 @@ services:
       SHIPPING_API_URL: http://shipping
     ports: ["5175:5175"]
     depends_on: [product, order, shipping]
-    networks: [internal]
+    networks: [internal-public, internal-private, external-private]
