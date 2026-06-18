@@ -9,10 +9,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Open は envVar が指す実 DB へ接続する。envVar は必須の契約で、未設定なら Fatal (skip しない)。
+// Open は envVar が指す実 DB へ接続する。未設定なら skip ではなく Fatal にする。黙って skip すると
+// CI が緑でも実 DB を検証しない「偽の緑」になるため。空 DSN は pgxpool が libpq デフォルト
+// (localhost 等) へ繋ぎにいき誤接続・不明瞭なエラーになるので、ここで明示的に弾く。
 func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	t.Helper()
-	pool, err := pgxpool.New(context.Background(), os.Getenv(envVar))
+	dsn := os.Getenv(envVar)
+	if dsn == "" {
+		t.Fatalf("%s is required for integration tests", envVar)
+	}
+	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatalf("pgxpool.New: %v", err)
 	}

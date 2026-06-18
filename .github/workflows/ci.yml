@@ -141,7 +141,7 @@ jobs:
 
       - name: test
         id: cov
-        # env が無いと結合テストは全 skip し、緑でも実 DB を一切検証しない状態になる
+        # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
           DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
           DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
