@@ -52,6 +52,7 @@ jobs:
           pkgs=$(go list ./server/$svc/... ./server/internal/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/test/|/server/[a-z]+$' | paste -sd, -)
           go test ./server/$svc/... ./server/internal/... -short -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
+          bash scripts/coverage-report.sh "server-$svc" cover.out > coverage.md
 
       # header をサービス別に分けて in-place 更新する (octocov は単一マーカーで衝突したため)。
       - name: comment coverage
@@ -59,9 +60,7 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: coverage-server-${{ matrix.service }}
-          message: |
-            ### Coverage: server-${{ matrix.service }}
-            `${{ steps.cov.outputs.total }}` (gate: 60%)
+          path: coverage.md
 
       - name: coverage gate
         env:
@@ -152,15 +151,14 @@ jobs:
           # TRUNCATE/seed が競合する。逐次実行で直列化する。
           go test ./server/... -race -count=1 -p 1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
+          bash scripts/coverage-report.sh "server-integration" cover.out > coverage.md
 
       - name: comment coverage
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: coverage-server-integration
-          message: |
-            ### Coverage: server-integration
-            `${{ steps.cov.outputs.total }}` (gate: 60%)
+          path: coverage.md
 
       - name: coverage gate
         env:
