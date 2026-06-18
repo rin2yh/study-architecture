@@ -1,0 +1,23 @@
+# octocov 設定: server matrix の各ジョブで coverage を Step Summary に出力する。
+# matrix で複数回 PR コメントが書かれるのを避けるため comment は無効化、summary だけにする。
+
+coverage:
+  paths:
+    - cover.out
+  acceptable: 60%
+
+codeToTestRatio:
+  code:
+    - "server/**/*.go"
+    - "!server/**/*_test.go"
+    - "!server/**/api.gen.go"
+    - "!server/**/internal/db/**"
+    - "!server/**/internal/di/inject_band.go"
+  test:
+    - "server/**/*_test.go"
+
+summary:
+  if: "true"
+
+comment:
+  if: "false"
