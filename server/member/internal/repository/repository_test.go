@@ -7,8 +7,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
@@ -18,24 +16,6 @@ import (
 )
 
 const dbEnv = "DATABASE_URL_CUSTOMER"
-
-type fakeQuerier struct {
-	rows   []db.MemberMember
-	member db.MemberMember
-	err    error
-}
-
-func (f fakeQuerier) ListMembers(context.Context) ([]db.MemberMember, error) {
-	return f.rows, f.err
-}
-
-func (f fakeQuerier) GetMember(context.Context, int64) (db.MemberMember, error) {
-	return f.member, f.err
-}
-
-func (f fakeQuerier) CreateMember(context.Context, db.CreateMemberParams) (db.MemberMember, error) {
-	return f.member, f.err
-}
 
 func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	t.Helper()
@@ -104,69 +84,45 @@ func TestRepositoryListMembersError(t *testing.T) {
 }
 
 func TestRepositoryGetMember(t *testing.T) {
-	member := db.MemberMember{ID: 1, Email: "user@example.com"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 行を返す", args{fakeQuerier{member: member}}, want{1, nil}},
-		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).GetMember(t.Context(), 1)
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("GetMember: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedMembers(t, pool, db.MemberMember{Email: "user@example.com", DisplayName: "会員A"})
+
+	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
+		got, err := r.GetMember(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetMember: %v", err)
+		}
+		if got.Email != "user@example.com" {
+			t.Fatalf("email = %q, want user@example.com", got.Email)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetMember(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestRepositoryCreateMember(t *testing.T) {
-	created := db.MemberMember{ID: 10, Email: "new@example.com"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 作成行を返す", args{fakeQuerier{member: created}}, want{10, nil}},
-		{"異常系 unique_violation は ErrConflict に正規化", args{fakeQuerier{err: &pgconn.PgError{Code: "23505"}}}, want{0, dberr.ErrConflict}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).CreateMember(t.Context(), db.CreateMemberParams{})
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("CreateMember: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedMembers(t, pool, db.MemberMember{Email: "exist@example.com", DisplayName: "既存"})
+
+	t.Run("正常系 作成行を返す", func(t *testing.T) {
+		got, err := r.CreateMember(t.Context(), db.CreateMemberParams{Email: "new@example.com", DisplayName: "新規会員"})
+		if err != nil {
+			t.Fatalf("CreateMember: %v", err)
+		}
+		if got.ID == 0 || got.Email != "new@example.com" {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("異常系 email 重複は ErrConflict", func(t *testing.T) {
+		if _, err := r.CreateMember(t.Context(), db.CreateMemberParams{Email: "exist@example.com", DisplayName: "重複"}); !errors.Is(err, dberr.ErrConflict) {
+			t.Fatalf("err = %v, want ErrConflict", err)
+		}
+	})
 }

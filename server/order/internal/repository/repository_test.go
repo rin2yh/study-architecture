@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
@@ -17,24 +16,6 @@ import (
 )
 
 const dbEnv = "DATABASE_URL_CUSTOMER"
-
-type fakeQuerier struct {
-	rows  []db.OrderOrder
-	order db.OrderOrder
-	err   error
-}
-
-func (f fakeQuerier) ListOrders(context.Context) ([]db.OrderOrder, error) {
-	return f.rows, f.err
-}
-
-func (f fakeQuerier) GetOrder(context.Context, int64) (db.OrderOrder, error) {
-	return f.order, f.err
-}
-
-func (f fakeQuerier) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
-	return f.order, f.err
-}
 
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()
@@ -103,68 +84,38 @@ func TestRepositoryListOrdersError(t *testing.T) {
 }
 
 func TestRepositoryGetOrder(t *testing.T) {
-	order := db.OrderOrder{ID: 1, MemberID: 10, Status: "paid"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 行を返す", args{fakeQuerier{order: order}}, want{1, nil}},
-		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).GetOrder(t.Context(), 1)
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("GetOrder: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000})
+
+	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
+		got, err := r.GetOrder(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetOrder: %v", err)
+		}
+		if got.MemberID != 10 {
+			t.Fatalf("memberID = %d, want 10", got.MemberID)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetOrder(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestRepositoryCreateOrder(t *testing.T) {
-	created := db.OrderOrder{ID: 10, MemberID: 20, Status: "pending"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedOrders(t, pool)
+
+	got, err := r.CreateOrder(t.Context(), db.CreateOrderParams{MemberID: 20, Status: "pending", TotalCents: 1980})
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
 	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 作成行を返す", args{fakeQuerier{order: created}}, want{10, nil}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).CreateOrder(t.Context(), db.CreateOrderParams{})
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("CreateOrder: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
+	if got.ID == 0 || got.MemberID != 20 {
+		t.Fatalf("unexpected row: %+v", got)
 	}
 }

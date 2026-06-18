@@ -7,8 +7,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
@@ -18,24 +16,6 @@ import (
 )
 
 const dbEnv = "DATABASE_URL_OPS"
-
-type fakeQuerier struct {
-	rows    []db.ProductProduct
-	product db.ProductProduct
-	err     error
-}
-
-func (f fakeQuerier) ListProducts(context.Context) ([]db.ProductProduct, error) {
-	return f.rows, f.err
-}
-
-func (f fakeQuerier) GetProduct(context.Context, int64) (db.ProductProduct, error) {
-	return f.product, f.err
-}
-
-func (f fakeQuerier) CreateProduct(context.Context, db.CreateProductParams) (db.ProductProduct, error) {
-	return f.product, f.err
-}
 
 func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...db.ProductProduct) {
 	t.Helper()
@@ -104,69 +84,45 @@ func TestRepositoryListProductsError(t *testing.T) {
 }
 
 func TestRepositoryGetProduct(t *testing.T) {
-	product := db.ProductProduct{ID: 1, Sku: "SKU-1"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 行を返す", args{fakeQuerier{product: product}}, want{1, nil}},
-		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).GetProduct(t.Context(), 1)
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("GetProduct: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedProducts(t, pool, db.ProductProduct{Sku: "SKU-1", Name: "商品1", PriceCents: 1980})
+
+	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
+		got, err := r.GetProduct(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetProduct: %v", err)
+		}
+		if got.Sku != "SKU-1" {
+			t.Fatalf("sku = %q, want SKU-1", got.Sku)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetProduct(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestRepositoryCreateProduct(t *testing.T) {
-	created := db.ProductProduct{ID: 10, Sku: "SKU-NEW"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 作成行を返す", args{fakeQuerier{product: created}}, want{10, nil}},
-		{"異常系 unique_violation は ErrConflict に正規化", args{fakeQuerier{err: &pgconn.PgError{Code: "23505"}}}, want{0, dberr.ErrConflict}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).CreateProduct(t.Context(), db.CreateProductParams{})
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("CreateProduct: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedProducts(t, pool, db.ProductProduct{Sku: "SKU-EXIST", Name: "既存", PriceCents: 1000})
+
+	t.Run("正常系 作成行を返す", func(t *testing.T) {
+		got, err := r.CreateProduct(t.Context(), db.CreateProductParams{Sku: "SKU-NEW", Name: "新規商品", PriceCents: 2980})
+		if err != nil {
+			t.Fatalf("CreateProduct: %v", err)
+		}
+		if got.ID == 0 || got.Sku != "SKU-NEW" {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("異常系 sku 重複は ErrConflict", func(t *testing.T) {
+		if _, err := r.CreateProduct(t.Context(), db.CreateProductParams{Sku: "SKU-EXIST", Name: "重複", PriceCents: 100}); !errors.Is(err, dberr.ErrConflict) {
+			t.Fatalf("err = %v, want ErrConflict", err)
+		}
+	})
 }

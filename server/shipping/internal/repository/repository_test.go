@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
@@ -17,24 +16,6 @@ import (
 )
 
 const dbEnv = "DATABASE_URL_OPS"
-
-type fakeQuerier struct {
-	rows     []db.ShippingShipment
-	shipment db.ShippingShipment
-	err      error
-}
-
-func (f fakeQuerier) ListShipments(context.Context) ([]db.ShippingShipment, error) {
-	return f.rows, f.err
-}
-
-func (f fakeQuerier) GetShipment(context.Context, int64) (db.ShippingShipment, error) {
-	return f.shipment, f.err
-}
-
-func (f fakeQuerier) CreateShipment(context.Context, db.CreateShipmentParams) (db.ShippingShipment, error) {
-	return f.shipment, f.err
-}
 
 func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...db.ShippingShipment) {
 	t.Helper()
@@ -103,68 +84,38 @@ func TestRepositoryListShipmentsError(t *testing.T) {
 }
 
 func TestRepositoryGetShipment(t *testing.T) {
-	shipment := db.ShippingShipment{ID: 1, TrackingNo: "TRK-1"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 行を返す", args{fakeQuerier{shipment: shipment}}, want{1, nil}},
-		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).GetShipment(t.Context(), 1)
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("GetShipment: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedShipments(t, pool, db.ShippingShipment{OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"})
+
+	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
+		got, err := r.GetShipment(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetShipment: %v", err)
+		}
+		if got.TrackingNo != "TRK-1" {
+			t.Fatalf("trackingNo = %q, want TRK-1", got.TrackingNo)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetShipment(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestRepositoryCreateShipment(t *testing.T) {
-	created := db.ShippingShipment{ID: 10, TrackingNo: "TRK-10"}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedShipments(t, pool)
+
+	got, err := r.CreateShipment(t.Context(), db.CreateShipmentParams{OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"})
+	if err != nil {
+		t.Fatalf("CreateShipment: %v", err)
 	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 作成行を返す", args{fakeQuerier{shipment: created}}, want{10, nil}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).CreateShipment(t.Context(), db.CreateShipmentParams{})
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("CreateShipment: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
+	if got.ID == 0 || got.TrackingNo != "TRK-10" {
+		t.Fatalf("unexpected row: %+v", got)
 	}
 }

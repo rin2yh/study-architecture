@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
@@ -17,24 +16,6 @@ import (
 )
 
 const dbEnv = "DATABASE_URL_CUSTOMER"
-
-type fakeQuerier struct {
-	rows    []db.PaymentPayment
-	payment db.PaymentPayment
-	err     error
-}
-
-func (f fakeQuerier) ListPayments(context.Context) ([]db.PaymentPayment, error) {
-	return f.rows, f.err
-}
-
-func (f fakeQuerier) GetPayment(context.Context, int64) (db.PaymentPayment, error) {
-	return f.payment, f.err
-}
-
-func (f fakeQuerier) CreatePayment(context.Context, db.CreatePaymentParams) (db.PaymentPayment, error) {
-	return f.payment, f.err
-}
 
 func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
 	t.Helper()
@@ -103,68 +84,38 @@ func TestRepositoryListPaymentsError(t *testing.T) {
 }
 
 func TestRepositoryGetPayment(t *testing.T) {
-	payment := db.PaymentPayment{ID: 1, OrderID: 10}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 行を返す", args{fakeQuerier{payment: payment}}, want{1, nil}},
-		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).GetPayment(t.Context(), 1)
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("GetPayment: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
-	}
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedPayments(t, pool, db.PaymentPayment{OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid"})
+
+	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
+		got, err := r.GetPayment(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetPayment: %v", err)
+		}
+		if got.OrderID != 10 {
+			t.Fatalf("orderID = %d, want 10", got.OrderID)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetPayment(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestRepositoryCreatePayment(t *testing.T) {
-	created := db.PaymentPayment{ID: 10, OrderID: 20}
-	type args struct{ q fakeQuerier }
-	type want struct {
-		id  int64
-		err error
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedPayments(t, pool)
+
+	got, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid"})
+	if err != nil {
+		t.Fatalf("CreatePayment: %v", err)
 	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{"正常系 作成行を返す", args{fakeQuerier{payment: created}}, want{10, nil}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := (&Repository{q: tt.args.q}).CreatePayment(t.Context(), db.CreatePaymentParams{})
-			if tt.want.err != nil {
-				if !errors.Is(err, tt.want.err) {
-					t.Fatalf("err = %v, want %v", err, tt.want.err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("CreatePayment: %v", err)
-			}
-			if got.ID != tt.want.id {
-				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
-			}
-		})
+	if got.ID == 0 || got.OrderID != 20 {
+		t.Fatalf("unexpected row: %+v", got)
 	}
 }
