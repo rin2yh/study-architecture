@@ -182,4 +182,8 @@ jobs:
       - name: test
         env:
           CGO_ENABLED: "1"
-        run: go test ./server/... -race -count=1
+        run: |
+          pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
+          go test ./server/... -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+
+      - uses: k1LoW/octocov-action@b3b6ee60482a667950f87553abf1df63217235d9 # v1.5.1
