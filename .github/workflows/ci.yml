@@ -20,12 +20,14 @@ jobs:
     outputs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
+      integration: ${{ steps.filter.outputs.integration }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
       - id: filter
         # 新規 push の null SHA は HEAD~1 にフォールバック (それ以外は github.event.before を使う)。
+        # server / client / integration の matrix を JSON 配列で出力する (空配列なら下流の job が skip)。
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
@@ -39,21 +41,59 @@ jobs:
           fi
           changed=$(git diff --name-only "$range")
           echo "changed files:"; echo "$changed"
-          has() { echo "$changed" | grep -qE "$1"; }
-          has '^(server/|go\.(mod|sum)$|\.github/workflows/ci\.yml$)' && server=true || server=false
-          has '^(client/|\.github/workflows/ci\.yml$)' && client=true || client=false
-          echo "server=$server" | tee -a "$GITHUB_OUTPUT"
-          echo "client=$client" | tee -a "$GITHUB_OUTPUT"
+
+          # workflow 自身や go.mod、server/internal の共通基盤など、サービス横断で影響するファイル
+          if echo "$changed" | grep -qE '^(\.github/workflows/ci\.yml|go\.(mod|sum)|scripts/migrate\.sh|server/internal/)'; then
+            cross_server=true
+          else
+            cross_server=false
+          fi
+          # client 全体に効くファイル (lockfile, ルート tsconfig / lint / 共通設定など)
+          # workflow 自身の変更は cross_server に既に含まれるため、ここでは server を介して波及させる。
+          if [ "$cross_server" = "true" ] || echo "$changed" | grep -qE '^client/(pnpm-(lock|workspace)\.yaml|tsconfig\.json|\.oxlintrc\.json|\.oxfmtrc\.json|mise\.toml)$'; then
+            cross_client=true
+          else
+            cross_client=false
+          fi
+
+          # server matrix
+          server_svcs=()
+          for svc in product order payment member shipping; do
+            if [ "$cross_server" = "true" ] || echo "$changed" | grep -qE "^server/${svc}/"; then
+              server_svcs+=("\"$svc\"")
+            fi
+          done
+          server_json="[$(IFS=,; echo "${server_svcs[*]}")]"
+          echo "server=$server_json" | tee -a "$GITHUB_OUTPUT"
+
+          # client matrix
+          client_pkgs=()
+          for entry in 'store:app/store' 'mypage:app/mypage' 'backoffice:app/backoffice' '@ec/api:package/api'; do
+            pkg="${entry%%:*}"
+            path="${entry##*:}"
+            if [ "$cross_client" = "true" ] || echo "$changed" | grep -qE "^client/${path}/"; then
+              client_pkgs+=("\"$pkg\"")
+            fi
+          done
+          client_json="[$(IFS=,; echo "${client_pkgs[*]}")]"
+          echo "client=$client_json" | tee -a "$GITHUB_OUTPUT"
+
+          # integration: server に変更があれば走らせる
+          if [ "$cross_server" = "true" ] || echo "$changed" | grep -qE '^server/'; then
+            echo "integration=true" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "integration=false" | tee -a "$GITHUB_OUTPUT"
+          fi
 
   server:
     name: server-${{ matrix.service }}
     needs: changes
-    if: needs.changes.outputs.server == 'true'
+    if: needs.changes.outputs.server != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        service: [product, order, payment, member, shipping]
+        service: ${{ fromJson(needs.changes.outputs.server) }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -78,13 +118,13 @@ jobs:
   client:
     name: client-${{ matrix.package }}
     needs: changes
-    if: needs.changes.outputs.client == 'true'
+    if: needs.changes.outputs.client != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         # @ec/api は build script 未定義のため pnpm run --if-present で skip させる
-        package: [store, mypage, backoffice, "@ec/api"]
+        package: ${{ fromJson(needs.changes.outputs.client) }}
     defaults:
       run:
         working-directory: client
@@ -130,7 +170,7 @@ jobs:
   integration:
     name: integration
     needs: changes
-    if: needs.changes.outputs.server == 'true'
+    if: needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
