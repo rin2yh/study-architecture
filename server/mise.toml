@@ -1,10 +1,6 @@
 [tools]
 go = "1.26"
 
-[env]
-DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable"
-DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable"
-
 [tasks.gen]
 description = "コード生成一式 (go generate)"
 dir = ".."
@@ -12,42 +8,6 @@ run = [
   "go generate ./...",
   "go mod tidy",
 ]
-
-[tasks."migrate:order"]
-description = "order の goose up (db-customer)"
-dir = ".."
-run = 'go tool goose -table goose_order_version -dir server/order/db/migration postgres "$DATABASE_URL_CUSTOMER" up'
-
-[tasks."migrate:payment"]
-description = "payment の goose up (db-customer)"
-dir = ".."
-run = 'go tool goose -table goose_payment_version -dir server/payment/db/migration postgres "$DATABASE_URL_CUSTOMER" up'
-
-[tasks."migrate:member"]
-description = "member の goose up (db-customer)"
-dir = ".."
-run = 'go tool goose -table goose_member_version -dir server/member/db/migration postgres "$DATABASE_URL_CUSTOMER" up'
-
-[tasks."migrate:product"]
-description = "product の goose up (db-ops)"
-dir = ".."
-run = 'go tool goose -table goose_product_version -dir server/product/db/migration postgres "$DATABASE_URL_OPS" up'
-
-[tasks."migrate:shipping"]
-description = "shipping の goose up (db-ops)"
-dir = ".."
-run = 'go tool goose -table goose_shipping_version -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS" up'
-
-[tasks.migrate]
-description = "5 サービス分の goose up を順に流す"
-depends = [
-  "migrate:order",
-  "migrate:payment",
-  "migrate:member",
-  "migrate:product",
-  "migrate:shipping",
-]
-run = "echo 'all migrated'"
 
 [tasks.build]
 description = "全サービスをビルド"

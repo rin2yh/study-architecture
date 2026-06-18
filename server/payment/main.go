@@ -37,9 +37,9 @@ func run() error {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	si := api.NewStrictHandlerWithOptions(h, nil, api.StrictGinServerOptions{
-		RequestErrorHandlerFunc:  httperror.OnRequestError,
-		HandlerErrorFunc:         httperror.OnHandlerError,
-		ResponseErrorHandlerFunc: httperror.OnResponseError,
+		RequestErrorHandlerFunc:  httperror.BadRequest,
+		HandlerErrorFunc:         httperror.Internal,
+		ResponseErrorHandlerFunc: httperror.Internal,
 	})
 	api.RegisterHandlers(engine, si)
 	srv := &http.Server{

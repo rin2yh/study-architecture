@@ -15,12 +15,8 @@ description = "DB だけ起動 (CI / 結合テスト用)"
 run = "docker compose up -d --wait db-customer db-ops"
 
 [tasks.migrate]
-description = "5 サービス分の migration を compose ジョブで流す"
-run = """
-for svc in order payment member product shipping; do
-  docker compose --profile tools run --rm migrate-$svc
-done
-"""
+description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
+run = "./scripts/migrate.sh"
 
 [tasks.down]
 description = "全サービスを停止"
