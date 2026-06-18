@@ -30,7 +30,7 @@ func decodeBody(t *testing.T, rec *httptest.ResponseRecorder) Response {
 	return body
 }
 
-func TestRequestErrorHandler(t *testing.T) {
+func TestOnRequestError(t *testing.T) {
 	type args struct {
 		err error
 	}
@@ -53,7 +53,7 @@ func TestRequestErrorHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, rec := newCtx()
-			RequestErrorHandler(c, tt.args.err)
+			OnRequestError(c, tt.args.err)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
@@ -68,7 +68,7 @@ func TestRequestErrorHandler(t *testing.T) {
 	}
 }
 
-func TestHandlerErrorHandler(t *testing.T) {
+func TestOnHandlerError(t *testing.T) {
 	type args struct {
 		err error
 	}
@@ -91,7 +91,7 @@ func TestHandlerErrorHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, rec := newCtx()
-			HandlerErrorHandler(c, tt.args.err)
+			OnHandlerError(c, tt.args.err)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
@@ -106,7 +106,7 @@ func TestHandlerErrorHandler(t *testing.T) {
 	}
 }
 
-func TestResponseErrorHandler(t *testing.T) {
+func TestOnResponseError(t *testing.T) {
 	type args struct {
 		err error
 	}
@@ -129,7 +129,7 @@ func TestResponseErrorHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, rec := newCtx()
-			ResponseErrorHandler(c, tt.args.err)
+			OnResponseError(c, tt.args.err)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}

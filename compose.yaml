@@ -1,10 +1,5 @@
 name: ec-service-based
 
-# 全部立てる:           docker compose --profile external --profile internal up -d --build
-# 社外側スタックだけ:   docker compose --profile external             up -d --build
-# 社内側スタックだけ:   docker compose --profile internal             up -d --build
-# migrate を流す:       docker compose --profile tools run --rm migrate-<svc>
-
 networks:
   external: {}
   internal: {}
@@ -17,7 +12,7 @@ x-migrate-customer: &migrate-customer
   image: ec-migrate
   build:
     context: .
-    dockerfile: Dockerfile.migrate
+    dockerfile: infra/migrate/Dockerfile
   profiles: ["tools"]
   depends_on:
     db-customer:
@@ -31,7 +26,7 @@ x-migrate-ops: &migrate-ops
   image: ec-migrate
   build:
     context: .
-    dockerfile: Dockerfile.migrate
+    dockerfile: infra/migrate/Dockerfile
   profiles: ["tools"]
   depends_on:
     db-ops:

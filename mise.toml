@@ -10,6 +10,18 @@ run = "docker compose --profile external up -d --build"
 description = "社内側スタックだけ起動 (backoffice)"
 run = "docker compose --profile internal up -d --build"
 
+[tasks."up:db"]
+description = "DB だけ起動 (CI / 結合テスト用)"
+run = "docker compose up -d --wait db-customer db-ops"
+
+[tasks.migrate]
+description = "5 サービス分の migration を compose ジョブで流す"
+run = """
+for svc in order payment member product shipping; do
+  docker compose --profile tools run --rm migrate-$svc
+done
+"""
+
 [tasks.down]
 description = "全サービスを停止"
 run = "docker compose --profile external --profile internal --profile tools down"

@@ -15,19 +15,19 @@ type Response struct {
 }
 
 // 入力起因のエラーなので文言を透過してよい。
-func RequestErrorHandler(c *gin.Context, err error) {
+func OnRequestError(c *gin.Context, err error) {
 	slog.WarnContext(c.Request.Context(), "request rejected", "error", err, "path", c.Request.URL.Path)
 	c.AbortWithStatusJSON(http.StatusBadRequest, Response{Code: "bad_request", Message: err.Error()})
 }
 
 // 内部詳細をクライアントへ露出させない (DB 接続情報・スタックを漏らさない)。
-func HandlerErrorHandler(c *gin.Context, err error) {
+func OnHandlerError(c *gin.Context, err error) {
 	slog.ErrorContext(c.Request.Context(), "handler error", "error", err, "path", c.Request.URL.Path)
 	c.AbortWithStatusJSON(http.StatusInternalServerError, Response{Code: "internal", Message: "internal server error"})
 }
 
 // 内部詳細をクライアントへ露出させない。
-func ResponseErrorHandler(c *gin.Context, err error) {
+func OnResponseError(c *gin.Context, err error) {
 	slog.ErrorContext(c.Request.Context(), "response serialization error", "error", err, "path", c.Request.URL.Path)
 	c.AbortWithStatusJSON(http.StatusInternalServerError, Response{Code: "internal", Message: "internal server error"})
 }

@@ -17,8 +17,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/httperror"
 )
 
-const addr = ":80"
-
 func main() {
 	if err := run(); err != nil {
 		slog.Error("payment service terminated", "error", err)
@@ -39,13 +37,13 @@ func run() error {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	si := api.NewStrictHandlerWithOptions(h, nil, api.StrictGinServerOptions{
-		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
-		HandlerErrorFunc:         httperror.HandlerErrorHandler,
-		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
+		RequestErrorHandlerFunc:  httperror.OnRequestError,
+		HandlerErrorFunc:         httperror.OnHandlerError,
+		ResponseErrorHandlerFunc: httperror.OnResponseError,
 	})
 	api.RegisterHandlers(engine, si)
 	srv := &http.Server{
-		Addr:              addr,
+		Addr:              ":80",
 		Handler:           engine,
 		ReadHeaderTimeout: 5 * time.Second,
 	}

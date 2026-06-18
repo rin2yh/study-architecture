@@ -33,9 +33,9 @@ func (s stubRepo) ListShipments(context.Context) ([]db.ShippingShipment, error) 
 func newServer(repo stubRepo) http.Handler {
 	engine := gin.New()
 	si := api.NewStrictHandlerWithOptions(New(repo), nil, api.StrictGinServerOptions{
-		RequestErrorHandlerFunc:  httperror.RequestErrorHandler,
-		HandlerErrorFunc:         httperror.HandlerErrorHandler,
-		ResponseErrorHandlerFunc: httperror.ResponseErrorHandler,
+		RequestErrorHandlerFunc:  httperror.OnRequestError,
+		HandlerErrorFunc:         httperror.OnHandlerError,
+		ResponseErrorHandlerFunc: httperror.OnResponseError,
 	})
 	api.RegisterHandlers(engine, si)
 	return engine
