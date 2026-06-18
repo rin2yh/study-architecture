@@ -59,8 +59,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # @ec/api は build script 未定義のため pnpm run --if-present で skip させる
-        package: [store, mypage, backoffice, "@ec/api"]
+        # api は build script 未定義のため pnpm run --if-present で skip させる
+        package: [store, mypage, backoffice, api]
     defaults:
       run:
         working-directory: client
@@ -99,8 +99,8 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
         with:
           name: ${{ matrix.package }}
-          json-summary-path: client/${{ matrix.package == '@ec/api' && 'package/api' || format('app/{0}', matrix.package) }}/coverage/coverage-summary.json
-          json-final-path: client/${{ matrix.package == '@ec/api' && 'package/api' || format('app/{0}', matrix.package) }}/coverage/coverage-final.json
+          json-summary-path: client/app/${{ matrix.package }}/coverage/coverage-summary.json
+          json-final-path: client/app/${{ matrix.package }}/coverage/coverage-final.json
 
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build

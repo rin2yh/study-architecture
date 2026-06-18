@@ -6,8 +6,8 @@ description = "client workspace の依存をインストール"
 run = "pnpm install"
 
 [tasks.gen]
-description = "@ec/api の orval 生成 (OpenAPI → client + zod)"
-run = "pnpm --filter @ec/api gen"
+description = "api の orval 生成 (OpenAPI → client + zod)"
+run = "pnpm --filter api gen"
 
 [tasks.build]
 description = "全 app をビルド + 型チェック"

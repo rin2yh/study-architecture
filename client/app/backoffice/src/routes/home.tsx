@@ -1,4 +1,4 @@
-import { listProducts, ListProductsResponse } from "@ec/api/product";
+import { listProducts, ListProductsResponse } from "api/product";
 import type { Route } from "./+types/home";
 
 export async function loader() {

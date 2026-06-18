@@ -11,7 +11,7 @@
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {
-    "@ec/api": "workspace:*",
+    "api": "workspace:*",
     "@react-router/node": "catalog:",
     "@react-router/serve": "catalog:",
     "@tailwindcss/vite": "catalog:",

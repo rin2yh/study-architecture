@@ -1,4 +1,4 @@
-import { listOrders, ListOrdersResponse } from "@ec/api/order";
+import { listOrders, ListOrdersResponse } from "api/order";
 import type { Route } from "./+types/home";
 
 export async function loader() {

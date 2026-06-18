@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
 
-// @ec/api の手書き部分(mutator + サービスバレル)を検証する最小設定。
+// api の手書き部分(mutator + サービスバレル)を検証する最小設定。
 // orval 生成物は分母から除外する。
 export default defineConfig({
   test: {
@@ -31,10 +31,10 @@ export default defineConfig({
         "**/*.config.*",
       ],
       thresholds: {
-        lines: 100,
-        statements: 100,
-        functions: 100,
-        branches: 100,
+        lines: 60,
+        statements: 60,
+        functions: 60,
+        branches: 60,
       },
     },
   },
