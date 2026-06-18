@@ -34,7 +34,51 @@ paths:
                   $ref: "#/components/schemas/Order"
         default:
           $ref: "#/components/responses/Error"
+    post:
+      operationId: createOrder
+      summary: 注文を作成
+      tags: [order]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: 作成された注文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      summary: 注文を取得
+      tags: [order]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 注文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
   responses:
     Error:
       description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
@@ -83,3 +127,19 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateOrderRequest:
+      type: object
+      required: [memberId, status, totalCents]
+      properties:
+        memberId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        status:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        totalCents:
+          type: integer
+          format: int64

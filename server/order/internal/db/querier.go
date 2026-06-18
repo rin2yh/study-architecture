@@ -9,6 +9,8 @@ import (
 )
 
 type Querier interface {
+	CreateOrder(ctx context.Context, arg CreateOrderParams) (OrderOrder, error)
+	GetOrder(ctx context.Context, id int64) (OrderOrder, error)
 	ListOrders(ctx context.Context) ([]OrderOrder, error)
 }
 

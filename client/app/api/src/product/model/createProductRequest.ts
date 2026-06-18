@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from "./createProductRequest.ts";
-export * from "./error.ts";
-export * from "./errorResponse.ts";
-export * from "./health.ts";
-export * from "./product.ts";
+export interface CreateProductRequest {
+  sku: string;
+  name: string;
+  priceCents: number;
+}

@@ -5,7 +5,7 @@
  * 決済ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { ErrorResponse, Payment } from "../model";
+import type { CreatePaymentRequest, ErrorResponse, Payment } from "../model";
 
 import { paymentFetch } from "../../mutator";
 
@@ -79,6 +79,80 @@ export const getListPaymentsUrl = () => {
  */
 export const listPayments = async (options?: RequestInit): Promise<listPaymentsResponse> => {
   return paymentFetch<listPaymentsResponse>(getListPaymentsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type createPaymentResponse201 = {
+  data: Payment;
+  status: 201;
+};
+
+export type createPaymentResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 201>;
+};
+
+export type createPaymentResponseSuccess = createPaymentResponse201 & {
+  headers: Headers;
+};
+export type createPaymentResponseError = createPaymentResponseDefault & {
+  headers: Headers;
+};
+
+export type createPaymentResponse = createPaymentResponseSuccess | createPaymentResponseError;
+
+export const getCreatePaymentUrl = () => {
+  return `/payments`;
+};
+
+/**
+ * @summary 決済を作成
+ */
+export const createPayment = async (
+  createPaymentRequest: CreatePaymentRequest,
+  options?: RequestInit,
+): Promise<createPaymentResponse> => {
+  return paymentFetch<createPaymentResponse>(getCreatePaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPaymentRequest),
+  });
+};
+
+export type getPaymentResponse200 = {
+  data: Payment;
+  status: 200;
+};
+
+export type getPaymentResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type getPaymentResponseSuccess = getPaymentResponse200 & {
+  headers: Headers;
+};
+export type getPaymentResponseError = getPaymentResponseDefault & {
+  headers: Headers;
+};
+
+export type getPaymentResponse = getPaymentResponseSuccess | getPaymentResponseError;
+
+export const getGetPaymentUrl = (id: number) => {
+  return `/payments/${id}`;
+};
+
+/**
+ * @summary 決済を取得
+ */
+export const getPayment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<getPaymentResponse> => {
+  return paymentFetch<getPaymentResponse>(getGetPaymentUrl(id), {
     ...options,
     method: "GET",
   });

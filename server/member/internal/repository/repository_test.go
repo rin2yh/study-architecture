@@ -6,19 +6,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
 // fakeQuerier は db.Querier を満たし、Repository.q へ差し替えて DB なしで検証する。
 type fakeQuerier struct {
-	rows []db.MemberMember
-	err  error
+	rows   []db.MemberMember
+	member db.MemberMember
+	err    error
 }
 
 func (f fakeQuerier) ListMembers(context.Context) ([]db.MemberMember, error) {
 	return f.rows, f.err
+}
+
+func (f fakeQuerier) GetMember(context.Context, int64) (db.MemberMember, error) {
+	return f.member, f.err
+}
+
+func (f fakeQuerier) CreateMember(context.Context, db.CreateMemberParams) (db.MemberMember, error) {
+	return f.member, f.err
 }
 
 func TestRepositoryListMembers(t *testing.T) {
@@ -42,6 +54,78 @@ func TestRepositoryListMembersError(t *testing.T) {
 
 	if _, err := r.ListMembers(context.Background()); !errors.Is(err, want) {
 		t.Fatalf("err = %v, want %v", err, want)
+	}
+}
+
+func TestRepositoryGetMember(t *testing.T) {
+	member := db.MemberMember{ID: 1, Email: "user@example.com"}
+	other := errors.New("query failed")
+	type args struct{ q fakeQuerier }
+	type want struct {
+		id  int64
+		err error // errors.Is で照合。nil は成功
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 行を返す", args{fakeQuerier{member: member}}, want{1, nil}},
+		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
+		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (&Repository{q: tt.args.q}).GetMember(context.Background(), 1)
+			if tt.want.err != nil {
+				if !errors.Is(err, tt.want.err) {
+					t.Fatalf("err = %v, want %v", err, tt.want.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GetMember: %v", err)
+			}
+			if got.ID != tt.want.id {
+				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
+			}
+		})
+	}
+}
+
+func TestRepositoryCreateMember(t *testing.T) {
+	created := db.MemberMember{ID: 10, Email: "new@example.com"}
+	other := errors.New("query failed")
+	type args struct{ q fakeQuerier }
+	type want struct {
+		id  int64
+		err error // errors.Is で照合。nil は成功
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 作成行を返す", args{fakeQuerier{member: created}}, want{10, nil}},
+		{"異常系 unique_violation は ErrConflict に正規化", args{fakeQuerier{err: &pgconn.PgError{Code: "23505"}}}, want{0, dberr.ErrConflict}},
+		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (&Repository{q: tt.args.q}).CreateMember(context.Background(), db.CreateMemberParams{})
+			if tt.want.err != nil {
+				if !errors.Is(err, tt.want.err) {
+					t.Fatalf("err = %v, want %v", err, tt.want.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("CreateMember: %v", err)
+			}
+			if got.ID != tt.want.id {
+				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
+			}
+		})
 	}
 }
 

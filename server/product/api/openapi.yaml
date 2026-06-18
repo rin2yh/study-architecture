@@ -34,7 +34,51 @@ paths:
                   $ref: "#/components/schemas/Product"
         default:
           $ref: "#/components/responses/Error"
+    post:
+      operationId: createProduct
+      summary: 商品を作成
+      tags: [product]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: 作成された商品
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        default:
+          $ref: "#/components/responses/Error"
+  /products/{id}:
+    get:
+      operationId: getProduct
+      summary: 商品を取得
+      tags: [product]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 商品
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
   responses:
     Error:
       description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
@@ -82,3 +126,18 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateProductRequest:
+      type: object
+      required: [sku, name, priceCents]
+      properties:
+        sku:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        name:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        priceCents:
+          type: integer
+          format: int64

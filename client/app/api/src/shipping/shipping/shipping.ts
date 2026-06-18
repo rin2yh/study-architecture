@@ -5,7 +5,7 @@
  * 配送ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { ErrorResponse, Shipment } from "../model";
+import type { CreateShipmentRequest, ErrorResponse, Shipment } from "../model";
 
 import { shippingFetch } from "../../mutator";
 
@@ -79,6 +79,80 @@ export const getListShipmentsUrl = () => {
  */
 export const listShipments = async (options?: RequestInit): Promise<listShipmentsResponse> => {
   return shippingFetch<listShipmentsResponse>(getListShipmentsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type createShipmentResponse201 = {
+  data: Shipment;
+  status: 201;
+};
+
+export type createShipmentResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 201>;
+};
+
+export type createShipmentResponseSuccess = createShipmentResponse201 & {
+  headers: Headers;
+};
+export type createShipmentResponseError = createShipmentResponseDefault & {
+  headers: Headers;
+};
+
+export type createShipmentResponse = createShipmentResponseSuccess | createShipmentResponseError;
+
+export const getCreateShipmentUrl = () => {
+  return `/shipments`;
+};
+
+/**
+ * @summary 配送を作成
+ */
+export const createShipment = async (
+  createShipmentRequest: CreateShipmentRequest,
+  options?: RequestInit,
+): Promise<createShipmentResponse> => {
+  return shippingFetch<createShipmentResponse>(getCreateShipmentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createShipmentRequest),
+  });
+};
+
+export type getShipmentResponse200 = {
+  data: Shipment;
+  status: 200;
+};
+
+export type getShipmentResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type getShipmentResponseSuccess = getShipmentResponse200 & {
+  headers: Headers;
+};
+export type getShipmentResponseError = getShipmentResponseDefault & {
+  headers: Headers;
+};
+
+export type getShipmentResponse = getShipmentResponseSuccess | getShipmentResponseError;
+
+export const getGetShipmentUrl = (id: number) => {
+  return `/shipments/${id}`;
+};
+
+/**
+ * @summary 配送を取得
+ */
+export const getShipment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<getShipmentResponse> => {
+  return shippingFetch<getShipmentResponse>(getGetShipmentUrl(id), {
     ...options,
     method: "GET",
   });

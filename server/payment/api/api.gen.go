@@ -4,10 +4,21 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime"
 )
+
+// CreatePaymentRequest defines model for CreatePaymentRequest.
+type CreatePaymentRequest struct {
+	AmountCents int64  `json:"amountCents"`
+	Method      string `binding:"required" json:"method"`
+	OrderId     int64  `binding:"required,gt=0" json:"orderId"`
+	Status      string `binding:"required" json:"status"`
+}
 
 // Error defines model for Error.
 type Error struct {
@@ -33,6 +44,12 @@ type Payment struct {
 	Status      string    `json:"status"`
 }
 
+// IdPath defines model for IdPath.
+type IdPath = int64
+
+// CreatePaymentJSONRequestBody defines body for CreatePayment for application/json ContentType.
+type CreatePaymentJSONRequestBody = CreatePaymentRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Liveness probe
@@ -41,6 +58,12 @@ type ServerInterface interface {
 	// 決済一覧
 	// (GET /payments)
 	ListPayments(c *gin.Context)
+	// 決済を作成
+	// (POST /payments)
+	CreatePayment(c *gin.Context)
+	// 決済を取得
+	// (GET /payments/{id})
+	GetPayment(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -78,6 +101,44 @@ func (siw *ServerInterfaceWrapper) ListPayments(c *gin.Context) {
 	siw.Handler.ListPayments(c)
 }
 
+// CreatePayment operation middleware
+func (siw *ServerInterfaceWrapper) CreatePayment(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreatePayment(c)
+}
+
+// GetPayment operation middleware
+func (siw *ServerInterfaceWrapper) GetPayment(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetPayment(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -107,4 +168,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.GET(options.BaseURL+"/payments", wrapper.ListPayments)
+	router.POST(options.BaseURL+"/payments", wrapper.CreatePayment)
+	router.GET(options.BaseURL+"/payments/:id", wrapper.GetPayment)
 }

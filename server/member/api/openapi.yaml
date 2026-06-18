@@ -34,7 +34,51 @@ paths:
                   $ref: "#/components/schemas/Member"
         default:
           $ref: "#/components/responses/Error"
+    post:
+      operationId: createMember
+      summary: 会員を作成
+      tags: [member]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMemberRequest"
+      responses:
+        "201":
+          description: 作成された会員
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        default:
+          $ref: "#/components/responses/Error"
+  /members/{id}:
+    get:
+      operationId: getMember
+      summary: 会員を取得
+      tags: [member]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 会員
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
   responses:
     Error:
       description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
@@ -79,3 +123,16 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateMemberRequest:
+      type: object
+      required: [email, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+          x-oapi-codegen-extra-tags:
+            binding: required,email
+        displayName:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required

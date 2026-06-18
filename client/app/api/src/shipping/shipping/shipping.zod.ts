@@ -19,3 +19,38 @@ export const ListShipmentsResponseItem = zod.object({
   createdAt: zod.iso.datetime({ offset: true }),
 });
 export const ListShipmentsResponse = zod.array(ListShipmentsResponseItem);
+
+/**
+ * @summary 配送を作成
+ */
+export const CreateShipmentBody = zod.object({
+  orderId: zod.number(),
+  carrier: zod.string(),
+  trackingNo: zod.string(),
+  status: zod.string(),
+});
+
+export const CreateShipmentResponse = zod.object({
+  id: zod.number(),
+  orderId: zod.number(),
+  carrier: zod.string(),
+  trackingNo: zod.string(),
+  status: zod.string(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
+
+/**
+ * @summary 配送を取得
+ */
+export const GetShipmentParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const GetShipmentResponse = zod.object({
+  id: zod.number(),
+  orderId: zod.number(),
+  carrier: zod.string(),
+  trackingNo: zod.string(),
+  status: zod.string(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});

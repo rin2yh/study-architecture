@@ -5,7 +5,7 @@
  * 商品ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { ErrorResponse, Product } from "../model";
+import type { CreateProductRequest, ErrorResponse, Product } from "../model";
 
 import { productFetch } from "../../mutator";
 
@@ -79,6 +79,80 @@ export const getListProductsUrl = () => {
  */
 export const listProducts = async (options?: RequestInit): Promise<listProductsResponse> => {
   return productFetch<listProductsResponse>(getListProductsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type createProductResponse201 = {
+  data: Product;
+  status: 201;
+};
+
+export type createProductResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 201>;
+};
+
+export type createProductResponseSuccess = createProductResponse201 & {
+  headers: Headers;
+};
+export type createProductResponseError = createProductResponseDefault & {
+  headers: Headers;
+};
+
+export type createProductResponse = createProductResponseSuccess | createProductResponseError;
+
+export const getCreateProductUrl = () => {
+  return `/products`;
+};
+
+/**
+ * @summary 商品を作成
+ */
+export const createProduct = async (
+  createProductRequest: CreateProductRequest,
+  options?: RequestInit,
+): Promise<createProductResponse> => {
+  return productFetch<createProductResponse>(getCreateProductUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProductRequest),
+  });
+};
+
+export type getProductResponse200 = {
+  data: Product;
+  status: 200;
+};
+
+export type getProductResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type getProductResponseSuccess = getProductResponse200 & {
+  headers: Headers;
+};
+export type getProductResponseError = getProductResponseDefault & {
+  headers: Headers;
+};
+
+export type getProductResponse = getProductResponseSuccess | getProductResponseError;
+
+export const getGetProductUrl = (id: number) => {
+  return `/products/${id}`;
+};
+
+/**
+ * @summary 商品を取得
+ */
+export const getProduct = async (
+  id: number,
+  options?: RequestInit,
+): Promise<getProductResponse> => {
+  return productFetch<getProductResponse>(getGetProductUrl(id), {
     ...options,
     method: "GET",
   });

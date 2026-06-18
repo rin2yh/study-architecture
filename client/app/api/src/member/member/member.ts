@@ -5,7 +5,7 @@
  * 会員ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { ErrorResponse, Member } from "../model";
+import type { CreateMemberRequest, ErrorResponse, Member } from "../model";
 
 import { memberFetch } from "../../mutator";
 
@@ -79,6 +79,77 @@ export const getListMembersUrl = () => {
  */
 export const listMembers = async (options?: RequestInit): Promise<listMembersResponse> => {
   return memberFetch<listMembersResponse>(getListMembersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type createMemberResponse201 = {
+  data: Member;
+  status: 201;
+};
+
+export type createMemberResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 201>;
+};
+
+export type createMemberResponseSuccess = createMemberResponse201 & {
+  headers: Headers;
+};
+export type createMemberResponseError = createMemberResponseDefault & {
+  headers: Headers;
+};
+
+export type createMemberResponse = createMemberResponseSuccess | createMemberResponseError;
+
+export const getCreateMemberUrl = () => {
+  return `/members`;
+};
+
+/**
+ * @summary 会員を作成
+ */
+export const createMember = async (
+  createMemberRequest: CreateMemberRequest,
+  options?: RequestInit,
+): Promise<createMemberResponse> => {
+  return memberFetch<createMemberResponse>(getCreateMemberUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createMemberRequest),
+  });
+};
+
+export type getMemberResponse200 = {
+  data: Member;
+  status: 200;
+};
+
+export type getMemberResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type getMemberResponseSuccess = getMemberResponse200 & {
+  headers: Headers;
+};
+export type getMemberResponseError = getMemberResponseDefault & {
+  headers: Headers;
+};
+
+export type getMemberResponse = getMemberResponseSuccess | getMemberResponseError;
+
+export const getGetMemberUrl = (id: number) => {
+  return `/members/${id}`;
+};
+
+/**
+ * @summary 会員を取得
+ */
+export const getMember = async (id: number, options?: RequestInit): Promise<getMemberResponse> => {
+  return memberFetch<getMemberResponse>(getGetMemberUrl(id), {
     ...options,
     method: "GET",
   });

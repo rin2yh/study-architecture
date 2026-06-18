@@ -4,10 +4,21 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime"
 )
+
+// CreateShipmentRequest defines model for CreateShipmentRequest.
+type CreateShipmentRequest struct {
+	Carrier    string `binding:"required" json:"carrier"`
+	OrderId    int64  `binding:"required,gt=0" json:"orderId"`
+	Status     string `binding:"required" json:"status"`
+	TrackingNo string `binding:"required" json:"trackingNo"`
+}
 
 // Error defines model for Error.
 type Error struct {
@@ -33,6 +44,12 @@ type Shipment struct {
 	TrackingNo string    `json:"trackingNo"`
 }
 
+// IdPath defines model for IdPath.
+type IdPath = int64
+
+// CreateShipmentJSONRequestBody defines body for CreateShipment for application/json ContentType.
+type CreateShipmentJSONRequestBody = CreateShipmentRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Liveness probe
@@ -41,6 +58,12 @@ type ServerInterface interface {
 	// 配送一覧
 	// (GET /shipments)
 	ListShipments(c *gin.Context)
+	// 配送を作成
+	// (POST /shipments)
+	CreateShipment(c *gin.Context)
+	// 配送を取得
+	// (GET /shipments/{id})
+	GetShipment(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -78,6 +101,44 @@ func (siw *ServerInterfaceWrapper) ListShipments(c *gin.Context) {
 	siw.Handler.ListShipments(c)
 }
 
+// CreateShipment operation middleware
+func (siw *ServerInterfaceWrapper) CreateShipment(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateShipment(c)
+}
+
+// GetShipment operation middleware
+func (siw *ServerInterfaceWrapper) GetShipment(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetShipment(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -107,4 +168,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.GET(options.BaseURL+"/shipments", wrapper.ListShipments)
+	router.POST(options.BaseURL+"/shipments", wrapper.CreateShipment)
+	router.GET(options.BaseURL+"/shipments/:id", wrapper.GetShipment)
 }

@@ -5,7 +5,7 @@
  * 注文ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { ErrorResponse, Order } from "../model";
+import type { CreateOrderRequest, ErrorResponse, Order } from "../model";
 
 import { orderFetch } from "../../mutator";
 
@@ -79,6 +79,77 @@ export const getListOrdersUrl = () => {
  */
 export const listOrders = async (options?: RequestInit): Promise<listOrdersResponse> => {
   return orderFetch<listOrdersResponse>(getListOrdersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type createOrderResponse201 = {
+  data: Order;
+  status: 201;
+};
+
+export type createOrderResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 201>;
+};
+
+export type createOrderResponseSuccess = createOrderResponse201 & {
+  headers: Headers;
+};
+export type createOrderResponseError = createOrderResponseDefault & {
+  headers: Headers;
+};
+
+export type createOrderResponse = createOrderResponseSuccess | createOrderResponseError;
+
+export const getCreateOrderUrl = () => {
+  return `/orders`;
+};
+
+/**
+ * @summary 注文を作成
+ */
+export const createOrder = async (
+  createOrderRequest: CreateOrderRequest,
+  options?: RequestInit,
+): Promise<createOrderResponse> => {
+  return orderFetch<createOrderResponse>(getCreateOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrderRequest),
+  });
+};
+
+export type getOrderResponse200 = {
+  data: Order;
+  status: 200;
+};
+
+export type getOrderResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type getOrderResponseSuccess = getOrderResponse200 & {
+  headers: Headers;
+};
+export type getOrderResponseError = getOrderResponseDefault & {
+  headers: Headers;
+};
+
+export type getOrderResponse = getOrderResponseSuccess | getOrderResponseError;
+
+export const getGetOrderUrl = (id: number) => {
+  return `/orders/${id}`;
+};
+
+/**
+ * @summary 注文を取得
+ */
+export const getOrder = async (id: number, options?: RequestInit): Promise<getOrderResponse> => {
+  return orderFetch<getOrderResponse>(getGetOrderUrl(id), {
     ...options,
     method: "GET",
   });

@@ -34,7 +34,51 @@ paths:
                   $ref: "#/components/schemas/Shipment"
         default:
           $ref: "#/components/responses/Error"
+    post:
+      operationId: createShipment
+      summary: 配送を作成
+      tags: [shipping]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShipmentRequest"
+      responses:
+        "201":
+          description: 作成された配送
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        default:
+          $ref: "#/components/responses/Error"
+  /shipments/{id}:
+    get:
+      operationId: getShipment
+      summary: 配送を取得
+      tags: [shipping]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 配送
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
   responses:
     Error:
       description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
@@ -84,3 +128,24 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateShipmentRequest:
+      type: object
+      required: [orderId, carrier, trackingNo, status]
+      properties:
+        orderId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        carrier:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        trackingNo:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        status:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required

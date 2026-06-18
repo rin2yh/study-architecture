@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from "./createOrderRequest.ts";
-export * from "./error.ts";
-export * from "./errorResponse.ts";
-export * from "./health.ts";
-export * from "./order.ts";
+export interface CreateOrderRequest {
+  memberId: number;
+  status: string;
+  totalCents: number;
+}

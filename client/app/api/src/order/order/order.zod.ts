@@ -18,3 +18,35 @@ export const ListOrdersResponseItem = zod.object({
   createdAt: zod.iso.datetime({ offset: true }),
 });
 export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
+
+/**
+ * @summary 注文を作成
+ */
+export const CreateOrderBody = zod.object({
+  memberId: zod.number(),
+  status: zod.string(),
+  totalCents: zod.number(),
+});
+
+export const CreateOrderResponse = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  status: zod.string(),
+  totalCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
+
+/**
+ * @summary 注文を取得
+ */
+export const GetOrderParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const GetOrderResponse = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  status: zod.string(),
+  totalCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
