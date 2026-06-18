@@ -10,36 +10,27 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/repository"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/stub"
 )
-
-// assertErrorCode は共通エラー JSON ({code,message}) の code を検証する。
-func assertErrorCode(t *testing.T, body []byte, wantCode string) {
-	t.Helper()
-	var e struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &e); err != nil {
-		t.Fatalf("unmarshal error body: %v", err)
-	}
-	if e.Code != wantCode {
-		t.Fatalf("code = %q, want %q", e.Code, wantCode)
-	}
-}
 
 func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func newServer(repo stub.Repo) http.Handler {
+func newServer(repo repository.ShipmentRepository) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
 	api.RegisterHandlers(engine, handler.New(repo))
@@ -63,13 +54,20 @@ func TestGetHealthz(t *testing.T) {
 }
 
 func TestListShipments(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	repo := stub.Repo{Shipments: []db.ShippingShipment{
-		{ID: 1, OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status) VALUES ($1, $2, $3, $4)`,
+		int64(100), "ヤマト運輸", "TRK-1", "shipped"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
 
 	rec := httptest.NewRecorder()
-	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
+	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -78,11 +76,9 @@ func TestListShipments(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(got) != 1 {
-		t.Fatalf("len = %d, want 1", len(got))
-	}
-	if got[0].TrackingNo != "TRK-1" || got[0].OrderId != 100 || !got[0].CreatedAt.Equal(now) {
-		t.Fatalf("unexpected shipment: %+v", got[0])
+	want := []api.Shipment{{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"}}
+	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Shipment{}, "Id", "CreatedAt")); diff != "" {
+		t.Fatalf("shipments mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -119,7 +115,7 @@ func TestGetShipment(t *testing.T) {
 	}
 	type want struct {
 		status int
-		code   string // "" のとき成功 (Shipment body を検証)
+		code   string
 	}
 	tests := []struct {
 		name string
@@ -138,7 +134,7 @@ func TestGetShipment(t *testing.T) {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Shipment
@@ -161,7 +157,7 @@ func TestCreateShipment(t *testing.T) {
 	}
 	type want struct {
 		status int
-		code   string // "" のとき成功 (201 + Shipment body を検証)
+		code   string
 	}
 	tests := []struct {
 		name string
@@ -183,7 +179,7 @@ func TestCreateShipment(t *testing.T) {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Shipment

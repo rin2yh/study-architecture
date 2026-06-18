@@ -39,12 +39,12 @@ description = "go mod tidy"
 dir = ".."
 run = "go mod tidy"
 
-# 生成コード (api / db / di) と main.go は分母から除外する。
+# 生成コード (api / db / di) とテストヘルパー (testdb) と main.go は分母から除外する。
 [tasks.cover]
 description = "テストカバレッジ計測"
 dir = ".."
 run = [
-  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)",
+  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/test/|/server/[a-z]+$' | paste -sd, -)",
   "go tool cover -func=cover.out | tail -1",
 ]
 

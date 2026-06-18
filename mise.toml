@@ -31,6 +31,16 @@ run = "docker compose up -d --wait db-customer db-ops"
 description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
 run = "./scripts/migrate.sh"
 
+# repository の実 DB 結合テストは DATABASE_URL_{CUSTOMER,OPS} が無いと skip される。
+# このタスクは DB 起動 → migrate → DSN を渡して全テストを実行する (CI server-integration 相当)。
+[tasks."test:integration"]
+description = "DB を立てて結合テストまで含めて実行"
+depends = ["up:db", "migrate"]
+env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
+# -p 1: 同一サービスの repository / handler パッケージが同じ table を共有するため、
+# パッケージを並列実行すると TRUNCATE/seed が競合する。逐次実行で直列化する。
+run = "go test ./server/... -race -count=1 -p 1"
+
 [tasks.down]
 description = "全サービスを停止"
 run = "docker compose --profile external --profile internal down"

@@ -10,36 +10,27 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
+	"github.com/rin2yh/study-architecture/server/payment/internal/repository"
 	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
 )
-
-// assertErrorCode は共通エラー JSON ({code,message}) の code を検証する。
-func assertErrorCode(t *testing.T, body []byte, wantCode string) {
-	t.Helper()
-	var e struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &e); err != nil {
-		t.Fatalf("unmarshal error body: %v", err)
-	}
-	if e.Code != wantCode {
-		t.Fatalf("code = %q, want %q", e.Code, wantCode)
-	}
-}
 
 func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func newServer(repo stub.Repo) http.Handler {
+func newServer(repo repository.PaymentRepository) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
 	api.RegisterHandlers(engine, handler.New(repo))
@@ -63,13 +54,20 @@ func TestGetHealthz(t *testing.T) {
 }
 
 func TestListPayments(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	repo := stub.Repo{Payments: []db.PaymentPayment{
-		{ID: 1, OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-	}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO payment.payments (order_id, amount_cents, method, status) VALUES ($1, $2, $3, $4)`,
+		int64(10), int64(1980), "card", "paid"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
 
 	rec := httptest.NewRecorder()
-	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
+	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -78,11 +76,9 @@ func TestListPayments(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(got) != 1 {
-		t.Fatalf("len = %d, want 1", len(got))
-	}
-	if got[0].OrderId != 10 || got[0].AmountCents != 1980 || got[0].Method != "card" || got[0].Status != "paid" || !got[0].CreatedAt.Equal(now) {
-		t.Fatalf("unexpected payment: %+v", got[0])
+	want := []api.Payment{{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}}
+	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Payment{}, "Id", "CreatedAt")); diff != "" {
+		t.Fatalf("payments mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -119,7 +115,7 @@ func TestGetPayment(t *testing.T) {
 	}
 	type want struct {
 		status int
-		code   string // "" のとき成功 (Payment body を検証)
+		code   string
 	}
 	tests := []struct {
 		name string
@@ -138,7 +134,7 @@ func TestGetPayment(t *testing.T) {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Payment
@@ -161,7 +157,7 @@ func TestCreatePayment(t *testing.T) {
 	}
 	type want struct {
 		status int
-		code   string // "" のとき成功 (201 + Payment body を検証)
+		code   string
 	}
 	tests := []struct {
 		name string
@@ -184,7 +180,7 @@ func TestCreatePayment(t *testing.T) {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Payment
