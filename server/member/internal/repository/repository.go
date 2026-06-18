@@ -7,11 +7,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
 type MemberRepository interface {
 	ListMembers(ctx context.Context) ([]db.MemberMember, error)
+	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
+	CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error)
 }
 
 type Repository struct {
@@ -34,4 +37,20 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) ListMembers(ctx context.Context) ([]db.MemberMember, error) {
 	return r.q.ListMembers(ctx)
+}
+
+func (r *Repository) GetMember(ctx context.Context, id int64) (db.MemberMember, error) {
+	row, err := r.q.GetMember(ctx, id)
+	if err != nil {
+		return db.MemberMember{}, dberr.FromRead(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error) {
+	row, err := r.q.CreateMember(ctx, arg)
+	if err != nil {
+		return db.MemberMember{}, dberr.FromWrite(err)
+	}
+	return row, nil
 }

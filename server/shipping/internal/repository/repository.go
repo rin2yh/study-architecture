@@ -7,11 +7,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
 type ShipmentRepository interface {
 	ListShipments(ctx context.Context) ([]db.ShippingShipment, error)
+	GetShipment(ctx context.Context, id int64) (db.ShippingShipment, error)
+	CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error)
 }
 
 type Repository struct {
@@ -34,4 +37,16 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) ListShipments(ctx context.Context) ([]db.ShippingShipment, error) {
 	return r.q.ListShipments(ctx)
+}
+
+func (r *Repository) GetShipment(ctx context.Context, id int64) (db.ShippingShipment, error) {
+	row, err := r.q.GetShipment(ctx, id)
+	if err != nil {
+		return db.ShippingShipment{}, dberr.FromRead(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error) {
+	return r.q.CreateShipment(ctx, arg)
 }

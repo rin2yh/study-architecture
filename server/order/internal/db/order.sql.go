@@ -9,6 +9,50 @@ import (
 	"context"
 )
 
+const createOrder = `-- name: CreateOrder :one
+INSERT INTO "order".orders (member_id, status, total_cents)
+VALUES ($1, $2, $3)
+RETURNING id, member_id, status, total_cents, created_at
+`
+
+type CreateOrderParams struct {
+	MemberID   int64  `json:"memberId"`
+	Status     string `json:"status"`
+	TotalCents int64  `json:"totalCents"`
+}
+
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (OrderOrder, error) {
+	row := q.db.QueryRow(ctx, createOrder, arg.MemberID, arg.Status, arg.TotalCents)
+	var i OrderOrder
+	err := row.Scan(
+		&i.ID,
+		&i.MemberID,
+		&i.Status,
+		&i.TotalCents,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getOrder = `-- name: GetOrder :one
+SELECT id, member_id, status, total_cents, created_at
+FROM "order".orders
+WHERE id = $1
+`
+
+func (q *Queries) GetOrder(ctx context.Context, id int64) (OrderOrder, error) {
+	row := q.db.QueryRow(ctx, getOrder, id)
+	var i OrderOrder
+	err := row.Scan(
+		&i.ID,
+		&i.MemberID,
+		&i.Status,
+		&i.TotalCents,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listOrders = `-- name: ListOrders :many
 SELECT id, member_id, status, total_cents, created_at
 FROM "order".orders

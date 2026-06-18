@@ -6,5 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from "./health";
-export * from "./shipment";
+export * from "./createShipmentRequest.ts";
+export * from "./error.ts";
+export * from "./errorResponse.ts";
+export * from "./health.ts";
+export * from "./shipment.ts";

@@ -16,6 +16,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+        default:
+          $ref: "#/components/responses/Error"
   /orders:
     get:
       operationId: listOrders
@@ -30,8 +32,76 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createOrder
+      summary: 注文を作成
+      tags: [order]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: 作成された注文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      summary: 注文を取得
+      tags: [order]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 注文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
+  responses:
+    Error:
+      description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >-
+            機械可読なエラー種別。
+            bad_request (400) / not_found (404) / conflict (409) /
+            unprocessable_entity (422) / internal (500) など。
+          example: not_found
+        message:
+          type: string
+          description: 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
+          example: order 99 not found
     Health:
       type: object
       required: [status]
@@ -57,3 +127,19 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateOrderRequest:
+      type: object
+      required: [memberId, status, totalCents]
+      properties:
+        memberId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        status:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        totalCents:
+          type: integer
+          format: int64

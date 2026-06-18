@@ -9,6 +9,47 @@ import (
 	"context"
 )
 
+const createMember = `-- name: CreateMember :one
+INSERT INTO member.members (email, display_name)
+VALUES ($1, $2)
+RETURNING id, email, display_name, created_at
+`
+
+type CreateMemberParams struct {
+	Email       string `json:"email"`
+	DisplayName string `json:"displayName"`
+}
+
+func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (MemberMember, error) {
+	row := q.db.QueryRow(ctx, createMember, arg.Email, arg.DisplayName)
+	var i MemberMember
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getMember = `-- name: GetMember :one
+SELECT id, email, display_name, created_at
+FROM member.members
+WHERE id = $1
+`
+
+func (q *Queries) GetMember(ctx context.Context, id int64) (MemberMember, error) {
+	row := q.db.QueryRow(ctx, getMember, id)
+	var i MemberMember
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listMembers = `-- name: ListMembers :many
 SELECT id, email, display_name, created_at
 FROM member.members

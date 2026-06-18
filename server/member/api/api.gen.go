@@ -4,10 +4,29 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// CreateMemberRequest defines model for CreateMemberRequest.
+type CreateMemberRequest struct {
+	DisplayName string              `binding:"required" json:"displayName"`
+	Email       openapi_types.Email `binding:"required,email" json:"email"`
+}
+
+// Error defines model for Error.
+type Error struct {
+	// Code 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
+	Code string `json:"code"`
+
+	// Message 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
+	Message string `json:"message"`
+}
 
 // Health defines model for Health.
 type Health struct {
@@ -22,6 +41,12 @@ type Member struct {
 	Id          int64     `json:"id"`
 }
 
+// IdPath defines model for IdPath.
+type IdPath = int64
+
+// CreateMemberJSONRequestBody defines body for CreateMember for application/json ContentType.
+type CreateMemberJSONRequestBody = CreateMemberRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Liveness probe
@@ -30,6 +55,12 @@ type ServerInterface interface {
 	// 会員一覧
 	// (GET /members)
 	ListMembers(c *gin.Context)
+	// 会員を作成
+	// (POST /members)
+	CreateMember(c *gin.Context)
+	// 会員を取得
+	// (GET /members/{id})
+	GetMember(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -67,6 +98,44 @@ func (siw *ServerInterfaceWrapper) ListMembers(c *gin.Context) {
 	siw.Handler.ListMembers(c)
 }
 
+// CreateMember operation middleware
+func (siw *ServerInterfaceWrapper) CreateMember(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateMember(c)
+}
+
+// GetMember operation middleware
+func (siw *ServerInterfaceWrapper) GetMember(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMember(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -96,4 +165,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.GET(options.BaseURL+"/members", wrapper.ListMembers)
+	router.POST(options.BaseURL+"/members", wrapper.CreateMember)
+	router.GET(options.BaseURL+"/members/:id", wrapper.GetMember)
 }

@@ -7,11 +7,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
 type PaymentRepository interface {
 	ListPayments(ctx context.Context) ([]db.PaymentPayment, error)
+	GetPayment(ctx context.Context, id int64) (db.PaymentPayment, error)
+	CreatePayment(ctx context.Context, arg db.CreatePaymentParams) (db.PaymentPayment, error)
 }
 
 type Repository struct {
@@ -34,4 +37,16 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) ListPayments(ctx context.Context) ([]db.PaymentPayment, error) {
 	return r.q.ListPayments(ctx)
+}
+
+func (r *Repository) GetPayment(ctx context.Context, id int64) (db.PaymentPayment, error) {
+	row, err := r.q.GetPayment(ctx, id)
+	if err != nil {
+		return db.PaymentPayment{}, dberr.FromRead(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) CreatePayment(ctx context.Context, arg db.CreatePaymentParams) (db.PaymentPayment, error) {
+	return r.q.CreatePayment(ctx, arg)
 }
