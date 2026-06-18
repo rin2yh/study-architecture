@@ -6,10 +6,6 @@ set -euo pipefail
 : "${DATABASE_URL_CUSTOMER:=postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable}"
 : "${DATABASE_URL_OPS:=postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable}"
 
-# goose を 5 回呼ぶので、go tool 経由だと毎回リンクが走る。一度だけビルドして使い回す。
-goose_bin="$(mktemp -d)/goose"
-go build -o "$goose_bin" github.com/pressly/goose/v3/cmd/goose
-
 migrate_one() {
   local svc="$1"
   local dsn
@@ -18,7 +14,7 @@ migrate_one() {
     product|shipping)     dsn="$DATABASE_URL_OPS" ;;
     *) echo "unknown service: $svc" >&2; return 1 ;;
   esac
-  "$goose_bin" -table "goose_${svc}_version" -dir "server/${svc}/db/migration" postgres "$dsn" up
+  go tool goose -table "goose_${svc}_version" -dir "server/${svc}/db/migration" postgres "$dsn" up
 }
 
 if [ "$#" -ge 1 ]; then
