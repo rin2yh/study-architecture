@@ -5,44 +5,31 @@
  * 配送ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type {
-  Health
-} from '../model';
+import type { Health } from "../model";
 
-import { shippingFetch } from '../../mutator';
+import { shippingFetch } from "../../mutator";
 
 export type getHealthzResponse200 = {
-  data: Health
-  status: 200
-}
+  data: Health;
+  status: 200;
+};
 
-export type getHealthzResponseSuccess = (getHealthzResponse200) & {
+export type getHealthzResponseSuccess = getHealthzResponse200 & {
   headers: Headers;
 };
-;
 
-export type getHealthzResponse = (getHealthzResponseSuccess)
+export type getHealthzResponse = getHealthzResponseSuccess;
 
 export const getGetHealthzUrl = () => {
-
-
-
-
-  return `/healthz`
-}
+  return `/healthz`;
+};
 
 /**
  * @summary Liveness probe
  */
-export const getHealthz = async ( options?: RequestInit): Promise<getHealthzResponse> => {
-
-  return shippingFetch<getHealthzResponse>(getGetHealthzUrl(),
-  {
+export const getHealthz = async (options?: RequestInit): Promise<getHealthzResponse> => {
+  return shippingFetch<getHealthzResponse>(getGetHealthzUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
+    method: "GET",
+  });
+};

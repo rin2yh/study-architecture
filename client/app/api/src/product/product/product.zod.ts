@@ -5,18 +5,16 @@
  * 商品ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import * as zod from 'zod';
-
+import * as zod from "zod";
 
 /**
  * @summary 商品一覧
  */
 export const ListProductsResponseItem = zod.object({
-  "id": zod.number(),
-  "sku": zod.string(),
-  "name": zod.string(),
-  "priceCents": zod.number(),
-  "createdAt": zod.iso.datetime({"offset":true})
-})
-export const ListProductsResponse = zod.array(ListProductsResponseItem)
-
+  id: zod.number(),
+  sku: zod.string(),
+  name: zod.string(),
+  priceCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
+export const ListProductsResponse = zod.array(ListProductsResponseItem);

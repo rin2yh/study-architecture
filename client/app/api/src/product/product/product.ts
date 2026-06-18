@@ -5,44 +5,31 @@
  * 商品ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type {
-  Product
-} from '../model';
+import type { Product } from "../model";
 
-import { productFetch } from '../../mutator';
+import { productFetch } from "../../mutator";
 
 export type listProductsResponse200 = {
-  data: Product[]
-  status: 200
-}
+  data: Product[];
+  status: 200;
+};
 
-export type listProductsResponseSuccess = (listProductsResponse200) & {
+export type listProductsResponseSuccess = listProductsResponse200 & {
   headers: Headers;
 };
-;
 
-export type listProductsResponse = (listProductsResponseSuccess)
+export type listProductsResponse = listProductsResponseSuccess;
 
 export const getListProductsUrl = () => {
-
-
-
-
-  return `/products`
-}
+  return `/products`;
+};
 
 /**
  * @summary 商品一覧
  */
-export const listProducts = async ( options?: RequestInit): Promise<listProductsResponse> => {
-
-  return productFetch<listProductsResponse>(getListProductsUrl(),
-  {
+export const listProducts = async (options?: RequestInit): Promise<listProductsResponse> => {
+  return productFetch<listProductsResponse>(getListProductsUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
+    method: "GET",
+  });
+};

@@ -5,44 +5,31 @@
  * 決済ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type {
-  Payment
-} from '../model';
+import type { Payment } from "../model";
 
-import { paymentFetch } from '../../mutator';
+import { paymentFetch } from "../../mutator";
 
 export type listPaymentsResponse200 = {
-  data: Payment[]
-  status: 200
-}
+  data: Payment[];
+  status: 200;
+};
 
-export type listPaymentsResponseSuccess = (listPaymentsResponse200) & {
+export type listPaymentsResponseSuccess = listPaymentsResponse200 & {
   headers: Headers;
 };
-;
 
-export type listPaymentsResponse = (listPaymentsResponseSuccess)
+export type listPaymentsResponse = listPaymentsResponseSuccess;
 
 export const getListPaymentsUrl = () => {
-
-
-
-
-  return `/payments`
-}
+  return `/payments`;
+};
 
 /**
  * @summary 決済一覧
  */
-export const listPayments = async ( options?: RequestInit): Promise<listPaymentsResponse> => {
-
-  return paymentFetch<listPaymentsResponse>(getListPaymentsUrl(),
-  {
+export const listPayments = async (options?: RequestInit): Promise<listPaymentsResponse> => {
+  return paymentFetch<listPaymentsResponse>(getListPaymentsUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
+    method: "GET",
+  });
+};

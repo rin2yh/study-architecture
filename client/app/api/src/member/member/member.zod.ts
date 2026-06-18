@@ -5,17 +5,15 @@
  * 会員ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import * as zod from 'zod';
-
+import * as zod from "zod";
 
 /**
  * @summary 会員一覧
  */
 export const ListMembersResponseItem = zod.object({
-  "id": zod.number(),
-  "email": zod.string(),
-  "displayName": zod.string(),
-  "createdAt": zod.iso.datetime({"offset":true})
-})
-export const ListMembersResponse = zod.array(ListMembersResponseItem)
-
+  id: zod.number(),
+  email: zod.string(),
+  displayName: zod.string(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
+export const ListMembersResponse = zod.array(ListMembersResponseItem);

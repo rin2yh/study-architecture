@@ -6,5 +6,5 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './health';
-export * from './payment';
+export * from "./health";
+export * from "./payment";

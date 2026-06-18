@@ -5,44 +5,31 @@
  * 配送ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type {
-  Shipment
-} from '../model';
+import type { Shipment } from "../model";
 
-import { shippingFetch } from '../../mutator';
+import { shippingFetch } from "../../mutator";
 
 export type listShipmentsResponse200 = {
-  data: Shipment[]
-  status: 200
-}
+  data: Shipment[];
+  status: 200;
+};
 
-export type listShipmentsResponseSuccess = (listShipmentsResponse200) & {
+export type listShipmentsResponseSuccess = listShipmentsResponse200 & {
   headers: Headers;
 };
-;
 
-export type listShipmentsResponse = (listShipmentsResponseSuccess)
+export type listShipmentsResponse = listShipmentsResponseSuccess;
 
 export const getListShipmentsUrl = () => {
-
-
-
-
-  return `/shipments`
-}
+  return `/shipments`;
+};
 
 /**
  * @summary 配送一覧
  */
-export const listShipments = async ( options?: RequestInit): Promise<listShipmentsResponse> => {
-
-  return shippingFetch<listShipmentsResponse>(getListShipmentsUrl(),
-  {
+export const listShipments = async (options?: RequestInit): Promise<listShipmentsResponse> => {
+  return shippingFetch<listShipmentsResponse>(getListShipmentsUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
+    method: "GET",
+  });
+};

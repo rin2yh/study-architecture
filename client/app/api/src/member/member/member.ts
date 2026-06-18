@@ -5,44 +5,31 @@
  * 会員ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type {
-  Member
-} from '../model';
+import type { Member } from "../model";
 
-import { memberFetch } from '../../mutator';
+import { memberFetch } from "../../mutator";
 
 export type listMembersResponse200 = {
-  data: Member[]
-  status: 200
-}
+  data: Member[];
+  status: 200;
+};
 
-export type listMembersResponseSuccess = (listMembersResponse200) & {
+export type listMembersResponseSuccess = listMembersResponse200 & {
   headers: Headers;
 };
-;
 
-export type listMembersResponse = (listMembersResponseSuccess)
+export type listMembersResponse = listMembersResponseSuccess;
 
 export const getListMembersUrl = () => {
-
-
-
-
-  return `/members`
-}
+  return `/members`;
+};
 
 /**
  * @summary 会員一覧
  */
-export const listMembers = async ( options?: RequestInit): Promise<listMembersResponse> => {
-
-  return memberFetch<listMembersResponse>(getListMembersUrl(),
-  {
+export const listMembers = async (options?: RequestInit): Promise<listMembersResponse> => {
+  return memberFetch<listMembersResponse>(getListMembersUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
+    method: "GET",
+  });
+};
