@@ -5,20 +5,70 @@
  * 会員ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { Member } from "../model";
+import type { CreateMemberRequest, ErrorResponse, Member } from "../model";
 
 import { memberFetch } from "../../mutator";
+
+export type HTTPStatusCode1xx = 100 | 101 | 102 | 103;
+export type HTTPStatusCode2xx = 200 | 201 | 202 | 203 | 204 | 205 | 206 | 207;
+export type HTTPStatusCode3xx = 300 | 301 | 302 | 303 | 304 | 305 | 307 | 308;
+export type HTTPStatusCode4xx =
+  | 400
+  | 401
+  | 402
+  | 403
+  | 404
+  | 405
+  | 406
+  | 407
+  | 408
+  | 409
+  | 410
+  | 411
+  | 412
+  | 413
+  | 414
+  | 415
+  | 416
+  | 417
+  | 418
+  | 419
+  | 420
+  | 421
+  | 422
+  | 423
+  | 424
+  | 426
+  | 428
+  | 429
+  | 431
+  | 451;
+export type HTTPStatusCode5xx = 500 | 501 | 502 | 503 | 504 | 505 | 507 | 511;
+export type HTTPStatusCodes =
+  | HTTPStatusCode1xx
+  | HTTPStatusCode2xx
+  | HTTPStatusCode3xx
+  | HTTPStatusCode4xx
+  | HTTPStatusCode5xx;
 
 export type listMembersResponse200 = {
   data: Member[];
   status: 200;
 };
 
+export type listMembersResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
 export type listMembersResponseSuccess = listMembersResponse200 & {
   headers: Headers;
 };
+export type listMembersResponseError = listMembersResponseDefault & {
+  headers: Headers;
+};
 
-export type listMembersResponse = listMembersResponseSuccess;
+export type listMembersResponse = listMembersResponseSuccess | listMembersResponseError;
 
 export const getListMembersUrl = () => {
   return `/members`;
@@ -29,6 +79,77 @@ export const getListMembersUrl = () => {
  */
 export const listMembers = async (options?: RequestInit): Promise<listMembersResponse> => {
   return memberFetch<listMembersResponse>(getListMembersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type createMemberResponse201 = {
+  data: Member;
+  status: 201;
+};
+
+export type createMemberResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 201>;
+};
+
+export type createMemberResponseSuccess = createMemberResponse201 & {
+  headers: Headers;
+};
+export type createMemberResponseError = createMemberResponseDefault & {
+  headers: Headers;
+};
+
+export type createMemberResponse = createMemberResponseSuccess | createMemberResponseError;
+
+export const getCreateMemberUrl = () => {
+  return `/members`;
+};
+
+/**
+ * @summary 会員を作成
+ */
+export const createMember = async (
+  createMemberRequest: CreateMemberRequest,
+  options?: RequestInit,
+): Promise<createMemberResponse> => {
+  return memberFetch<createMemberResponse>(getCreateMemberUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createMemberRequest),
+  });
+};
+
+export type getMemberResponse200 = {
+  data: Member;
+  status: 200;
+};
+
+export type getMemberResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type getMemberResponseSuccess = getMemberResponse200 & {
+  headers: Headers;
+};
+export type getMemberResponseError = getMemberResponseDefault & {
+  headers: Headers;
+};
+
+export type getMemberResponse = getMemberResponseSuccess | getMemberResponseError;
+
+export const getGetMemberUrl = (id: number) => {
+  return `/members/${id}`;
+};
+
+/**
+ * @summary 会員を取得
+ */
+export const getMember = async (id: number, options?: RequestInit): Promise<getMemberResponse> => {
+  return memberFetch<getMemberResponse>(getGetMemberUrl(id), {
     ...options,
     method: "GET",
   });

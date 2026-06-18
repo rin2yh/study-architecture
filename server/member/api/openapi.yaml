@@ -16,6 +16,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+        default:
+          $ref: "#/components/responses/Error"
   /members:
     get:
       operationId: listMembers
@@ -30,8 +32,76 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Member"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createMember
+      summary: 会員を作成
+      tags: [member]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMemberRequest"
+      responses:
+        "201":
+          description: 作成された会員
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        default:
+          $ref: "#/components/responses/Error"
+  /members/{id}:
+    get:
+      operationId: getMember
+      summary: 会員を取得
+      tags: [member]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 会員
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
+  responses:
+    Error:
+      description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >-
+            機械可読なエラー種別。
+            bad_request (400) / not_found (404) / conflict (409) /
+            unprocessable_entity (422) / internal (500) など。
+          example: not_found
+        message:
+          type: string
+          description: 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
+          example: member 99 not found
     Health:
       type: object
       required: [status]
@@ -53,3 +123,16 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateMemberRequest:
+      type: object
+      required: [email, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+          x-oapi-codegen-extra-tags:
+            binding: required,email
+        displayName:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required

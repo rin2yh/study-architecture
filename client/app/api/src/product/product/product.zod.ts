@@ -18,3 +18,35 @@ export const ListProductsResponseItem = zod.object({
   createdAt: zod.iso.datetime({ offset: true }),
 });
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
+
+/**
+ * @summary 商品を作成
+ */
+export const CreateProductBody = zod.object({
+  sku: zod.string(),
+  name: zod.string(),
+  priceCents: zod.number(),
+});
+
+export const CreateProductResponse = zod.object({
+  id: zod.number(),
+  sku: zod.string(),
+  name: zod.string(),
+  priceCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
+
+/**
+ * @summary 商品を取得
+ */
+export const GetProductParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const GetProductResponse = zod.object({
+  id: zod.number(),
+  sku: zod.string(),
+  name: zod.string(),
+  priceCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});

@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
@@ -20,6 +22,21 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/repository"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/stub"
 )
+
+// assertErrorCode は共通エラー JSON ({code,message}) の code を検証する。
+func assertErrorCode(t *testing.T, body []byte, wantCode string) {
+	t.Helper()
+	var e struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &e); err != nil {
+		t.Fatalf("unmarshal error body: %v", err)
+	}
+	if e.Code != wantCode {
+		t.Fatalf("code = %q, want %q", e.Code, wantCode)
+	}
+}
 
 func init() {
 	gin.SetMode(gin.TestMode)
@@ -122,5 +139,92 @@ func TestListShipmentsWithDB(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].TrackingNo != "TRK-1" || got[0].OrderId != 100 {
 		t.Fatalf("unexpected shipment: %+v", got)
+	}
+}
+
+func TestGetShipment(t *testing.T) {
+	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	shipment := db.ShippingShipment{ID: 1, OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	type args struct {
+		repo stub.Repo
+		path string
+	}
+	type want struct {
+		status int
+		code   string // "" のとき成功 (Shipment body を検証)
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 配送を返す", args{stub.Repo{Shipment: shipment}, "/shipments/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/shipments/1"}, want{http.StatusInternalServerError, "internal"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			newServer(tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
+			}
+			if tt.want.code != "" {
+				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				return
+			}
+			var got api.Shipment
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if got.Id != 1 || got.TrackingNo != "TRK-1" {
+				t.Fatalf("unexpected shipment: %+v", got)
+			}
+		})
+	}
+}
+
+func TestCreateShipment(t *testing.T) {
+	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	created := db.ShippingShipment{ID: 10, OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	type args struct {
+		repo stub.Repo
+		body string
+	}
+	type want struct {
+		status int
+		code   string // "" のとき成功 (201 + Shipment body を検証)
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 配送を作成し 201", args{stub.Repo{Shipment: created}, `{"orderId":200,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusCreated, ""}},
+		{"異常系 carrier 欠落は 400 bad_request", args{stub.Repo{}, `{"orderId":200,"trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 orderId 不正は 400 bad_request", args{stub.Repo{}, `{"orderId":0,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, `{"orderId":200,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusInternalServerError, "internal"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/shipments", bytes.NewReader([]byte(tt.args.body)))
+			req.Header.Set("Content-Type", "application/json")
+			newServer(tt.args.repo).ServeHTTP(rec, req)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
+			}
+			if tt.want.code != "" {
+				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				return
+			}
+			var got api.Shipment
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if got.Id != 10 || got.TrackingNo != "TRK-10" {
+				t.Fatalf("unexpected shipment: %+v", got)
+			}
+		})
 	}
 }

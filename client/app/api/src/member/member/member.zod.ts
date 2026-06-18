@@ -17,3 +17,32 @@ export const ListMembersResponseItem = zod.object({
   createdAt: zod.iso.datetime({ offset: true }),
 });
 export const ListMembersResponse = zod.array(ListMembersResponseItem);
+
+/**
+ * @summary 会員を作成
+ */
+export const CreateMemberBody = zod.object({
+  email: zod.email(),
+  displayName: zod.string(),
+});
+
+export const CreateMemberResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  displayName: zod.string(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});
+
+/**
+ * @summary 会員を取得
+ */
+export const GetMemberParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const GetMemberResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  displayName: zod.string(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});

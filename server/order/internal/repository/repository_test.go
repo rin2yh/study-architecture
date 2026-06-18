@@ -2,18 +2,42 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
 // repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても実 SQL が
-// schema と噛み合うかは検証できない。DATABASE_URL_CUSTOMER が指す実 DB (compose の
-// db-customer / CI の service) へ接続して結合テストする。skip 条件は testdb 参照。
+// schema と噛み合うかは検証できない。List は DATABASE_URL_CUSTOMER が指す実 DB へ接続して
+// 結合テストする。skip 条件は testdb 参照。
 const dbEnv = "DATABASE_URL_CUSTOMER"
+
+// fakeQuerier は Get/Create のエラー正規化 (dberr) を DB なしで検証するための注入点。
+type fakeQuerier struct {
+	rows  []db.OrderOrder
+	order db.OrderOrder
+	err   error
+}
+
+func (f fakeQuerier) ListOrders(context.Context) ([]db.OrderOrder, error) {
+	return f.rows, f.err
+}
+
+func (f fakeQuerier) GetOrder(context.Context, int64) (db.OrderOrder, error) {
+	return f.order, f.err
+}
+
+func (f fakeQuerier) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
+	return f.order, f.err
+}
 
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()
@@ -31,29 +55,20 @@ func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 }
 
 func TestRepositoryListOrders(t *testing.T) {
-	type args struct {
-		seed []db.OrderOrder
-	}
-	type want struct {
-		statuses []string
-	}
 	tests := []struct {
 		name string
-		args args
-		want want
+		seed []db.OrderOrder
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			args: args{seed: []db.OrderOrder{
+			seed: []db.OrderOrder{
 				{MemberID: 1, Status: "pending", TotalCents: 1980},
 				{MemberID: 2, Status: "paid", TotalCents: 2980},
-			}},
-			want: want{statuses: []string{"pending", "paid"}},
+			},
 		},
 		{
 			name: "準正常系 0 件なら空スライス (nil でない)",
-			args: args{seed: nil},
-			want: want{statuses: []string{}},
+			seed: nil,
 		},
 	}
 
@@ -61,7 +76,7 @@ func TestRepositoryListOrders(t *testing.T) {
 	r := NewRepository(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			seedOrders(t, pool, tt.args.seed...)
+			seedOrders(t, pool, tt.seed...)
 
 			got, err := r.ListOrders(context.Background())
 			if err != nil {
@@ -70,13 +85,10 @@ func TestRepositoryListOrders(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListOrders: want non-nil slice (emit_empty_slices)")
 			}
-			if len(got) != len(tt.want.statuses) {
-				t.Fatalf("len = %d, want %d (%+v)", len(got), len(tt.want.statuses), got)
-			}
-			for i, status := range tt.want.statuses {
-				if got[i].Status != status {
-					t.Fatalf("rows[%d].Status = %q, want %q", i, got[i].Status, status)
-				}
+			if diff := cmp.Diff(tt.seed, got,
+				cmpopts.IgnoreFields(db.OrderOrder{}, "ID", "CreatedAt"),
+				cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("ListOrders mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -88,6 +100,77 @@ func TestRepositoryListOrdersError(t *testing.T) {
 	cancel()
 	if _, err := r.ListOrders(ctx); err == nil {
 		t.Fatal("ListOrders: want error from canceled context")
+	}
+}
+
+func TestRepositoryGetOrder(t *testing.T) {
+	order := db.OrderOrder{ID: 1, MemberID: 10, Status: "paid"}
+	other := errors.New("query failed")
+	type args struct{ q fakeQuerier }
+	type want struct {
+		id  int64
+		err error // errors.Is で照合。nil は成功
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 行を返す", args{fakeQuerier{order: order}}, want{1, nil}},
+		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
+		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (&Repository{q: tt.args.q}).GetOrder(context.Background(), 1)
+			if tt.want.err != nil {
+				if !errors.Is(err, tt.want.err) {
+					t.Fatalf("err = %v, want %v", err, tt.want.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GetOrder: %v", err)
+			}
+			if got.ID != tt.want.id {
+				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
+			}
+		})
+	}
+}
+
+func TestRepositoryCreateOrder(t *testing.T) {
+	created := db.OrderOrder{ID: 10, MemberID: 20, Status: "pending"}
+	other := errors.New("query failed")
+	type args struct{ q fakeQuerier }
+	type want struct {
+		id  int64
+		err error // errors.Is で照合。nil は成功
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 作成行を返す", args{fakeQuerier{order: created}}, want{10, nil}},
+		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (&Repository{q: tt.args.q}).CreateOrder(context.Background(), db.CreateOrderParams{})
+			if tt.want.err != nil {
+				if !errors.Is(err, tt.want.err) {
+					t.Fatalf("err = %v, want %v", err, tt.want.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("CreateOrder: %v", err)
+			}
+			if got.ID != tt.want.id {
+				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
+			}
+		})
 	}
 }
 

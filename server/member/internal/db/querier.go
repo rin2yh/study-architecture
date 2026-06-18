@@ -9,6 +9,8 @@ import (
 )
 
 type Querier interface {
+	CreateMember(ctx context.Context, arg CreateMemberParams) (MemberMember, error)
+	GetMember(ctx context.Context, id int64) (MemberMember, error)
 	ListMembers(ctx context.Context) ([]MemberMember, error)
 }
 

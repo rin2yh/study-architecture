@@ -16,6 +16,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+        default:
+          $ref: "#/components/responses/Error"
   /payments:
     get:
       operationId: listPayments
@@ -30,8 +32,76 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Payment"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createPayment
+      summary: 決済を作成
+      tags: [payment]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: 作成された決済
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        default:
+          $ref: "#/components/responses/Error"
+  /payments/{id}:
+    get:
+      operationId: getPayment
+      summary: 決済を取得
+      tags: [payment]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 決済
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: リソース ID
+      schema:
+        type: integer
+        format: int64
+  responses:
+    Error:
+      description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >-
+            機械可読なエラー種別。
+            bad_request (400) / not_found (404) / conflict (409) /
+            unprocessable_entity (422) / internal (500) など。
+          example: not_found
+        message:
+          type: string
+          description: 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
+          example: payment 99 not found
     Health:
       type: object
       required: [status]
@@ -59,3 +129,23 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreatePaymentRequest:
+      type: object
+      required: [orderId, amountCents, method, status]
+      properties:
+        orderId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        status:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required

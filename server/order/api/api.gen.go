@@ -4,10 +4,29 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime"
 )
+
+// CreateOrderRequest defines model for CreateOrderRequest.
+type CreateOrderRequest struct {
+	MemberId   int64  `binding:"required,gt=0" json:"memberId"`
+	Status     string `binding:"required" json:"status"`
+	TotalCents int64  `json:"totalCents"`
+}
+
+// Error defines model for Error.
+type Error struct {
+	// Code 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
+	Code string `json:"code"`
+
+	// Message 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
+	Message string `json:"message"`
+}
 
 // Health defines model for Health.
 type Health struct {
@@ -23,6 +42,12 @@ type Order struct {
 	TotalCents int64     `json:"totalCents"`
 }
 
+// IdPath defines model for IdPath.
+type IdPath = int64
+
+// CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
+type CreateOrderJSONRequestBody = CreateOrderRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Liveness probe
@@ -31,6 +56,12 @@ type ServerInterface interface {
 	// 注文一覧
 	// (GET /orders)
 	ListOrders(c *gin.Context)
+	// 注文を作成
+	// (POST /orders)
+	CreateOrder(c *gin.Context)
+	// 注文を取得
+	// (GET /orders/{id})
+	GetOrder(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -68,6 +99,44 @@ func (siw *ServerInterfaceWrapper) ListOrders(c *gin.Context) {
 	siw.Handler.ListOrders(c)
 }
 
+// CreateOrder operation middleware
+func (siw *ServerInterfaceWrapper) CreateOrder(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateOrder(c)
+}
+
+// GetOrder operation middleware
+func (siw *ServerInterfaceWrapper) GetOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetOrder(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -97,4 +166,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.GET(options.BaseURL+"/orders", wrapper.ListOrders)
+	router.POST(options.BaseURL+"/orders", wrapper.CreateOrder)
+	router.GET(options.BaseURL+"/orders/:id", wrapper.GetOrder)
 }

@@ -9,6 +9,8 @@ import (
 )
 
 type Querier interface {
+	CreateShipment(ctx context.Context, arg CreateShipmentParams) (ShippingShipment, error)
+	GetShipment(ctx context.Context, id int64) (ShippingShipment, error)
 	ListShipments(ctx context.Context) ([]ShippingShipment, error)
 }
 

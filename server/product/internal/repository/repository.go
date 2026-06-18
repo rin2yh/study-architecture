@@ -7,11 +7,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
 type ProductRepository interface {
 	ListProducts(ctx context.Context) ([]db.ProductProduct, error)
+	GetProduct(ctx context.Context, id int64) (db.ProductProduct, error)
+	CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error)
 }
 
 type Repository struct {
@@ -34,4 +37,20 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) ListProducts(ctx context.Context) ([]db.ProductProduct, error) {
 	return r.q.ListProducts(ctx)
+}
+
+func (r *Repository) GetProduct(ctx context.Context, id int64) (db.ProductProduct, error) {
+	row, err := r.q.GetProduct(ctx, id)
+	if err != nil {
+		return db.ProductProduct{}, dberr.FromRead(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error) {
+	row, err := r.q.CreateProduct(ctx, arg)
+	if err != nil {
+		return db.ProductProduct{}, dberr.FromWrite(err)
+	}
+	return row, nil
 }

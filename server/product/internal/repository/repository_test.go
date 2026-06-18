@@ -2,18 +2,43 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
 // repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても実 SQL が
-// schema と噛み合うかは検証できない。DATABASE_URL_OPS が指す実 DB (compose の db-ops /
-// CI の service) へ接続して結合テストする。skip 条件は testdb 参照。
+// schema と噛み合うかは検証できない。List は DATABASE_URL_OPS が指す実 DB へ接続して結合
+// テストする。skip 条件は testdb 参照。
 const dbEnv = "DATABASE_URL_OPS"
+
+// fakeQuerier は Get/Create のエラー正規化 (dberr) を DB なしで検証するための注入点。
+type fakeQuerier struct {
+	rows    []db.ProductProduct
+	product db.ProductProduct
+	err     error
+}
+
+func (f fakeQuerier) ListProducts(context.Context) ([]db.ProductProduct, error) {
+	return f.rows, f.err
+}
+
+func (f fakeQuerier) GetProduct(context.Context, int64) (db.ProductProduct, error) {
+	return f.product, f.err
+}
+
+func (f fakeQuerier) CreateProduct(context.Context, db.CreateProductParams) (db.ProductProduct, error) {
+	return f.product, f.err
+}
 
 func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...db.ProductProduct) {
 	t.Helper()
@@ -31,29 +56,20 @@ func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...db.ProductProduct) {
 }
 
 func TestRepositoryListProducts(t *testing.T) {
-	type args struct {
-		seed []db.ProductProduct
-	}
-	type want struct {
-		skus []string
-	}
 	tests := []struct {
 		name string
-		args args
-		want want
+		seed []db.ProductProduct
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			args: args{seed: []db.ProductProduct{
+			seed: []db.ProductProduct{
 				{Sku: "SKU-1", Name: "商品1", PriceCents: 1980},
 				{Sku: "SKU-2", Name: "商品2", PriceCents: 2980},
-			}},
-			want: want{skus: []string{"SKU-1", "SKU-2"}},
+			},
 		},
 		{
 			name: "準正常系 0 件なら空スライス (nil でない)",
-			args: args{seed: nil},
-			want: want{skus: []string{}},
+			seed: nil,
 		},
 	}
 
@@ -61,7 +77,7 @@ func TestRepositoryListProducts(t *testing.T) {
 	r := NewRepository(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			seedProducts(t, pool, tt.args.seed...)
+			seedProducts(t, pool, tt.seed...)
 
 			got, err := r.ListProducts(context.Background())
 			if err != nil {
@@ -70,13 +86,10 @@ func TestRepositoryListProducts(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListProducts: want non-nil slice (emit_empty_slices)")
 			}
-			if len(got) != len(tt.want.skus) {
-				t.Fatalf("len = %d, want %d (%+v)", len(got), len(tt.want.skus), got)
-			}
-			for i, sku := range tt.want.skus {
-				if got[i].Sku != sku {
-					t.Fatalf("rows[%d].Sku = %q, want %q", i, got[i].Sku, sku)
-				}
+			if diff := cmp.Diff(tt.seed, got,
+				cmpopts.IgnoreFields(db.ProductProduct{}, "ID", "CreatedAt"),
+				cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("ListProducts mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -88,6 +101,78 @@ func TestRepositoryListProductsError(t *testing.T) {
 	cancel()
 	if _, err := r.ListProducts(ctx); err == nil {
 		t.Fatal("ListProducts: want error from canceled context")
+	}
+}
+
+func TestRepositoryGetProduct(t *testing.T) {
+	product := db.ProductProduct{ID: 1, Sku: "SKU-1"}
+	other := errors.New("query failed")
+	type args struct{ q fakeQuerier }
+	type want struct {
+		id  int64
+		err error // errors.Is で照合。nil は成功
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 行を返す", args{fakeQuerier{product: product}}, want{1, nil}},
+		{"異常系 no rows は ErrNotFound に正規化", args{fakeQuerier{err: pgx.ErrNoRows}}, want{0, dberr.ErrNotFound}},
+		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (&Repository{q: tt.args.q}).GetProduct(context.Background(), 1)
+			if tt.want.err != nil {
+				if !errors.Is(err, tt.want.err) {
+					t.Fatalf("err = %v, want %v", err, tt.want.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GetProduct: %v", err)
+			}
+			if got.ID != tt.want.id {
+				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
+			}
+		})
+	}
+}
+
+func TestRepositoryCreateProduct(t *testing.T) {
+	created := db.ProductProduct{ID: 10, Sku: "SKU-NEW"}
+	other := errors.New("query failed")
+	type args struct{ q fakeQuerier }
+	type want struct {
+		id  int64
+		err error // errors.Is で照合。nil は成功
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 作成行を返す", args{fakeQuerier{product: created}}, want{10, nil}},
+		{"異常系 unique_violation は ErrConflict に正規化", args{fakeQuerier{err: &pgconn.PgError{Code: "23505"}}}, want{0, dberr.ErrConflict}},
+		{"異常系 その他エラーは透過", args{fakeQuerier{err: other}}, want{0, other}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (&Repository{q: tt.args.q}).CreateProduct(context.Background(), db.CreateProductParams{})
+			if tt.want.err != nil {
+				if !errors.Is(err, tt.want.err) {
+					t.Fatalf("err = %v, want %v", err, tt.want.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("CreateProduct: %v", err)
+			}
+			if got.ID != tt.want.id {
+				t.Fatalf("id = %d, want %d", got.ID, tt.want.id)
+			}
+		})
 	}
 }
 
