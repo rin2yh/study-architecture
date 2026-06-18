@@ -16,6 +16,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+        default:
+          $ref: "#/components/responses/Error"
   /shipments:
     get:
       operationId: listShipments
@@ -30,8 +32,32 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Shipment"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  responses:
+    Error:
+      description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >-
+            機械可読なエラー種別。
+            bad_request (400) / not_found (404) / conflict (409) /
+            unprocessable_entity (422) / internal (500) など。
+          example: not_found
+        message:
+          type: string
+          description: 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
+          example: shipment 99 not found
     Health:
       type: object
       required: [status]

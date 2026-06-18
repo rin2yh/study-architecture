@@ -5,8 +5,9 @@
  * 注文ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
+import type { Error } from "./error.ts";
 
-export * from "./error.ts";
-export * from "./errorResponse.ts";
-export * from "./health.ts";
-export * from "./order.ts";
+/**
+ * エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
+ */
+export type ErrorResponse = Error;
