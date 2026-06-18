@@ -1,7 +1,3 @@
-# octocov 設定: server matrix の各ジョブと integration job で coverage を Step Summary +
-# PR コメントとして投稿する。matrix で 5 + 1 個のコメントが付くが、サービス単位の coverage
-# 推移を PR から一目で見たいので意図的に許可する。
-
 coverage:
   paths:
     - cover.out

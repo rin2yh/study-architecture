@@ -116,6 +116,15 @@ jobs:
       - name: coverage
         run: pnpm -F "${{ matrix.package }}" test:cov
 
+      - name: report coverage
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
+        with:
+          working-directory: client
+          name: ${{ matrix.package }}
+          json-summary-path: client/${{ matrix.package == '@ec/api' && 'package/api' || format('app/{0}', matrix.package) }}/coverage/coverage-summary.json
+          json-final-path: client/${{ matrix.package == '@ec/api' && 'package/api' || format('app/{0}', matrix.package) }}/coverage/coverage-final.json
+
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
