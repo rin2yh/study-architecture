@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src/**/*.ts", "orval.config.ts", "vitest.config.ts"],
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"]
+  }
+}

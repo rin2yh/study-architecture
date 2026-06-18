@@ -1,0 +1,30 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./mutator": "./src/mutator.ts",
+    "./product": "./src/product.ts",
+    "./order": "./src/order.ts",
+    "./payment": "./src/payment.ts",
+    "./member": "./src/member.ts",
+    "./shipping": "./src/shipping.ts"
+  },
+  "scripts": {
+    "gen": "orval --config ./orval.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "orval": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

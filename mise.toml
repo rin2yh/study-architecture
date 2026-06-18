@@ -1,0 +1,40 @@
+[tasks.build]
+description = "全 image を 1 つずつ build (並列 build で daemon が詰まるのを避ける)"
+run = """
+for svc in product order payment member shipping; do
+  docker compose build "$svc"
+done
+docker compose --profile external build store mypage
+docker compose --profile internal build backoffice
+"""
+
+[tasks.up]
+description = "全サービスを起動 (build 済み image を使う)"
+depends = ["build"]
+run = "docker compose --profile external --profile internal up -d --no-build"
+
+[tasks."up:external"]
+description = "社外側スタックだけ起動"
+depends = ["build"]
+run = "docker compose --profile external up -d --no-build"
+
+[tasks."up:internal"]
+description = "社内側スタックだけ起動"
+depends = ["build"]
+run = "docker compose --profile internal up -d --no-build"
+
+[tasks."up:db"]
+description = "DB だけ起動 (CI / 結合テスト用)"
+run = "docker compose up -d --wait db-customer db-ops"
+
+[tasks.migrate]
+description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
+run = "./scripts/migrate.sh"
+
+[tasks.down]
+description = "全サービスを停止"
+run = "docker compose --profile external --profile internal down"
+
+[tasks.logs]
+description = "ログ追従"
+run = "docker compose logs -f"

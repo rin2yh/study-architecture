@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: Shipping Service API
+  version: 0.1.0
+  description: 配送ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /shipments:
+    get:
+      operationId: listShipments
+      summary: 配送一覧
+      tags: [shipping]
+      responses:
+        "200":
+          description: 配送の配列
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shipment"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    Shipment:
+      type: object
+      required: [id, orderId, carrier, trackingNo, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        orderId:
+          type: integer
+          format: int64
+        carrier:
+          type: string
+        trackingNo:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time

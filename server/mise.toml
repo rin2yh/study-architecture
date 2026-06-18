@@ -1,0 +1,54 @@
+[tools]
+go = "1.26"
+
+[tasks.gen]
+description = "コード生成一式 (go generate)"
+dir = ".."
+run = [
+  "go generate ./...",
+  "go mod tidy",
+]
+
+[tasks.build]
+description = "全サービスをビルド"
+dir = ".."
+run = "go build ./..."
+
+[tasks.test]
+description = "テスト実行"
+dir = ".."
+run = "go test ./... -race -count=1"
+
+[tasks.vet]
+description = "go vet"
+dir = ".."
+run = "go vet ./..."
+
+[tasks.fmt]
+description = "go fmt 整形"
+dir = ".."
+run = "go fmt ./server/..."
+
+[tasks."fmt:check"]
+description = "未整形ファイルを検出"
+dir = ".."
+run = 'test -z "$(gofmt -l server/)" || (gofmt -l server/ && exit 1)'
+
+[tasks.tidy]
+description = "go mod tidy"
+dir = ".."
+run = "go mod tidy"
+
+# 生成コード (api / db / di) と main.go は分母から除外する。
+[tasks.cover]
+description = "テストカバレッジ計測"
+dir = ".."
+run = [
+  "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)",
+  "go tool cover -func=cover.out | tail -1",
+]
+
+[tasks.ci]
+description = "CI 相当 (fmt:check → vet → test)"
+depends = ["fmt:check", "vet", "test"]
+run = "echo 'CI OK'"
