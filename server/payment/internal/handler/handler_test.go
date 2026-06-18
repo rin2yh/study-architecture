@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
@@ -22,20 +25,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/internal/repository"
 	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
 )
-
-func assertErrorCode(t *testing.T, body []byte, wantCode string) {
-	t.Helper()
-	var e struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &e); err != nil {
-		t.Fatalf("unmarshal error body: %v", err)
-	}
-	if e.Code != wantCode {
-		t.Fatalf("code = %q, want %q", e.Code, wantCode)
-	}
-}
 
 func init() {
 	gin.SetMode(gin.TestMode)
@@ -87,8 +76,9 @@ func TestListPayments(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(got) != 1 || got[0].OrderId != 10 || got[0].Method != "card" || got[0].AmountCents != 1980 {
-		t.Fatalf("unexpected payment: %+v", got)
+	want := []api.Payment{{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}}
+	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Payment{}, "Id", "CreatedAt")); diff != "" {
+		t.Fatalf("payments mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -144,7 +134,7 @@ func TestGetPayment(t *testing.T) {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Payment
@@ -190,7 +180,7 @@ func TestCreatePayment(t *testing.T) {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Payment

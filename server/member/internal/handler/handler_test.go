@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -22,20 +25,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/repository"
 	"github.com/rin2yh/study-architecture/server/member/internal/stub"
 )
-
-func assertErrorCode(t *testing.T, body []byte, wantCode string) {
-	t.Helper()
-	var e struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &e); err != nil {
-		t.Fatalf("unmarshal error body: %v", err)
-	}
-	if e.Code != wantCode {
-		t.Fatalf("code = %q, want %q", e.Code, wantCode)
-	}
-}
 
 func init() {
 	gin.SetMode(gin.TestMode)
@@ -87,8 +76,9 @@ func TestListMembers(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(got) != 1 || got[0].Email != "user@example.com" || got[0].DisplayName != "サンプル会員" {
-		t.Fatalf("unexpected member: %+v", got)
+	want := []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}
+	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Member{}, "Id", "CreatedAt")); diff != "" {
+		t.Fatalf("members mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -144,7 +134,7 @@ func TestGetMember(t *testing.T) {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Member
@@ -190,7 +180,7 @@ func TestCreateMember(t *testing.T) {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
 			if tt.want.code != "" {
-				assertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 				return
 			}
 			var got api.Member
