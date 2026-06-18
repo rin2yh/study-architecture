@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,9 +13,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/testdb"
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
+	"github.com/rin2yh/study-architecture/server/order/internal/repository"
 	"github.com/rin2yh/study-architecture/server/order/internal/stub"
 )
 
@@ -22,7 +25,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func newServer(repo stub.Repo) http.Handler {
+func newServer(repo repository.OrderRepository) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
 	api.RegisterHandlers(engine, handler.New(repo))
@@ -90,5 +93,34 @@ func TestListOrdersError(t *testing.T) {
 	}
 	if body.Message == "db failure" {
 		t.Fatalf("message must not expose internal error: %q", body.Message)
+	}
+}
+
+// 結合: HTTP → handler → repository → 実 DB を通して 200 と JSON が返ることを確認する
+// (handler は presentation 層なので実 DB を通した経路でも検証する)。skip 条件は testdb 参照。
+func TestListOrdersWithDB(t *testing.T) {
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO "order".orders (member_id, status, total_cents) VALUES ($1, $2, $3)`,
+		int64(10), "paid", int64(5000)); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var got []api.Order
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(got) != 1 || got[0].MemberId != 10 || got[0].Status != "paid" || got[0].TotalCents != 5000 {
+		t.Fatalf("unexpected order: %+v", got)
 	}
 }

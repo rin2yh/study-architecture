@@ -2,45 +2,18 @@ package repository
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/testdb"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても
-// 実 SQL が schema と噛み合うかは検証できない。ここでは DATABASE_URL_CUSTOMER が指す
-// 実 DB (compose の db-customer / CI の service) へ接続して結合テストする。
-//
-// ビルドタグは使わず、-short 実行時 (per-service の単体ジョブ) と DSN 未設定時に
-// skip することで、DB が無い環境でも `go test ./...` が通るようにしている。
-func testDSN(t *testing.T) string {
-	t.Helper()
-	if testing.Short() {
-		t.Skip("skip integration test in -short mode")
-	}
-	dsn := os.Getenv("DATABASE_URL_CUSTOMER")
-	if dsn == "" {
-		t.Skip("skip integration test: DATABASE_URL_CUSTOMER is not set")
-	}
-	return dsn
-}
-
-func openTestDB(t *testing.T) *pgxpool.Pool {
-	t.Helper()
-	pool, err := pgxpool.New(context.Background(), testDSN(t))
-	if err != nil {
-		t.Fatalf("pgxpool.New: %v", err)
-	}
-	if err := pool.Ping(context.Background()); err != nil {
-		pool.Close()
-		t.Fatalf("ping: %v", err)
-	}
-	t.Cleanup(pool.Close)
-	return pool
-}
+// repository 層は sqlc 生成クエリへ委譲するだけの薄い層なので、フェイクで通しても実 SQL が
+// schema と噛み合うかは検証できない。DATABASE_URL_CUSTOMER が指す実 DB (compose の
+// db-customer / CI の service) へ接続して結合テストする。skip 条件は testdb 参照。
+const dbEnv = "DATABASE_URL_CUSTOMER"
 
 // seedMembers は table を空にしてから rows を id 昇順 (= 挿入順) で入れ直す。
 func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
@@ -85,7 +58,7 @@ func TestRepositoryListMembers(t *testing.T) {
 		},
 	}
 
-	pool := openTestDB(t)
+	pool := testdb.Open(t, dbEnv)
 	r := NewRepository(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,13 +85,7 @@ func TestRepositoryListMembers(t *testing.T) {
 
 // 異常系: 接続不能 (閉じた pool) でクエリがエラーを伝播することを確認する。
 func TestRepositoryListMembersError(t *testing.T) {
-	pool, err := pgxpool.New(context.Background(), testDSN(t))
-	if err != nil {
-		t.Fatalf("pgxpool.New: %v", err)
-	}
-	pool.Close()
-
-	r := NewRepository(pool)
+	r := NewRepository(testdb.OpenClosed(t, dbEnv))
 	if _, err := r.ListMembers(context.Background()); err == nil {
 		t.Fatal("ListMembers: want error from closed pool")
 	}

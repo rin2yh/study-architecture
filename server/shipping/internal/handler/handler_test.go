@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,9 +13,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/testdb"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/repository"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/stub"
 )
 
@@ -22,7 +25,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func newServer(repo stub.Repo) http.Handler {
+func newServer(repo repository.ShipmentRepository) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
 	api.RegisterHandlers(engine, handler.New(repo))
@@ -90,5 +93,34 @@ func TestListShipmentsError(t *testing.T) {
 	}
 	if body.Message == "db failure" {
 		t.Fatalf("message must not expose internal error: %q", body.Message)
+	}
+}
+
+// 結合: HTTP → handler → repository → 実 DB を通して 200 と JSON が返ることを確認する
+// (handler は presentation 層なので実 DB を通した経路でも検証する)。skip 条件は testdb 参照。
+func TestListShipmentsWithDB(t *testing.T) {
+	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status) VALUES ($1, $2, $3, $4)`,
+		int64(100), "ヤマト運輸", "TRK-1", "shipped"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var got []api.Shipment
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(got) != 1 || got[0].TrackingNo != "TRK-1" || got[0].OrderId != 100 {
+		t.Fatalf("unexpected shipment: %+v", got)
 	}
 }
