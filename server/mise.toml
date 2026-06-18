@@ -2,7 +2,6 @@
 go = "1.26"
 
 [env]
-CGO_ENABLED = "0"
 DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable"
 DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable"
 

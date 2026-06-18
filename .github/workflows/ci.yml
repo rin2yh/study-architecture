@@ -13,9 +13,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CGO_ENABLED: "0"
-
 jobs:
   changes:
     name: detect changes
@@ -70,10 +67,7 @@ jobs:
       - name: vet
         run: go vet ./server/${{ matrix.service }}/... ./server/internal/...
 
-      # -race は cgo を要するため workflow env の CGO_ENABLED=0 を上書きする。
       - name: coverage
-        env:
-          CGO_ENABLED: "1"
         run: |
           svc=${{ matrix.service }}
           pkgs=$(go list ./server/$svc/... ./server/internal/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
@@ -130,31 +124,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-24.04
-    services:
-      db-customer:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: ec
-          POSTGRES_PASSWORD: ec_pass
-          POSTGRES_DB: ec_customer
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U ec -d ec_customer"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-      db-ops:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: ec
-          POSTGRES_PASSWORD: ec_pass
-          POSTGRES_DB: ec_ops
-        ports: ["5433:5432"]
-        options: >-
-          --health-cmd "pg_isready -U ec -d ec_ops"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     env:
       DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
       DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
@@ -164,6 +133,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: start db
+        run: docker compose up -d --wait db-customer db-ops
 
       - name: migrate
         # db-customer を共有する 3 サービスで goose の version 表をサービス別に分けて衝突回避。
@@ -175,8 +147,6 @@ jobs:
           go tool goose -table goose_shipping_version -dir server/shipping/db/migration postgres "$DATABASE_URL_OPS"      up
 
       - name: test
-        env:
-          CGO_ENABLED: "1"
         run: |
           pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)
           go test ./server/... -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"

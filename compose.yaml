@@ -42,8 +42,6 @@ x-migrate-ops: &migrate-ops
   networks: [internal]
 
 services:
-  # 社外と社内を跨ぐ唯一の container。両 network に attach し、社外 UI からの /<svc>/*
-  # を社内 backend へ proxy する。
   edge-proxy:
     image: nginx:1.27-alpine
     volumes:

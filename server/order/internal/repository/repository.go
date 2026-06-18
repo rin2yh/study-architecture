@@ -10,7 +10,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-// interface にすることで handler のテストでスタブへ差し替えられる。
 type OrderRepository interface {
 	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
 }
@@ -21,7 +20,6 @@ type Repository struct {
 
 var _ OrderRepository = (*Repository)(nil)
 
-// DI では kessoku.Async でラップし、I/O を伴うこの初期化を並列化対象にしている。
 func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
