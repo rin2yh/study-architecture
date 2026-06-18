@@ -36,6 +36,8 @@
   - **ローカル開発**: `mise run migrate:<svc>` (host から goose) か、compose の
     `docker compose --profile tools run --rm migrate-<svc>` で 1 サービスずつ流す
 - compose の migrate ジョブは `image: ec-migrate` を共有して build を 1 回で済ます。
+- 顧客系 3 サービスが同じ `db-customer` を共有するため、goose の version 管理表は
+  サービス別に **`goose_<svc>_version`** で分ける (compose / mise / CI で同じ規約)。
 
 ## Consequences
 

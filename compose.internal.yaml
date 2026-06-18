@@ -6,6 +6,21 @@
 volumes:
   pg_ops_data:
 
+# migrate-* サービスの共通定義 (YAML anchor)。command の -table と -dir だけが各サービスで違う。
+x-migrate-ops: &migrate-ops
+  image: ec-migrate
+  build:
+    context: .
+    dockerfile: Dockerfile.migrate
+  profiles: ["tools"]
+  depends_on:
+    db-ops:
+      condition: service_healthy
+  environment:
+    GOOSE_DRIVER: postgres
+    GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+  networks: [internal]
+
 services:
   db-ops:
     image: postgres:17-alpine
@@ -24,36 +39,14 @@ services:
       retries: 10
     networks: [internal]
 
-  # 運用系 (db-ops) 向け migration ([[ADR 0013]])。
+  # 運用系 (db-ops) 向け migration ([[ADR 0013]])。x-migrate-ops の共通定義に command だけ上書き。
   migrate-product:
-    image: ec-migrate
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    profiles: ["tools"]
-    depends_on:
-      db-ops:
-        condition: service_healthy
-    environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+    <<: *migrate-ops
     command: ["-table", "goose_product_version", "-dir", "/migrations/product", "up"]
-    networks: [internal]
 
   migrate-shipping:
-    image: ec-migrate
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    profiles: ["tools"]
-    depends_on:
-      db-ops:
-        condition: service_healthy
-    environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+    <<: *migrate-ops
     command: ["-table", "goose_shipping_version", "-dir", "/migrations/shipping", "up"]
-    networks: [internal]
 
   backoffice:
     build:
