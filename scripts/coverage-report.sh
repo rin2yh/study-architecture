@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# coverprofile から Vitest レポート風のカバレッジ Markdown を生成して stdout に出す。
-# Go のカバレッジは statement 単位なので Lines/Branches は出せない。Statements (件数つき) と
-# go tool cover -func 由来の Functions、さらにファイル別内訳を出す。
+# coverprofile から Vitest 風のカバレッジ Markdown を stdout に出す。
 # 使い方: coverage-report.sh <title> [profile=cover.out]
 #
-# 注意: -coverpkg で複数テストバイナリから同一ブロックが重複して profile に並ぶため、
-# 行を素朴に合計すると二重計上になる。go tool 同様、ブロック (file:range) 単位で
-# 「どれかで count>0 ならカバー」とマージしてから集計する。
+# Go のカバレッジは statement 単位なので Lines/Branches は出せない。
+# また -coverpkg では複数テストバイナリから同一ブロックが profile に重複して並ぶため、
+# 行を素朴に合計すると二重計上になる。ブロック (file:range) 単位でマージしてから集計する。
 set -euo pipefail
 
 title="$1"
@@ -20,7 +18,7 @@ read -r stmt_cov stmt_total < <(
        END { for (b in s) { t += s[b]; if (b in c) cov += s[b] } print cov + 0, t + 0 }' "$profile"
 )
 
-# go tool cover -func は既にブロックをマージ済み。行末の % が 0 の関数を未カバーとして数える。
+# go tool cover -func は集計済みなので、ここは重複排除せずそのまま数える。
 read -r fn_cov fn_total < <(
   go tool cover -func="$profile" | awk '
     /^total:/ { next }

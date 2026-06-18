@@ -54,7 +54,7 @@ jobs:
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
           bash scripts/coverage-report.sh "server-$svc" cover.out > coverage.md
 
-      # header をサービス別に分けて in-place 更新する (octocov は単一マーカーで衝突したため)。
+      # 単一マーカーだと 6 ジョブ (per-service 5 + integration) が同じコメントを奪い合うため。
       - name: comment coverage
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
