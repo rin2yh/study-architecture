@@ -1,12 +1,30 @@
-# 社内専用 (運用向け) リソース。
+# 社内専用 (internal network のみ) のリソース。
+# - DB (db-customer / db-ops)
+# - backend サービス (product / order / payment / member / shipping)
+# - migration ジョブ ([[ADR 0013]])
 # - 運用 UI (backoffice)
-# - 運用 DB (db-ops) と volume (pg_ops_data)
-# 共通の network 定義は compose.yaml 側。
+#
+# 共通の network 定義と edge-proxy は compose.yaml 側にある。
 
 volumes:
+  pg_customer_data:
   pg_ops_data:
 
 # migrate-* サービスの共通定義 (YAML anchor)。command の -table と -dir だけが各サービスで違う。
+x-migrate-customer: &migrate-customer
+  image: ec-migrate
+  build:
+    context: .
+    dockerfile: Dockerfile.migrate
+  profiles: ["tools"]
+  depends_on:
+    db-customer:
+      condition: service_healthy
+  environment:
+    GOOSE_DRIVER: postgres
+    GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+  networks: [internal]
+
 x-migrate-ops: &migrate-ops
   image: ec-migrate
   build:
@@ -22,6 +40,23 @@ x-migrate-ops: &migrate-ops
   networks: [internal]
 
 services:
+  db-customer:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ec
+      POSTGRES_PASSWORD: ec_pass
+      POSTGRES_DB: ec_customer
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_customer_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+
   db-ops:
     image: postgres:17-alpine
     environment:
@@ -39,7 +74,20 @@ services:
       retries: 10
     networks: [internal]
 
-  # 運用系 (db-ops) 向け migration ([[ADR 0013]])。x-migrate-ops の共通定義に command だけ上書き。
+  # 顧客系 (db-customer) 向け migration。x-migrate-customer の anchor + command 上書き。
+  migrate-order:
+    <<: *migrate-customer
+    command: ["-table", "goose_order_version", "-dir", "/migrations/order", "up"]
+
+  migrate-payment:
+    <<: *migrate-customer
+    command: ["-table", "goose_payment_version", "-dir", "/migrations/payment", "up"]
+
+  migrate-member:
+    <<: *migrate-customer
+    command: ["-table", "goose_member_version", "-dir", "/migrations/member", "up"]
+
+  # 運用系 (db-ops) 向け migration。x-migrate-ops の anchor + command 上書き。
   migrate-product:
     <<: *migrate-ops
     command: ["-table", "goose_product_version", "-dir", "/migrations/product", "up"]
@@ -47,6 +95,71 @@ services:
   migrate-shipping:
     <<: *migrate-ops
     command: ["-table", "goose_shipping_version", "-dir", "/migrations/shipping", "up"]
+
+  product:
+    build:
+      context: .
+      dockerfile: server/product/Dockerfile
+    environment:
+      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports: ["8001:8080"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    networks: [internal]
+
+  order:
+    build:
+      context: .
+      dockerfile: server/order/Dockerfile
+    environment:
+      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports: ["8002:8080"]
+    depends_on:
+      db-customer:
+        condition: service_healthy
+    networks: [internal]
+
+  payment:
+    build:
+      context: .
+      dockerfile: server/payment/Dockerfile
+    environment:
+      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports: ["8003:8080"]
+    depends_on:
+      db-customer:
+        condition: service_healthy
+    networks: [internal]
+
+  member:
+    build:
+      context: .
+      dockerfile: server/member/Dockerfile
+    environment:
+      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports: ["8004:8080"]
+    depends_on:
+      db-customer:
+        condition: service_healthy
+    networks: [internal]
+
+  shipping:
+    build:
+      context: .
+      dockerfile: server/shipping/Dockerfile
+    environment:
+      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports: ["8005:8080"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    networks: [internal]
 
   backoffice:
     build:

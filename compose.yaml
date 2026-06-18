@@ -1,47 +1,20 @@
 name: ec-service-based
 
-# Step 0 のコア (ネットワーク / 顧客 DB / backend サービス / edge-proxy)。
-# 社外専用 UI は compose.external.yaml、社内専用リソース (db-ops / backoffice) は compose.internal.yaml。
+# 「複数の network に attach するもの」だけがこのファイル。
+# - networks 定義 (external / internal)
+# - edge-proxy (両方の network に attach する唯一の container、社外→社内アクセスの唯一の経路)
+#
+# 社外専用 UI は compose.external.yaml、社内専用リソース (DB / backend / migrate / backoffice) は
+# compose.internal.yaml に置く ([[ADR 0012]])。
 #
 # 全部立てる:
 #   docker compose -f compose.yaml -f compose.external.yaml -f compose.internal.yaml up -d --build
-#
-# 社外→社内アクセスは edge-proxy (reverse proxy) 経由 ([[ADR 0012]])。
-# - 顧客 UI (external) → edge-proxy:80 → backend (internal) を `location /<svc>/` で振り分け
-# - 運用 UI (internal) → backend (internal) 直接
-# - DB はどちらも internal 側でのみ到達可能
-#
-# マイグレーションは ([[ADR 0013]]) CI/CD でデプロイ前に流す方針。ローカルから手動で適用したい
-# ときは `mise run migrate:<svc>` か:
-#   docker compose --profile tools run --rm migrate-order
-#   docker compose --profile tools run --rm migrate-payment
-#   docker compose --profile tools run --rm migrate-member
-# (db-ops 向け migrate-product / migrate-shipping は compose.internal.yaml 側にある)
 
 networks:
   external: {}
   internal: {}
 
-volumes:
-  pg_customer_data:
-
-# migrate-* サービスの共通定義 (YAML anchor)。command の -table と -dir だけが各サービスで違う。
-x-migrate-customer: &migrate-customer
-  image: ec-migrate
-  build:
-    context: .
-    dockerfile: Dockerfile.migrate
-  profiles: ["tools"]
-  depends_on:
-    db-customer:
-      condition: service_healthy
-  environment:
-    GOOSE_DRIVER: postgres
-    GOOSE_DBSTRING: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-  networks: [internal]
-
 services:
-  # 社外と社内の唯一の橋渡し役。「両方の network に attach する」のは proxy のみ。
   edge-proxy:
     image: nginx:1.27-alpine
     volumes:
@@ -53,99 +26,3 @@ services:
       retries: 10
     networks: [external, internal]
     depends_on: [product, order, payment, member, shipping]
-
-  db-customer:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
-      POSTGRES_DB: ec_customer
-    ports:
-      - "5432:5432"
-    volumes:
-      - pg_customer_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    networks: [internal]
-
-  # 顧客系 (db-customer) 向け migration ([[ADR 0013]])。x-migrate-customer の共通定義に
-  # command だけ上書き。image: ec-migrate を共有して build 1 回。
-  migrate-order:
-    <<: *migrate-customer
-    command: ["-table", "goose_order_version", "-dir", "/migrations/order", "up"]
-
-  migrate-payment:
-    <<: *migrate-customer
-    command: ["-table", "goose_payment_version", "-dir", "/migrations/payment", "up"]
-
-  migrate-member:
-    <<: *migrate-customer
-    command: ["-table", "goose_member_version", "-dir", "/migrations/member", "up"]
-
-  product:
-    build:
-      context: .
-      dockerfile: server/product/Dockerfile
-    environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8001:8080"]
-    depends_on:
-      db-ops:
-        condition: service_healthy
-    networks: [internal]
-
-  order:
-    build:
-      context: .
-      dockerfile: server/order/Dockerfile
-    environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8002:8080"]
-    depends_on:
-      db-customer:
-        condition: service_healthy
-    networks: [internal]
-
-  payment:
-    build:
-      context: .
-      dockerfile: server/payment/Dockerfile
-    environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8003:8080"]
-    depends_on:
-      db-customer:
-        condition: service_healthy
-    networks: [internal]
-
-  member:
-    build:
-      context: .
-      dockerfile: server/member/Dockerfile
-    environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8004:8080"]
-    depends_on:
-      db-customer:
-        condition: service_healthy
-    networks: [internal]
-
-  shipping:
-    build:
-      context: .
-      dockerfile: server/shipping/Dockerfile
-    environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-      HTTP_ADDR: ":8080"
-    ports: ["8005:8080"]
-    depends_on:
-      db-ops:
-        condition: service_healthy
-    networks: [internal]
