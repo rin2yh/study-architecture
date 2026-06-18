@@ -1,21 +1,11 @@
-# mise.toml (server) — Go と Go tasks を server/ 配下に閉じる。
-# コード生成ツール (oapi-codegen / sqlc / kessoku / goose) は go.mod の tool ディレクティブで
-# 管理して `go tool <name>` で呼ぶ (バージョンは go.mod に固定)。
-
 [tools]
 go = "1.26"
 
 [env]
 CGO_ENABLED = "0"
-# ホストから goose を叩く DSN ([[ADR 0012]] で顧客系 / 運用系 を分離)。
 DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable"
 DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable"
 
-# 各 task は cd .. でリポジトリルートを cwd にし、go list / generate のパス指定を素直に書ける形にする。
-
-# ───────────────────────── コード生成 ─────────────────────────
-# go generate ./... で全部走る。package walk 順 (api → internal/db → internal/di) で
-# 自然に sqlc / oapi-codegen → kessoku の順に解決されるため `-run` で分ける必要はない。
 [tasks.gen]
 description = "コード生成一式 (go generate)"
 dir = ".."
@@ -23,11 +13,6 @@ run = [
   "go generate ./...",
   "go mod tidy",
 ]
-
-# ───────────────────────── マイグレーション ─────────────────────────
-# migration は各サービス内 (server/<svc>/db/migration) に置く ([[ADR 0013]])。
-# 顧客系 (db-customer) 向け: order / payment / member
-# 運用系 (db-ops) 向け:      product / shipping
 
 [tasks."migrate:order"]
 description = "order の goose up (db-customer)"
@@ -65,7 +50,6 @@ depends = [
 ]
 run = "echo 'all migrated'"
 
-# ───────────────────────── Go ビルド/検査 ─────────────────────────
 [tasks.build]
 description = "全サービスをビルド"
 dir = ".."
@@ -82,9 +66,9 @@ dir = ".."
 run = "go vet ./..."
 
 [tasks.fmt]
-description = "gofmt 整形"
+description = "go fmt 整形"
 dir = ".."
-run = "gofmt -w server/"
+run = "go fmt ./server/..."
 
 [tasks."fmt:check"]
 description = "未整形ファイルを検出"
@@ -96,8 +80,9 @@ description = "go mod tidy"
 dir = ".."
 run = "go mod tidy"
 
+# 生成コード (api / db / di) と main.go は分母から除外する。
 [tasks.cover]
-description = "テストカバレッジ計測 (生成コード api/db/di と main.go を分母から除外)"
+description = "テストカバレッジ計測"
 dir = ".."
 run = [
   "go test ./server/... -coverprofile=cover.out -covermode=atomic -coverpkg=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/server/[a-z]+$' | paste -sd, -)",

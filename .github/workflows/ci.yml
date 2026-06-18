@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: filter
-        # 比較範囲: PR は base..HEAD、push は before..sha (新規 push の null SHA は HEAD~1 にフォールバック)。
+        # 新規 push の null SHA は HEAD~1 にフォールバック (それ以外は github.event.before を使う)。
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
@@ -70,10 +70,7 @@ jobs:
       - name: vet
         run: go vet ./server/${{ matrix.service }}/... ./server/internal/...
 
-      # 該当サービス + server/internal の共通基盤 (httperror 等) を対象に、
-      # 手書きパッケージ (api/db/di と main.go を除外) のみを分母にカバレッジ計測。
       # -race は cgo を要するため workflow env の CGO_ENABLED=0 を上書きする。
-      # 結合テストはこの job では走らせない (-short)。閾値判定は octocov に委譲する (.octocov.yml)。
       - name: coverage
         env:
           CGO_ENABLED: "1"
@@ -92,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # @ec/api は typecheck / build script 未定義のため pnpm run --if-present で skip させる
+        # @ec/api は build script 未定義のため pnpm run --if-present で skip させる
         package: [store, mypage, backoffice, "@ec/api"]
     defaults:
       run:
@@ -133,9 +130,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-24.04
-    # 顧客系 (db-customer) と運用系 (db-ops) を立てて結合テストを実行する。Issue #3 の受け皿。
-    # migration はテスト側 (testcontainers / アプリ起動時 [[ADR 0013]]) で実施する想定。
-    # 通常テストは -short で結合をスキップする想定。ここでは -short を付けずに全部実行する。
     services:
       db-customer:
         image: postgres:17-alpine
@@ -172,7 +166,7 @@ jobs:
           cache: true
 
       - name: migrate
-        # 顧客系の 3 サービスは db-customer を共有するため、goose の version 表をサービス別に分けて衝突を避ける。
+        # db-customer を共有する 3 サービスで goose の version 表をサービス別に分けて衝突回避。
         run: |
           go tool goose -table goose_order_version    -dir server/order/db/migration    postgres "$DATABASE_URL_CUSTOMER" up
           go tool goose -table goose_payment_version  -dir server/payment/db/migration  postgres "$DATABASE_URL_CUSTOMER" up

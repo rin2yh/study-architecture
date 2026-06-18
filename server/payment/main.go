@@ -17,7 +17,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/httperror"
 )
 
-// コンテナ内では :80 固定。ホストへの公開ポートは compose の ports でマッピングする。
 const addr = ":80"
 
 func main() {
@@ -31,7 +30,6 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// kessoku 生成の injector。Async(NewPool) を含むため ctx を受け取る。
 	h, err := di.InitHandler(ctx)
 	if err != nil {
 		return err

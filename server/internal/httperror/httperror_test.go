@@ -37,7 +37,7 @@ func TestRequestErrorHandler(t *testing.T) {
 	type want struct {
 		status      int
 		code        string
-		fullMessage string // err.Error() を そのまま透過すべき場合の期待文言
+		fullMessage string
 	}
 	tests := []struct {
 		name string
@@ -45,7 +45,7 @@ func TestRequestErrorHandler(t *testing.T) {
 		want want
 	}{
 		{
-			name: "正常系/入力エラーは 400 で文言を透過する",
+			name: "正常系 入力エラーは 400 で文言を透過する",
 			args: args{err: errors.New("missing required field")},
 			want: want{status: http.StatusBadRequest, code: "bad_request", fullMessage: "missing required field"},
 		},
@@ -75,7 +75,7 @@ func TestHandlerErrorHandler(t *testing.T) {
 	type want struct {
 		status    int
 		code      string
-		hideInput string // この文言が漏れていないことを確認 (内部詳細の露出禁止)
+		hideInput string
 	}
 	tests := []struct {
 		name string
@@ -83,7 +83,7 @@ func TestHandlerErrorHandler(t *testing.T) {
 		want want
 	}{
 		{
-			name: "異常系/handler エラーは 500 で内部文言を隠す",
+			name: "異常系 handler エラーは 500 で内部文言を隠す",
 			args: args{err: errors.New("connection refused")},
 			want: want{status: http.StatusInternalServerError, code: "internal", hideInput: "connection refused"},
 		},
@@ -121,7 +121,7 @@ func TestResponseErrorHandler(t *testing.T) {
 		want want
 	}{
 		{
-			name: "異常系/レスポンス serialize 失敗も 500 で内部文言を隠す",
+			name: "異常系 レスポンス serialize 失敗も 500 で内部文言を隠す",
 			args: args{err: errors.New("encode fail")},
 			want: want{status: http.StatusInternalServerError, code: "internal", hideInput: "encode fail"},
 		},

@@ -17,7 +17,7 @@ func TestRun(t *testing.T) {
 		want want
 	}{
 		{
-			name: "異常系/DATABASE_URL 未指定で di.InitHandler が失敗し起動前に error",
+			name: "異常系 DATABASE_URL 未指定で di.InitHandler が失敗し起動前に error",
 			args: args{databaseURL: ""},
 			want: want{wantErr: true},
 		},

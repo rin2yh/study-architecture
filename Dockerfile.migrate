@@ -1,8 +1,4 @@
 # syntax=docker/dockerfile:1
-#
-# goose マイグレーション実行用のワンショットイメージ。
-# 各サービスは自身の migration を server/<svc>/db/migration/ に持つ ([[ADR 0013]])。
-# compose 側の command で -dir /migrations/<svc> を渡して切替える。
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -17,5 +13,4 @@ COPY server/payment/db/migration  /migrations/payment
 COPY server/member/db/migration   /migrations/member
 COPY server/product/db/migration  /migrations/product
 COPY server/shipping/db/migration /migrations/shipping
-# GOOSE_DRIVER / GOOSE_DBSTRING は compose の environment で渡す
 ENTRYPOINT ["goose"]
