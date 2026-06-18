@@ -22,4 +22,8 @@ paths:
   - `ubuntu-latest` ではなく `ubuntu-24.04` のような明示版を使う
   - 理由: `latest` が突然上がるとビルドが何もしてないのに壊れる。新 LTS が出たタイミングで明示更新する運用の方が予測可能
 
+- **`actions/checkout` は git push しない job で `persist-credentials: false`**
+  - 後段で `git push` や認証付き `gh` を使わないジョブは default の credential 残置をやめる
+  - 理由: 残置された `extraheader` の token が後続 step の事故 (誤 push、third-party action による盗用) の経路になる。push する job だけ default (true) のままにする
+
 関連: [naming-and-pnpm-conventions の pnpm ポリシー](../../client/pnpm-workspace.yaml)、本ファイル変更は `[ADR 0011]` も参照すると意図が掴みやすい。
