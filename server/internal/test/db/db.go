@@ -16,10 +16,10 @@ import (
 // Open はテストごとに独立した DB を確保し、その接続プールを返す。envVar が指す DSN の
 // DB をテンプレートに CREATE DATABASE ... TEMPLATE でクローンし、テスト終了時に DROP する。
 //
-// なぜ共有 DB に直接つながず毎回クローンするのか: 結合テストは同じ物理 DB の同じ table を
-// TRUNCATE/seed するので、共有のままだと並列実行で seed が競合し、CI では -p 1 (逐次) が
-// 必須だった。テスト単位で DB を分ければ競合しないので -p 1 を外して並列化できる。
-// テンプレートからの CREATE DATABASE は migration を流し直すよりファイルコピーで速い。
+// なぜ共有 DB に直接つながず毎回クローンするのか: 結合テストは同じ table を TRUNCATE/seed
+// するので、共有のままだとテストを並列実行すると seed が競合する。テスト単位で DB を分けて
+// 並列実行を可能にする。テンプレートからの CREATE DATABASE は migration を流し直すより
+// ファイルコピーで速い。
 func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv(envVar)
