@@ -1,6 +1,5 @@
 import { getSession, GetSessionResponse } from "api/member";
 
-// HttpOnly Cookie に載せるセッショントークンの名前 (ADR 0009)。
 export const SESSION_COOKIE = "member_session";
 
 // member サービスのセッション TTL (7 日) と揃える。
@@ -29,7 +28,6 @@ export function clearSessionCookie(): string {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
-// 有効なセッションなら memberId、未ログイン/失効/検証失敗なら null。
 export async function currentMemberId(request: Request): Promise<number | null> {
   const token = readSessionToken(request);
   if (!token) return null;

@@ -30,27 +30,22 @@ type AppError struct {
 
 func (e *AppError) Error() string { return e.Message }
 
-// NewError は任意の status / code / message で AppError を作る。
 func NewError(status int, code, message string) *AppError {
 	return &AppError{Status: status, Code: code, Message: message}
 }
 
-// Unauthorized は 401 (認証失敗・未認証) を表す。
 func Unauthorized(message string) *AppError {
 	return &AppError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: message}
 }
 
-// NotFound は 404 (リソースが存在しない) を表す。
 func NotFound(message string) *AppError {
 	return &AppError{Status: http.StatusNotFound, Code: "not_found", Message: message}
 }
 
-// Conflict は 409 (状態の競合・一意制約違反など) を表す。
 func Conflict(message string) *AppError {
 	return &AppError{Status: http.StatusConflict, Code: "conflict", Message: message}
 }
 
-// Unprocessable は 422 (構文は妥当だが意味的に処理できない入力) を表す。
 func Unprocessable(message string) *AppError {
 	return &AppError{Status: http.StatusUnprocessableEntity, Code: "unprocessable_entity", Message: message}
 }

@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// HashPassword は平文を bcrypt でハッシュ化する。保存用。
 func HashPassword(plain string) (string, error) {
 	h, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
 	if err != nil {
@@ -20,13 +19,12 @@ func HashPassword(plain string) (string, error) {
 	return string(h), nil
 }
 
-// VerifyPassword は保存済みハッシュと平文を照合する。不一致・空ハッシュは error。
 func VerifyPassword(hash, plain string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
 }
 
-// NewSessionToken は (生トークン, DB 格納用 id) を返す。生トークンは Cookie だけが持ち、
-// DB には SHA-256 ハッシュを格納する。DB 流出時に生トークンを復元できないようにするため。
+// 生トークンは Cookie だけが持ち、DB には SHA-256 ハッシュを格納する。
+// DB 流出時に生トークンを復元できないようにするため。
 func NewSessionToken() (token, id string, err error) {
 	var b [32]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -36,7 +34,6 @@ func NewSessionToken() (token, id string, err error) {
 	return token, HashToken(token), nil
 }
 
-// HashToken は生トークンを DB 格納用 id (SHA-256 hex) に変換する。
 func HashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
