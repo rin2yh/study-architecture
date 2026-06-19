@@ -14,8 +14,12 @@ import (
 type MemberRepository interface {
 	ListMembers(ctx context.Context) ([]db.MemberMember, error)
 	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
+	GetMemberByEmail(ctx context.Context, email string) (db.MemberMember, error)
 	CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error)
 	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error)
+	CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.MemberSession, error)
+	GetSession(ctx context.Context, id string) (db.MemberSession, error)
+	DeleteSession(ctx context.Context, id string) error
 }
 
 type Repository struct {
@@ -48,6 +52,14 @@ func (r *Repository) GetMember(ctx context.Context, id int64) (db.MemberMember, 
 	return row, nil
 }
 
+func (r *Repository) GetMemberByEmail(ctx context.Context, email string) (db.MemberMember, error) {
+	row, err := r.q.GetMemberByEmail(ctx, email)
+	if err != nil {
+		return db.MemberMember{}, dberr.FromRead(err)
+	}
+	return row, nil
+}
+
 func (r *Repository) CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error) {
 	row, err := r.q.CreateMember(ctx, arg)
 	if err != nil {
@@ -62,4 +74,24 @@ func (r *Repository) UpdateMember(ctx context.Context, arg db.UpdateMemberParams
 		return db.MemberMember{}, dberr.FromUpdate(err)
 	}
 	return row, nil
+}
+
+func (r *Repository) CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.MemberSession, error) {
+	row, err := r.q.CreateSession(ctx, arg)
+	if err != nil {
+		return db.MemberSession{}, dberr.FromWrite(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) GetSession(ctx context.Context, id string) (db.MemberSession, error) {
+	row, err := r.q.GetSession(ctx, id)
+	if err != nil {
+		return db.MemberSession{}, dberr.FromRead(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) DeleteSession(ctx context.Context, id string) error {
+	return r.q.DeleteSession(ctx, id)
 }

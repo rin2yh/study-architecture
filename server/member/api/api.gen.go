@@ -17,11 +17,20 @@ import (
 type CreateMemberRequest struct {
 	DisplayName string              `binding:"required" json:"displayName"`
 	Email       openapi_types.Email `binding:"required,email" json:"email"`
+
+	// Password 平文。サーバ側で bcrypt ハッシュ化して保存する。
+	Password string `binding:"required,min=8" json:"password"`
+}
+
+// CreateSessionRequest defines model for CreateSessionRequest.
+type CreateSessionRequest struct {
+	Email    openapi_types.Email `binding:"required,email" json:"email"`
+	Password string              `binding:"required" json:"password"`
 }
 
 // Error defines model for Error.
 type Error struct {
-	// Code 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
+	// Code 機械可読なエラー種別。 bad_request (400) / unauthorized (401) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
 	Code string `json:"code"`
 
 	// Message 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
@@ -41,6 +50,15 @@ type Member struct {
 	Id          int64     `json:"id"`
 }
 
+// Session defines model for Session.
+type Session struct {
+	ExpiresAt time.Time `json:"expiresAt"`
+
+	// Id 不透明トークン。Cookie に載せ、検証/破棄時に {id} として送る。
+	Id       string `json:"id"`
+	MemberId int64  `json:"memberId"`
+}
+
 // UpdateMemberRequest defines model for UpdateMemberRequest.
 type UpdateMemberRequest struct {
 	DisplayName string              `binding:"required" json:"displayName"`
@@ -50,11 +68,17 @@ type UpdateMemberRequest struct {
 // IdPath defines model for IdPath.
 type IdPath = int64
 
+// SessionIdPath defines model for SessionIdPath.
+type SessionIdPath = string
+
 // CreateMemberJSONRequestBody defines body for CreateMember for application/json ContentType.
 type CreateMemberJSONRequestBody = CreateMemberRequest
 
 // UpdateMemberJSONRequestBody defines body for UpdateMember for application/json ContentType.
 type UpdateMemberJSONRequestBody = UpdateMemberRequest
+
+// CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
+type CreateSessionJSONRequestBody = CreateSessionRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -73,6 +97,15 @@ type ServerInterface interface {
 	// 会員を更新
 	// (PUT /members/{id})
 	UpdateMember(c *gin.Context, id IdPath)
+	// ログイン (セッション作成)
+	// (POST /sessions)
+	CreateSession(c *gin.Context)
+	// ログアウト (セッション破棄)
+	// (DELETE /sessions/{id})
+	DeleteSession(c *gin.Context, id SessionIdPath)
+	// セッション検証 (id から会員を引く)
+	// (GET /sessions/{id})
+	GetSession(c *gin.Context, id SessionIdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -173,6 +206,69 @@ func (siw *ServerInterfaceWrapper) UpdateMember(c *gin.Context) {
 	siw.Handler.UpdateMember(c, id)
 }
 
+// CreateSession operation middleware
+func (siw *ServerInterfaceWrapper) CreateSession(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateSession(c)
+}
+
+// DeleteSession operation middleware
+func (siw *ServerInterfaceWrapper) DeleteSession(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SessionIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteSession(c, id)
+}
+
+// GetSession operation middleware
+func (siw *ServerInterfaceWrapper) GetSession(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SessionIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetSession(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -205,4 +301,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/members", wrapper.CreateMember)
 	router.GET(options.BaseURL+"/members/:id", wrapper.GetMember)
 	router.PUT(options.BaseURL+"/members/:id", wrapper.UpdateMember)
+	router.POST(options.BaseURL+"/sessions", wrapper.CreateSession)
+	router.DELETE(options.BaseURL+"/sessions/:id", wrapper.DeleteSession)
+	router.GET(options.BaseURL+"/sessions/:id", wrapper.GetSession)
 }

@@ -26,7 +26,7 @@ func TestListMembers(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	if _, err := pool.Exec(ctx,

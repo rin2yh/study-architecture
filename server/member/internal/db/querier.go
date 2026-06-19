@@ -10,7 +10,11 @@ import (
 
 type Querier interface {
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MemberMember, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (MemberSession, error)
+	DeleteSession(ctx context.Context, id string) error
 	GetMember(ctx context.Context, id int64) (MemberMember, error)
+	GetMemberByEmail(ctx context.Context, email string) (MemberMember, error)
+	GetSession(ctx context.Context, id string) (MemberSession, error)
 	ListMembers(ctx context.Context) ([]MemberMember, error)
 	UpdateMember(ctx context.Context, arg UpdateMemberParams) (MemberMember, error)
 }

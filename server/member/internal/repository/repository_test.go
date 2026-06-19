@@ -20,7 +20,7 @@ const dbEnv = "DATABASE_URL_CUSTOMER"
 func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	t.Helper()
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	for _, r := range rows {

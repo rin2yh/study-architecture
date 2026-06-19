@@ -35,6 +35,11 @@ func NewError(status int, code, message string) *AppError {
 	return &AppError{Status: status, Code: code, Message: message}
 }
 
+// Unauthorized は 401 (認証失敗・未認証) を表す。
+func Unauthorized(message string) *AppError {
+	return &AppError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: message}
+}
+
 // NotFound は 404 (リソースが存在しない) を表す。
 func NotFound(message string) *AppError {
 	return &AppError{Status: http.StatusNotFound, Code: "not_found", Message: message}

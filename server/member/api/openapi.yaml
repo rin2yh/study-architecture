@@ -53,6 +53,53 @@ paths:
                 $ref: "#/components/schemas/Member"
         default:
           $ref: "#/components/responses/Error"
+  /sessions:
+    post:
+      operationId: createSession
+      summary: ログイン (セッション作成)
+      tags: [session]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: 作成されたセッション (id は Cookie に載せる生トークン)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/{id}:
+    get:
+      operationId: getSession
+      summary: セッション検証 (id から会員を引く)
+      tags: [session]
+      parameters:
+        - $ref: "#/components/parameters/SessionIdPath"
+      responses:
+        "200":
+          description: 有効なセッション
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteSession
+      summary: ログアウト (セッション破棄)
+      tags: [session]
+      parameters:
+        - $ref: "#/components/parameters/SessionIdPath"
+      responses:
+        "204":
+          description: 破棄済み (存在しない id でも冪等に 204)
+        default:
+          $ref: "#/components/responses/Error"
   /members/{id}:
     get:
       operationId: getMember
@@ -100,6 +147,13 @@ components:
       schema:
         type: integer
         format: int64
+    SessionIdPath:
+      name: id
+      in: path
+      required: true
+      description: セッションの不透明トークン (Cookie に載る生の値)
+      schema:
+        type: string
   responses:
     Error:
       description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
@@ -116,8 +170,8 @@ components:
           type: string
           description: >-
             機械可読なエラー種別。
-            bad_request (400) / not_found (404) / conflict (409) /
-            unprocessable_entity (422) / internal (500) など。
+            bad_request (400) / unauthorized (401) / not_found (404) /
+            conflict (409) / unprocessable_entity (422) / internal (500) など。
           example: not_found
         message:
           type: string
@@ -146,7 +200,7 @@ components:
           format: date-time
     CreateMemberRequest:
       type: object
-      required: [email, displayName]
+      required: [email, displayName, password]
       properties:
         email:
           type: string
@@ -157,6 +211,38 @@ components:
           type: string
           x-oapi-codegen-extra-tags:
             binding: required
+        password:
+          type: string
+          minLength: 8
+          description: 平文。サーバ側で bcrypt ハッシュ化して保存する。
+          x-oapi-codegen-extra-tags:
+            binding: required,min=8
+    CreateSessionRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          x-oapi-codegen-extra-tags:
+            binding: required,email
+        password:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+    Session:
+      type: object
+      required: [id, memberId, expiresAt]
+      properties:
+        id:
+          type: string
+          description: 不透明トークン。Cookie に載せ、検証/破棄時に {id} として送る。
+        memberId:
+          type: integer
+          format: int64
+        expiresAt:
+          type: string
+          format: date-time
     UpdateMemberRequest:
       type: object
       required: [email, displayName]

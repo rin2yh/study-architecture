@@ -10,6 +10,9 @@ type Repo struct {
 	Members []db.MemberMember
 	Member  db.MemberMember
 	Err     error
+
+	Session    db.MemberSession
+	SessionErr error
 }
 
 func (s Repo) ListMembers(context.Context) ([]db.MemberMember, error) {
@@ -20,10 +23,26 @@ func (s Repo) GetMember(context.Context, int64) (db.MemberMember, error) {
 	return s.Member, s.Err
 }
 
+func (s Repo) GetMemberByEmail(context.Context, string) (db.MemberMember, error) {
+	return s.Member, s.Err
+}
+
 func (s Repo) CreateMember(context.Context, db.CreateMemberParams) (db.MemberMember, error) {
 	return s.Member, s.Err
 }
 
 func (s Repo) UpdateMember(context.Context, db.UpdateMemberParams) (db.MemberMember, error) {
 	return s.Member, s.Err
+}
+
+func (s Repo) CreateSession(context.Context, db.CreateSessionParams) (db.MemberSession, error) {
+	return s.Session, s.SessionErr
+}
+
+func (s Repo) GetSession(context.Context, string) (db.MemberSession, error) {
+	return s.Session, s.SessionErr
+}
+
+func (s Repo) DeleteSession(context.Context, string) error {
+	return s.SessionErr
 }

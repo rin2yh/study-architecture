@@ -34,11 +34,12 @@ func TestCreateMember(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 会員を作成し 201", args{stub.Repo{Member: created}, `{"email":"new@example.com","displayName":"新規会員"}`}, want{http.StatusCreated, ""}},
-		{"異常系 displayName 欠落は 400 bad_request", args{stub.Repo{}, `{"email":"new@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 形式不正は 400 bad_request", args{stub.Repo{}, `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 重複は 409 conflict", args{stub.Repo{Err: dberr.ErrConflict}, `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, `{"email":"x@example.com","displayName":"x"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 会員を作成し 201", args{stub.Repo{Member: created}, `{"email":"new@example.com","displayName":"新規会員","password":"password123"}`}, want{http.StatusCreated, ""}},
+		{"異常系 displayName 欠落は 400 bad_request", args{stub.Repo{}, `{"email":"new@example.com","password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 email 形式不正は 400 bad_request", args{stub.Repo{}, `{"email":"not-an-email","displayName":"x","password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 password が短いと 400 bad_request", args{stub.Repo{}, `{"email":"new@example.com","displayName":"x","password":"short"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 email 重複は 409 conflict", args{stub.Repo{Err: dberr.ErrConflict}, `{"email":"dup@example.com","displayName":"重複","password":"password123"}`}, want{http.StatusConflict, "conflict"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, `{"email":"x@example.com","displayName":"x","password":"password123"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

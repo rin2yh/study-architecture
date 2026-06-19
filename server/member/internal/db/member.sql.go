@@ -10,30 +10,32 @@ import (
 )
 
 const createMember = `-- name: CreateMember :one
-INSERT INTO member.members (email, display_name)
-VALUES ($1, $2)
-RETURNING id, email, display_name, created_at
+INSERT INTO member.members (email, display_name, password_hash)
+VALUES ($1, $2, $3)
+RETURNING id, email, display_name, created_at, password_hash
 `
 
 type CreateMemberParams struct {
-	Email       string `json:"email"`
-	DisplayName string `json:"displayName"`
+	Email        string `json:"email"`
+	DisplayName  string `json:"displayName"`
+	PasswordHash string `json:"passwordHash"`
 }
 
 func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (MemberMember, error) {
-	row := q.db.QueryRow(ctx, createMember, arg.Email, arg.DisplayName)
+	row := q.db.QueryRow(ctx, createMember, arg.Email, arg.DisplayName, arg.PasswordHash)
 	var i MemberMember
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.DisplayName,
 		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getMember = `-- name: GetMember :one
-SELECT id, email, display_name, created_at
+SELECT id, email, display_name, created_at, password_hash
 FROM member.members
 WHERE id = $1
 `
@@ -46,12 +48,32 @@ func (q *Queries) GetMember(ctx context.Context, id int64) (MemberMember, error)
 		&i.Email,
 		&i.DisplayName,
 		&i.CreatedAt,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const getMemberByEmail = `-- name: GetMemberByEmail :one
+SELECT id, email, display_name, created_at, password_hash
+FROM member.members
+WHERE email = $1
+`
+
+func (q *Queries) GetMemberByEmail(ctx context.Context, email string) (MemberMember, error) {
+	row := q.db.QueryRow(ctx, getMemberByEmail, email)
+	var i MemberMember
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT id, email, display_name, created_at
+SELECT id, email, display_name, created_at, password_hash
 FROM member.members
 ORDER BY id
 `
@@ -70,6 +92,7 @@ func (q *Queries) ListMembers(ctx context.Context) ([]MemberMember, error) {
 			&i.Email,
 			&i.DisplayName,
 			&i.CreatedAt,
+			&i.PasswordHash,
 		); err != nil {
 			return nil, err
 		}
@@ -85,7 +108,7 @@ const updateMember = `-- name: UpdateMember :one
 UPDATE member.members
 SET email = $2, display_name = $3
 WHERE id = $1
-RETURNING id, email, display_name, created_at
+RETURNING id, email, display_name, created_at, password_hash
 `
 
 type UpdateMemberParams struct {
@@ -102,6 +125,7 @@ func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (Mem
 		&i.Email,
 		&i.DisplayName,
 		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }

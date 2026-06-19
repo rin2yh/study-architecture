@@ -6,12 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateMemberRequest {
+export interface CreateSessionRequest {
   email: string;
-  displayName: string;
-  /**
-     * 平文。サーバ側で bcrypt ハッシュ化して保存する。
-     * @minLength 8
-     */
   password: string;
 }

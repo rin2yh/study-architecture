@@ -7,7 +7,7 @@
  */
 
 export interface Error {
-  /** 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。 */
+  /** 機械可読なエラー種別。 bad_request (400) / unauthorized (401) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。 */
   code: string;
   /** 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる) */
   message: string;
