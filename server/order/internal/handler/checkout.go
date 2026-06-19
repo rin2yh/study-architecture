@@ -31,7 +31,7 @@ func (h *Handler) Checkout(c *gin.Context) {
 				_ = c.Error(middleware.Unprocessable(err.Error()))
 				return
 			}
-			_ = c.Error(middleware.NewError(http.StatusBadGateway, "bad_gateway", "product service unavailable"))
+			_ = c.Error(middleware.BadGateway("product service unavailable"))
 			return
 		}
 		lines = append(lines, repository.CheckoutLine{
@@ -52,11 +52,11 @@ func (h *Handler) Checkout(c *gin.Context) {
 	// 注文確定後に下流を手配する。別 DB のため注文 tx には含められず、ここでの失敗は
 	// 注文を残したまま 502 を返す (要・整合復旧 / [[0008]] の Consequences)。
 	if _, err := h.payment.CreatePayment(ctx, order.ID, totalCents, req.PaymentMethod); err != nil {
-		_ = c.Error(middleware.NewError(http.StatusBadGateway, "bad_gateway", "payment service unavailable"))
+		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
 	}
 	if _, err := h.shipping.CreateShipment(ctx, order.ID); err != nil {
-		_ = c.Error(middleware.NewError(http.StatusBadGateway, "bad_gateway", "shipping service unavailable"))
+		_ = c.Error(middleware.BadGateway("shipping service unavailable"))
 		return
 	}
 
