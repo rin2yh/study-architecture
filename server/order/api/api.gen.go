@@ -83,7 +83,7 @@ type UpdateOrderJSONRequestBody = UpdateOrderRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// カートを確定し注文・決済・配送をまとめて作成
+	// カートを確定して注文を作成し決済を手配 (明細に商品をスナップショット)
 	// (POST /checkout)
 	Checkout(c *gin.Context)
 	// Liveness probe
