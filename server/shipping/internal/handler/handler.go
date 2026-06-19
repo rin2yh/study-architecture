@@ -72,6 +72,29 @@ func (h *Handler) CreateShipment(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIShipment(row))
 }
 
+func (h *Handler) UpdateShipment(c *gin.Context, id api.IdPath) {
+	var req api.UpdateShipmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(err).SetType(gin.ErrorTypeBind)
+		return
+	}
+	row, err := h.repo.UpdateShipment(c.Request.Context(), db.UpdateShipmentParams{
+		ID:         id,
+		Carrier:    req.Carrier,
+		TrackingNo: req.TrackingNo,
+		Status:     req.Status,
+	})
+	if err != nil {
+		if errors.Is(err, dberr.ErrNotFound) {
+			_ = c.Error(middleware.NotFound("shipment not found"))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIShipment(row))
+}
+
 func toAPIShipment(r db.ShippingShipment) api.Shipment {
 	return api.Shipment{
 		Id:         r.ID,

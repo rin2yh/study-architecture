@@ -12,3 +12,9 @@ WHERE id = $1;
 INSERT INTO payment.payments (order_id, amount_cents, method, status)
 VALUES ($1, $2, $3, $4)
 RETURNING id, order_id, amount_cents, method, status, created_at;
+
+-- name: UpdatePayment :one
+UPDATE payment.payments
+SET amount_cents = $2, method = $3, status = $4
+WHERE id = $1
+RETURNING id, order_id, amount_cents, method, status, created_at;

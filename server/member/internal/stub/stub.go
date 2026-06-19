@@ -23,3 +23,7 @@ func (s Repo) GetMember(context.Context, int64) (db.MemberMember, error) {
 func (s Repo) CreateMember(context.Context, db.CreateMemberParams) (db.MemberMember, error) {
 	return s.Member, s.Err
 }
+
+func (s Repo) UpdateMember(context.Context, db.UpdateMemberParams) (db.MemberMember, error) {
+	return s.Member, s.Err
+}

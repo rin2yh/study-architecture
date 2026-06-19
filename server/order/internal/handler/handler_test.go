@@ -193,3 +193,50 @@ func TestCreateOrder(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateOrder(t *testing.T) {
+	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	updated := db.OrderOrder{ID: 1, MemberID: 20, Status: "paid", TotalCents: 4980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	type args struct {
+		repo stub.Repo
+		path string
+		body string
+	}
+	type want struct {
+		status int
+		code   string
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 注文を更新し 200", args{stub.Repo{Order: updated}, "/orders/1", `{"status":"paid","totalCents":4980}`}, want{http.StatusOK, ""}},
+		{"異常系 status 欠落は 400 bad_request", args{stub.Repo{}, "/orders/1", `{"totalCents":4980}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 totalCents 負値は 422 unprocessable_entity", args{stub.Repo{}, "/orders/1", `{"status":"paid","totalCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/orders/99", `{"status":"paid","totalCents":4980}`}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/orders/1", `{"status":"paid","totalCents":4980}`}, want{http.StatusInternalServerError, "internal"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPut, tt.args.path, bytes.NewReader([]byte(tt.args.body)))
+			req.Header.Set("Content-Type", "application/json")
+			newServer(tt.args.repo).ServeHTTP(rec, req)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
+			}
+			if tt.want.code != "" {
+				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+				return
+			}
+			var got api.Order
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if got.Id != 1 || got.Status != "paid" {
+				t.Fatalf("unexpected order: %+v", got)
+			}
+		})
+	}
+}

@@ -15,6 +15,7 @@ type ShipmentRepository interface {
 	ListShipments(ctx context.Context) ([]db.ShippingShipment, error)
 	GetShipment(ctx context.Context, id int64) (db.ShippingShipment, error)
 	CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error)
+	UpdateShipment(ctx context.Context, arg db.UpdateShipmentParams) (db.ShippingShipment, error)
 }
 
 type Repository struct {
@@ -49,4 +50,12 @@ func (r *Repository) GetShipment(ctx context.Context, id int64) (db.ShippingShip
 
 func (r *Repository) CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error) {
 	return r.q.CreateShipment(ctx, arg)
+}
+
+func (r *Repository) UpdateShipment(ctx context.Context, arg db.UpdateShipmentParams) (db.ShippingShipment, error) {
+	row, err := r.q.UpdateShipment(ctx, arg)
+	if err != nil {
+		return db.ShippingShipment{}, dberr.FromUpdate(err)
+	}
+	return row, nil
 }

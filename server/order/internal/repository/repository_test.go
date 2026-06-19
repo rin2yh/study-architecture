@@ -119,3 +119,25 @@ func TestRepositoryCreateOrder(t *testing.T) {
 		t.Fatalf("unexpected row: %+v", got)
 	}
 }
+
+func TestRepositoryUpdateOrder(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+
+	t.Run("正常系 既存行を更新して返す (member_id は不変)", func(t *testing.T) {
+		got, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 1, Status: "paid", TotalCents: 4980})
+		if err != nil {
+			t.Fatalf("UpdateOrder: %v", err)
+		}
+		if got.ID != 1 || got.Status != "paid" || got.TotalCents != 4980 || got.MemberID != 10 {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 9999, Status: "paid", TotalCents: 1}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}

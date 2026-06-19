@@ -69,6 +69,27 @@ paths:
                 $ref: "#/components/schemas/Payment"
         default:
           $ref: "#/components/responses/Error"
+    put:
+      operationId: updatePayment
+      summary: 決済を更新
+      tags: [payment]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePaymentRequest"
+      responses:
+        "200":
+          description: 更新された決済
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   parameters:
     IdPath:
@@ -138,6 +159,21 @@ components:
           format: int64
           x-oapi-codegen-extra-tags:
             binding: required,gt=0
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        status:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+    UpdatePaymentRequest:
+      type: object
+      required: [amountCents, method, status]
+      properties:
         amountCents:
           type: integer
           format: int64

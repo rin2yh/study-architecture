@@ -76,6 +76,33 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIPayment(row))
 }
 
+func (h *Handler) UpdatePayment(c *gin.Context, id api.IdPath) {
+	var req api.UpdatePaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(err).SetType(gin.ErrorTypeBind)
+		return
+	}
+	if req.AmountCents < 0 {
+		_ = c.Error(middleware.Unprocessable("amountCents must not be negative"))
+		return
+	}
+	row, err := h.repo.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
+		ID:          id,
+		AmountCents: req.AmountCents,
+		Method:      req.Method,
+		Status:      req.Status,
+	})
+	if err != nil {
+		if errors.Is(err, dberr.ErrNotFound) {
+			_ = c.Error(middleware.NotFound("payment not found"))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIPayment(row))
+}
+
 func toAPIPayment(r db.PaymentPayment) api.Payment {
 	return api.Payment{
 		Id:          r.ID,

@@ -23,3 +23,7 @@ func (s Repo) GetShipment(context.Context, int64) (db.ShippingShipment, error) {
 func (s Repo) CreateShipment(context.Context, db.CreateShipmentParams) (db.ShippingShipment, error) {
 	return s.Shipment, s.Err
 }
+
+func (s Repo) UpdateShipment(context.Context, db.UpdateShipmentParams) (db.ShippingShipment, error) {
+	return s.Shipment, s.Err
+}

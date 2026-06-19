@@ -46,3 +46,22 @@ export const GetMemberResponse = zod.object({
   displayName: zod.string(),
   createdAt: zod.iso.datetime({ offset: true }),
 });
+
+/**
+ * @summary 会員を更新
+ */
+export const UpdateMemberParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const UpdateMemberBody = zod.object({
+  email: zod.email(),
+  displayName: zod.string(),
+});
+
+export const UpdateMemberResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  displayName: zod.string(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});

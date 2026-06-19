@@ -119,3 +119,25 @@ func TestRepositoryCreatePayment(t *testing.T) {
 		t.Fatalf("unexpected row: %+v", got)
 	}
 }
+
+func TestRepositoryUpdatePayment(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
+
+	t.Run("正常系 既存行を更新して返す (order_id は不変)", func(t *testing.T) {
+		got, err := r.UpdatePayment(t.Context(), db.UpdatePaymentParams{ID: 1, AmountCents: 3980, Method: "bank", Status: "refunded"})
+		if err != nil {
+			t.Fatalf("UpdatePayment: %v", err)
+		}
+		if got.ID != 1 || got.AmountCents != 3980 || got.Method != "bank" || got.Status != "refunded" || got.OrderID != 20 {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.UpdatePayment(t.Context(), db.UpdatePaymentParams{ID: 9999, AmountCents: 1, Method: "card", Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}

@@ -80,3 +80,28 @@ func (q *Queries) ListMembers(ctx context.Context) ([]MemberMember, error) {
 	}
 	return items, nil
 }
+
+const updateMember = `-- name: UpdateMember :one
+UPDATE member.members
+SET email = $2, display_name = $3
+WHERE id = $1
+RETURNING id, email, display_name, created_at
+`
+
+type UpdateMemberParams struct {
+	ID          int64  `json:"id"`
+	Email       string `json:"email"`
+	DisplayName string `json:"displayName"`
+}
+
+func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (MemberMember, error) {
+	row := q.db.QueryRow(ctx, updateMember, arg.ID, arg.Email, arg.DisplayName)
+	var i MemberMember
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
+}

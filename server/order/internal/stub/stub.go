@@ -23,3 +23,7 @@ func (s Repo) GetOrder(context.Context, int64) (db.OrderOrder, error) {
 func (s Repo) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
+
+func (s Repo) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
+	return s.Order, s.Err
+}

@@ -12,3 +12,9 @@ WHERE id = $1;
 INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status)
 VALUES ($1, $2, $3, $4)
 RETURNING id, order_id, carrier, tracking_no, status, created_at;
+
+-- name: UpdateShipment :one
+UPDATE shipping.shipments
+SET carrier = $2, tracking_no = $3, status = $4
+WHERE id = $1
+RETURNING id, order_id, carrier, tracking_no, status, created_at;

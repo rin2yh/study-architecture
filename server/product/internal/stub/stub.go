@@ -23,3 +23,7 @@ func (s Repo) GetProduct(context.Context, int64) (db.ProductProduct, error) {
 func (s Repo) CreateProduct(context.Context, db.CreateProductParams) (db.ProductProduct, error) {
 	return s.Product, s.Err
 }
+
+func (s Repo) UpdateProduct(context.Context, db.UpdateProductParams) (db.ProductProduct, error) {
+	return s.Product, s.Err
+}

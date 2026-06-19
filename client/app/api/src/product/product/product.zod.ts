@@ -50,3 +50,24 @@ export const GetProductResponse = zod.object({
   priceCents: zod.number(),
   createdAt: zod.iso.datetime({ offset: true }),
 });
+
+/**
+ * @summary 商品を更新
+ */
+export const UpdateProductParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const UpdateProductBody = zod.object({
+  sku: zod.string(),
+  name: zod.string(),
+  priceCents: zod.number(),
+});
+
+export const UpdateProductResponse = zod.object({
+  id: zod.number(),
+  sku: zod.string(),
+  name: zod.string(),
+  priceCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});

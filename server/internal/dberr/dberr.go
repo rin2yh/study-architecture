@@ -35,3 +35,13 @@ func FromWrite(err error) error {
 	}
 	return err
 }
+
+// FromUpdate は UPDATE ... RETURNING のエラーを正規化する。RETURNING を伴う更新は
+// 対象行が無いと no rows になる (404 相当) 一方で unique 列の付け替えは 23505 にもなる
+// ため、読み取り (NotFound) と書き込み (Conflict) の両方の失敗を 1 箇所で対応づける。
+func FromUpdate(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	return FromWrite(err)
+}

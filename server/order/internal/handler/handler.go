@@ -75,6 +75,32 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIOrder(row))
 }
 
+func (h *Handler) UpdateOrder(c *gin.Context, id api.IdPath) {
+	var req api.UpdateOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(err).SetType(gin.ErrorTypeBind)
+		return
+	}
+	if req.TotalCents < 0 {
+		_ = c.Error(middleware.Unprocessable("totalCents must not be negative"))
+		return
+	}
+	row, err := h.repo.UpdateOrder(c.Request.Context(), db.UpdateOrderParams{
+		ID:         id,
+		Status:     req.Status,
+		TotalCents: req.TotalCents,
+	})
+	if err != nil {
+		if errors.Is(err, dberr.ErrNotFound) {
+			_ = c.Error(middleware.NotFound("order not found"))
+			return
+		}
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIOrder(row))
+}
+
 func toAPIOrder(r db.OrderOrder) api.Order {
 	return api.Order{
 		Id:         r.ID,

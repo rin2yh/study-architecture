@@ -42,11 +42,20 @@ type Order struct {
 	TotalCents int64     `json:"totalCents"`
 }
 
+// UpdateOrderRequest defines model for UpdateOrderRequest.
+type UpdateOrderRequest struct {
+	Status     string `binding:"required" json:"status"`
+	TotalCents int64  `json:"totalCents"`
+}
+
 // IdPath defines model for IdPath.
 type IdPath = int64
 
 // CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
 type CreateOrderJSONRequestBody = CreateOrderRequest
+
+// UpdateOrderJSONRequestBody defines body for UpdateOrder for application/json ContentType.
+type UpdateOrderJSONRequestBody = UpdateOrderRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -62,6 +71,9 @@ type ServerInterface interface {
 	// 注文を取得
 	// (GET /orders/{id})
 	GetOrder(c *gin.Context, id IdPath)
+	// 注文を更新
+	// (PUT /orders/{id})
+	UpdateOrder(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -137,6 +149,31 @@ func (siw *ServerInterfaceWrapper) GetOrder(c *gin.Context) {
 	siw.Handler.GetOrder(c, id)
 }
 
+// UpdateOrder operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateOrder(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -168,4 +205,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/orders", wrapper.ListOrders)
 	router.POST(options.BaseURL+"/orders", wrapper.CreateOrder)
 	router.GET(options.BaseURL+"/orders/:id", wrapper.GetOrder)
+	router.PUT(options.BaseURL+"/orders/:id", wrapper.UpdateOrder)
 }

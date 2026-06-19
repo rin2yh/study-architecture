@@ -15,6 +15,7 @@ type PaymentRepository interface {
 	ListPayments(ctx context.Context) ([]db.PaymentPayment, error)
 	GetPayment(ctx context.Context, id int64) (db.PaymentPayment, error)
 	CreatePayment(ctx context.Context, arg db.CreatePaymentParams) (db.PaymentPayment, error)
+	UpdatePayment(ctx context.Context, arg db.UpdatePaymentParams) (db.PaymentPayment, error)
 }
 
 type Repository struct {
@@ -49,4 +50,12 @@ func (r *Repository) GetPayment(ctx context.Context, id int64) (db.PaymentPaymen
 
 func (r *Repository) CreatePayment(ctx context.Context, arg db.CreatePaymentParams) (db.PaymentPayment, error) {
 	return r.q.CreatePayment(ctx, arg)
+}
+
+func (r *Repository) UpdatePayment(ctx context.Context, arg db.UpdatePaymentParams) (db.PaymentPayment, error) {
+	row, err := r.q.UpdatePayment(ctx, arg)
+	if err != nil {
+		return db.PaymentPayment{}, dberr.FromUpdate(err)
+	}
+	return row, nil
 }

@@ -126,3 +126,32 @@ func TestRepositoryCreateProduct(t *testing.T) {
 		}
 	})
 }
+
+func TestRepositoryUpdateProduct(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedProducts(t, pool,
+		db.ProductProduct{Sku: "SKU-1", Name: "商品1", PriceCents: 1980},
+		db.ProductProduct{Sku: "SKU-2", Name: "商品2", PriceCents: 2980})
+
+	t.Run("正常系 既存行を更新して返す", func(t *testing.T) {
+		got, err := r.UpdateProduct(t.Context(), db.UpdateProductParams{ID: 1, Sku: "SKU-1U", Name: "商品1更新", PriceCents: 999})
+		if err != nil {
+			t.Fatalf("UpdateProduct: %v", err)
+		}
+		if got.ID != 1 || got.Sku != "SKU-1U" || got.Name != "商品1更新" || got.PriceCents != 999 {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.UpdateProduct(t.Context(), db.UpdateProductParams{ID: 9999, Sku: "SKU-X", Name: "x", PriceCents: 1}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+	t.Run("異常系 sku 重複は ErrConflict", func(t *testing.T) {
+		if _, err := r.UpdateProduct(t.Context(), db.UpdateProductParams{ID: 1, Sku: "SKU-2", Name: "衝突", PriceCents: 1}); !errors.Is(err, dberr.ErrConflict) {
+			t.Fatalf("err = %v, want ErrConflict", err)
+		}
+	})
+}

@@ -44,11 +44,21 @@ type Payment struct {
 	Status      string    `json:"status"`
 }
 
+// UpdatePaymentRequest defines model for UpdatePaymentRequest.
+type UpdatePaymentRequest struct {
+	AmountCents int64  `json:"amountCents"`
+	Method      string `binding:"required" json:"method"`
+	Status      string `binding:"required" json:"status"`
+}
+
 // IdPath defines model for IdPath.
 type IdPath = int64
 
 // CreatePaymentJSONRequestBody defines body for CreatePayment for application/json ContentType.
 type CreatePaymentJSONRequestBody = CreatePaymentRequest
+
+// UpdatePaymentJSONRequestBody defines body for UpdatePayment for application/json ContentType.
+type UpdatePaymentJSONRequestBody = UpdatePaymentRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -64,6 +74,9 @@ type ServerInterface interface {
 	// 決済を取得
 	// (GET /payments/{id})
 	GetPayment(c *gin.Context, id IdPath)
+	// 決済を更新
+	// (PUT /payments/{id})
+	UpdatePayment(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -139,6 +152,31 @@ func (siw *ServerInterfaceWrapper) GetPayment(c *gin.Context) {
 	siw.Handler.GetPayment(c, id)
 }
 
+// UpdatePayment operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePayment(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdatePayment(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -170,4 +208,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/payments", wrapper.ListPayments)
 	router.POST(options.BaseURL+"/payments", wrapper.CreatePayment)
 	router.GET(options.BaseURL+"/payments/:id", wrapper.GetPayment)
+	router.PUT(options.BaseURL+"/payments/:id", wrapper.UpdatePayment)
 }
