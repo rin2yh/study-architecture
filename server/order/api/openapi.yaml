@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Order Service API
   version: 0.1.0
-  description: 注文ドメイン。一覧/取得/作成/更新と、カート確定 (checkout) を持つ。
+  description: 注文ドメイン。カート確定 (checkout) で注文を作成し、注文の一覧/取得と状態更新を提供する。
 paths:
   /healthz:
     get:
