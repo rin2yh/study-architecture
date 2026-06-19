@@ -5,7 +5,7 @@
     "**/dist/**",
     "**/build/**",
     "**/.react-router/**",
-    "package/api/src/*/**"
+    "app/api/src/gen/**"
   ],
   "categories": {
     "correctness": "error"
