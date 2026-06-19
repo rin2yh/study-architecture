@@ -13,8 +13,8 @@ const service = (
       mode: "tags-split" as const,
       client: "fetch" as const,
       httpClient: "fetch" as const,
-      target: `src/${name}/${name}.ts`,
-      schemas: `src/${name}/model`,
+      target: `src/gen/${name}/${name}.ts`,
+      schemas: `src/gen/${name}/model`,
       indexFiles: true,
       override: {
         mutator: { path: "./src/mutator.ts", name: mutatorName },
@@ -26,7 +26,7 @@ const service = (
     output: {
       mode: "tags-split" as const,
       client: "zod" as const,
-      target: `src/${name}/${name}.zod.ts`,
+      target: `src/gen/${name}/${name}.zod.ts`,
       fileExtension: ".zod.ts",
     },
   },
