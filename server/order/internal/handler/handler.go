@@ -12,16 +12,15 @@ import (
 )
 
 type Handler struct {
-	repo     repository.OrderRepository
-	product  gateway.ProductPort
-	payment  gateway.PaymentPort
-	shipping gateway.ShippingPort
+	repo    repository.OrderRepository
+	product gateway.ProductPort
+	payment gateway.PaymentPort
 }
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort, shipping gateway.ShippingPort) *Handler {
-	return &Handler{repo: repo, product: product, payment: payment, shipping: shipping}
+func New(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort) *Handler {
+	return &Handler{repo: repo, product: product, payment: payment}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {

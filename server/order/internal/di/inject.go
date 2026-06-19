@@ -16,6 +16,5 @@ var _ = kessoku.Inject[*handler.Handler](
 	kessoku.Bind[repository.OrderRepository](kessoku.Provide(repository.NewRepository)),
 	kessoku.Bind[gateway.ProductPort](kessoku.Provide(gateway.NewProductClient)),
 	kessoku.Bind[gateway.PaymentPort](kessoku.Provide(gateway.NewPaymentClient)),
-	kessoku.Bind[gateway.ShippingPort](kessoku.Provide(gateway.NewShippingClient)),
 	kessoku.Provide(handler.New),
 )

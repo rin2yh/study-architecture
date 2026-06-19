@@ -65,13 +65,3 @@ type Payment struct {
 func (s Payment) CreatePayment(context.Context, int64, int64, string) (int64, error) {
 	return s.ID, s.Err
 }
-
-// Shipping は ShippingPort のテスト用スタブ。
-type Shipping struct {
-	ID  int64
-	Err error
-}
-
-func (s Shipping) CreateShipment(context.Context, int64) (int64, error) {
-	return s.ID, s.Err
-}

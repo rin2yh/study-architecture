@@ -78,7 +78,6 @@ services:
       # checkout の連携先 URL。経路は ADR 0008 / 0012 を参照。
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
-      SHIPPING_API_URL: http://edge-proxy/shipping
     ports: ["8002:80"]
     depends_on:
       db-customer:

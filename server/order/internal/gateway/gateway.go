@@ -1,4 +1,4 @@
-// Package gateway は order が他サービス (product / payment / shipping) を呼ぶ出力ポートと
+// Package gateway は order が他サービス (product / payment) を呼ぶ出力ポートと
 // 生成クライアント実装をまとめる。
 package gateway
 
@@ -11,7 +11,6 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
-	"github.com/rin2yh/study-architecture/server/order/internal/client/shipping"
 )
 
 // ErrProductNotFound は指定された product が存在しないことを表す。
@@ -33,10 +32,6 @@ type ProductPort interface {
 
 type PaymentPort interface {
 	CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error)
-}
-
-type ShippingPort interface {
-	CreateShipment(ctx context.Context, orderID int64) (int64, error)
 }
 
 type ProductClient struct {
@@ -101,41 +96,6 @@ func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents 
 	}
 	if res.JSON201 == nil {
 		return 0, fmt.Errorf("%w: create payment for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
-	}
-	return res.JSON201.Id, nil
-}
-
-type ShippingClient struct {
-	c shipping.ClientWithResponsesInterface
-}
-
-var _ ShippingPort = (*ShippingClient)(nil)
-
-func NewShippingClient() (*ShippingClient, error) {
-	base := os.Getenv("SHIPPING_API_URL")
-	if base == "" {
-		return nil, errors.New("SHIPPING_API_URL is required")
-	}
-	c, err := shipping.NewClientWithResponses(base)
-	if err != nil {
-		return nil, err
-	}
-	return &ShippingClient{c: c}, nil
-}
-
-func (s *ShippingClient) CreateShipment(ctx context.Context, orderID int64) (int64, error) {
-	// carrier / trackingNo は確定時点で未定のためプレースホルダ ([[0008]])。
-	res, err := s.c.CreateShipmentWithResponse(ctx, shipping.CreateShipmentJSONRequestBody{
-		OrderId:    orderID,
-		Carrier:    "unassigned",
-		TrackingNo: "unassigned",
-		Status:     "preparing",
-	})
-	if err != nil {
-		return 0, fmt.Errorf("%w: create shipment for order %d: %v", ErrUpstream, orderID, err)
-	}
-	if res.JSON201 == nil {
-		return 0, fmt.Errorf("%w: create shipment for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
 	}
 	return res.JSON201.Id, nil
 }

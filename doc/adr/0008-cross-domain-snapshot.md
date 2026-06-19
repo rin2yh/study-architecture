@@ -46,16 +46,33 @@ checkout は次の順で進める。
    (product が無ければ確定不能 = 422)。
 2. order ヘッダ + 明細を **1 ローカルトランザクション** で原子的に書く (横断 JOIN が無いので
    order 単独 DB の tx で閉じる)。
-3. 確定した order に対して payment / shipping を **同期 HTTP で順に手配** する。
+3. 確定した order に対して payment を **同期 HTTP で手配** する。
 
-payment / shipping は別 DB・別サービスのため **手順 2 の tx には含められない**。ここでの
-失敗は注文を残したまま `502 bad_gateway` を返す。すなわち本フローは
+payment は別 DB・別サービスのため **手順 2 の tx には含められない**。ここでの失敗は注文を
+残したまま `502 bad_gateway` を返す。すなわち本フローは
 
 - **order 内 (ヘッダ+明細) は強整合**
-- **下流 (payment/shipping) との間は結果整合** で、失敗時は要・整合復旧
+- **下流 (payment) との間は結果整合** で、失敗時は要・整合復旧
 
 という割り切りにする。分散トランザクション (2PC) や saga + 補償は導入しない (Step 0 の
 規模に対して過剰)。復旧の作り込み (再送・突合) は将来 Step で扱う。
+
+なお payment はここでは外部決済サービス (PSP) の薄い代役で、`status=pending` の記録までを
+作る。オーソリ/キャプチャといった確定遷移は PSP 側の責務として本 Step では扱わない。
+
+### shipping を同期 checkout に含めない
+
+配送 (shipment) の作成は **checkout の同期パスに含めない**。理由:
+
+- **決済確定が先**: 配送手配は決済が settle した後に始めるべきで、`pending` の決済の直後に
+  出荷枠を切ると「未入金の出荷」になりうる。配送のトリガは決済確定であって注文確定ではない。
+- **可用性を巻き込まない**: 注文・決済が成功しているのに配送サービスの不調で checkout 全体を
+  `502` にするのは結合と失敗面を広げる。
+- **ドメイン境界 ([[0012]])**: 配送は運用系 (ops) のフルフィルメント関心事。顧客系 checkout が
+  同期で ops を駆動するより、決済確定を受けて ops 側が後追いで手配する形が素直。
+
+したがって shipment は **決済確定後に運用系で手配** する想定とし、その実装 (イベント駆動 or
+別エンドポイント) は後続イシューに切り出す。本 Step の order は shipping を呼ばない。
 
 ### 連携経路 (network)
 
@@ -66,7 +83,6 @@ order に env で base URL を注入する。
 | --- | --- | --- |
 | payment | 同一 external-private に居るので直結 | `http://payment` |
 | product | internal-private のため edge-proxy 経由 | `http://edge-proxy/product` |
-| shipping | internal-private のため edge-proxy 経由 | `http://edge-proxy/shipping` |
 
 呼び出しクライアントは各サービスの OpenAPI から oapi-codegen で生成する ([[0002]]
 codegen-first)。生成物は `server/order/internal/client/<svc>/` に置き、handler はそれを
@@ -77,16 +93,16 @@ codegen-first)。生成物は `server/order/internal/client/<svc>/` に置き、
 - `"order".order_items` を追加: `order_id` (FK), `product_id`, `product_name`,
   `unit_price_cents`, `quantity`。`product_name` / `unit_price_cents` が **スナップショット列**。
 - `POST /checkout` を追加。リクエストは `memberId` / `paymentMethod` / `items[]`。
-- carrier / trackingNo は確定時点では未定のため shipping にはプレースホルダで配送枠
-  (`status=preparing`) だけ先に作り、手配確定後に運用系で更新する。
 
 ## Consequences
 
 - **不変性**: 商品マスタの改名・改価が確定済み注文に影響しない。履歴・会計が安定する。
 - **読み取りが速い・自律的**: 確定後の注文照会は order 単独 DB で完結し、横断呼び出しが要らない。
 - **重複保持**: 商品名・単価が product と order に二重で載る。これは履歴保持の意図的な対価。
-- **結果整合の宿題**: payment/shipping 手配の部分失敗は注文を残す。突合・再送の運用 (または
-  将来の saga 化) が必要。known-issues ではなく本 ADR の既知の割り切りとして明示する。
+- **結果整合の宿題**: payment 手配の部分失敗は注文を残す。突合・再送の運用 (または将来の
+  saga 化) が必要。known-issues ではなく本 ADR の既知の割り切りとして明示する。
+- **配送は別トリガ**: shipment は決済確定後に運用系で手配する (後続イシュー)。order は本 Step
+  では shipping を呼ばない。
 - **カバレッジ**: 生成クライアント (`internal/client/*`) は `/api`・`internal/db` と同様、
   カバレッジ分母から除外する。
 

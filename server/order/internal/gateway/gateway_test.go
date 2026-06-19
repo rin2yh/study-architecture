@@ -122,43 +122,6 @@ func TestPaymentClientCreatePayment(t *testing.T) {
 	}
 }
 
-func TestShippingClientCreateShipment(t *testing.T) {
-	tests := []struct {
-		name    string
-		handler http.HandlerFunc
-		wantID  int64
-		wantErr bool
-	}{
-		{"正常系 201 で shipment id を返す", jsonHandler(http.StatusCreated, `{"id":9,"orderId":7,"carrier":"unassigned","trackingNo":"unassigned","status":"preparing","createdAt":"2026-01-01T00:00:00Z"}`), 9, false},
-		{"異常系 500 は ErrUpstream", jsonHandler(http.StatusInternalServerError, `{"code":"internal"}`), 0, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			srv := httptest.NewServer(tt.handler)
-			defer srv.Close()
-			t.Setenv("SHIPPING_API_URL", srv.URL)
-			c, err := gateway.NewShippingClient()
-			if err != nil {
-				t.Fatalf("NewShippingClient: %v", err)
-			}
-
-			id, err := c.CreateShipment(t.Context(), 7)
-			if tt.wantErr {
-				if !errors.Is(err, gateway.ErrUpstream) {
-					t.Fatalf("err = %v, want ErrUpstream", err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("CreateShipment: %v", err)
-			}
-			if id != tt.wantID {
-				t.Fatalf("id = %d, want %d", id, tt.wantID)
-			}
-		})
-	}
-}
-
 func TestNewClientRequiresEnv(t *testing.T) {
 	tests := []struct {
 		name string
@@ -167,7 +130,6 @@ func TestNewClientRequiresEnv(t *testing.T) {
 	}{
 		{"異常系 PRODUCT_API_URL 未設定はエラー", "PRODUCT_API_URL", func() error { _, err := gateway.NewProductClient(); return err }},
 		{"異常系 PAYMENT_API_URL 未設定はエラー", "PAYMENT_API_URL", func() error { _, err := gateway.NewPaymentClient(); return err }},
-		{"異常系 SHIPPING_API_URL 未設定はエラー", "SHIPPING_API_URL", func() error { _, err := gateway.NewShippingClient(); return err }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

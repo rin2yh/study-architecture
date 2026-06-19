@@ -49,22 +49,21 @@ func twoProducts() stub.Product {
 	}}
 }
 
-func postCheckout(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort, shipping gateway.ShippingPort, body string) *httptest.ResponseRecorder {
+func postCheckout(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort, body string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/checkout", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
-	newCheckoutServer(repo, product, payment, shipping).ServeHTTP(rec, req)
+	newCheckoutServer(repo, product, payment).ServeHTTP(rec, req)
 	return rec
 }
 
 func TestCheckout(t *testing.T) {
 	const valid = `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2}]}`
 	type args struct {
-		repoErr  error
-		product  gateway.ProductPort
-		payment  gateway.PaymentPort
-		shipping gateway.ShippingPort
-		body     string
+		repoErr error
+		product gateway.ProductPort
+		payment gateway.PaymentPort
+		body    string
 	}
 	type want struct {
 		status int
@@ -75,22 +74,21 @@ func TestCheckout(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 確定し 201", args{nil, twoProducts(), stub.Payment{ID: 1}, stub.Shipping{ID: 1}, valid}, want{http.StatusCreated, ""}},
-		{"準正常系 明細が空配列は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, stub.Shipping{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 items 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, stub.Shipping{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 quantity 0 は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, stub.Shipping{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 memberId 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, stub.Shipping{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 paymentMethod 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, stub.Shipping{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在 product は 422 unprocessable_entity", args{nil, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, stub.Shipping{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 product 呼び出し失敗は 502 bad_gateway", args{nil, stub.Product{Err: errors.New("boom")}, stub.Payment{}, stub.Shipping{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
-		{"異常系 注文書き込み失敗は 500 internal", args{errors.New("db failure"), twoProducts(), stub.Payment{}, stub.Shipping{}, valid}, want{http.StatusInternalServerError, "internal"}},
-		{"異常系 payment 失敗は 502 bad_gateway", args{nil, twoProducts(), stub.Payment{Err: errors.New("boom")}, stub.Shipping{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
-		{"異常系 shipping 失敗は 502 bad_gateway", args{nil, twoProducts(), stub.Payment{ID: 1}, stub.Shipping{Err: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
+		{"正常系 確定し 201", args{nil, twoProducts(), stub.Payment{ID: 1}, valid}, want{http.StatusCreated, ""}},
+		{"準正常系 明細が空配列は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 items 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 quantity 0 は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 memberId 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 paymentMethod 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 未存在 product は 422 unprocessable_entity", args{nil, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"異常系 product 呼び出し失敗は 502 bad_gateway", args{nil, stub.Product{Err: errors.New("boom")}, stub.Payment{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
+		{"異常系 注文書き込み失敗は 500 internal", args{errors.New("db failure"), twoProducts(), stub.Payment{}, valid}, want{http.StatusInternalServerError, "internal"}},
+		{"異常系 payment 失敗は 502 bad_gateway", args{nil, twoProducts(), stub.Payment{Err: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &checkoutRepo{err: tt.args.repoErr}
-			rec := postCheckout(repo, tt.args.product, tt.args.payment, tt.args.shipping, tt.args.body)
+			rec := postCheckout(repo, tt.args.product, tt.args.payment, tt.args.body)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
@@ -104,7 +102,7 @@ func TestCheckout(t *testing.T) {
 func TestCheckoutSnapshotAndTotal(t *testing.T) {
 	repo := &checkoutRepo{}
 	body := `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`
-	rec := postCheckout(repo, twoProducts(), stub.Payment{ID: 1}, stub.Shipping{ID: 1}, body)
+	rec := postCheckout(repo, twoProducts(), stub.Payment{ID: 1}, body)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())

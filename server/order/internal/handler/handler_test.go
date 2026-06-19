@@ -22,13 +22,13 @@ func init() {
 
 // newServer は checkout 以外の handler 検証用。外部ポートは成功スタブで固定する。
 func newServer(repo repository.OrderRepository) http.Handler {
-	return newCheckoutServer(repo, stub.Product{}, stub.Payment{}, stub.Shipping{})
+	return newCheckoutServer(repo, stub.Product{}, stub.Payment{})
 }
 
-func newCheckoutServer(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort, shipping gateway.ShippingPort) http.Handler {
+func newCheckoutServer(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
-	api.RegisterHandlers(engine, handler.New(repo, product, payment, shipping))
+	api.RegisterHandlers(engine, handler.New(repo, product, payment))
 	return engine
 }
 
