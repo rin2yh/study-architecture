@@ -12,3 +12,9 @@ WHERE id = $1;
 INSERT INTO product.products (sku, name, price_cents)
 VALUES ($1, $2, $3)
 RETURNING id, sku, name, price_cents, created_at;
+
+-- name: UpdateProduct :one
+UPDATE product.products
+SET name = $2, price_cents = $3
+WHERE id = $1
+RETURNING id, sku, name, price_cents, created_at;

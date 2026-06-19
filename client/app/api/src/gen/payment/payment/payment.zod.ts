@@ -56,3 +56,23 @@ export const GetPaymentResponse = zod.object({
   "createdAt": zod.iso.datetime({"offset":true})
 })
 
+/**
+ * @summary 決済を更新
+ */
+export const UpdatePaymentParams = zod.object({
+  "id": zod.number().describe('リソース ID')
+})
+
+export const UpdatePaymentBody = zod.object({
+  "status": zod.string()
+})
+
+export const UpdatePaymentResponse = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number(),
+  "amountCents": zod.number(),
+  "method": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
+

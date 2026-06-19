@@ -56,3 +56,23 @@ export const GetShipmentResponse = zod.object({
   "createdAt": zod.iso.datetime({"offset":true})
 })
 
+/**
+ * @summary 配送を更新
+ */
+export const UpdateShipmentParams = zod.object({
+  "id": zod.number().describe('リソース ID')
+})
+
+export const UpdateShipmentBody = zod.object({
+  "status": zod.string()
+})
+
+export const UpdateShipmentResponse = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number(),
+  "carrier": zod.string(),
+  "trackingNo": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
+

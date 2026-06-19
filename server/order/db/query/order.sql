@@ -12,3 +12,9 @@ WHERE id = $1;
 INSERT INTO "order".orders (member_id, status, total_cents)
 VALUES ($1, $2, $3)
 RETURNING id, member_id, status, total_cents, created_at;
+
+-- name: UpdateOrder :one
+UPDATE "order".orders
+SET status = $2
+WHERE id = $1
+RETURNING id, member_id, status, total_cents, created_at;

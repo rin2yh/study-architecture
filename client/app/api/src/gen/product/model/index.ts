@@ -11,3 +11,4 @@ export * from './error.ts';
 export * from './errorResponse.ts';
 export * from './health.ts';
 export * from './product.ts';
+export * from './updateProductRequest.ts';

@@ -15,6 +15,7 @@ type ProductRepository interface {
 	ListProducts(ctx context.Context) ([]db.ProductProduct, error)
 	GetProduct(ctx context.Context, id int64) (db.ProductProduct, error)
 	CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error)
+	UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error)
 }
 
 type Repository struct {
@@ -51,6 +52,14 @@ func (r *Repository) CreateProduct(ctx context.Context, arg db.CreateProductPara
 	row, err := r.q.CreateProduct(ctx, arg)
 	if err != nil {
 		return db.ProductProduct{}, dberr.FromWrite(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error) {
+	row, err := r.q.UpdateProduct(ctx, arg)
+	if err != nil {
+		return db.ProductProduct{}, dberr.FromUpdate(err)
 	}
 	return row, nil
 }

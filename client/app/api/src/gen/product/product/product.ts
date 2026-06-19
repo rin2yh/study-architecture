@@ -8,7 +8,8 @@
 import type {
   CreateProductRequest,
   ErrorResponse,
-  Product
+  Product,
+  UpdateProductRequest
 } from '../model';
 
 import { productFetch } from '../../../mutator';
@@ -143,6 +144,49 @@ export const getProduct = async (id: number, options?: RequestInit): Promise<get
     method: 'GET'
 
 
+  }
+);}
+
+
+export type updateProductResponse200 = {
+  data: Product
+  status: 200
+}
+
+export type updateProductResponseDefault = {
+  data: ErrorResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type updateProductResponseSuccess = (updateProductResponse200) & {
+  headers: Headers;
+};
+export type updateProductResponseError = (updateProductResponseDefault) & {
+  headers: Headers;
+};
+
+export type updateProductResponse = (updateProductResponseSuccess | updateProductResponseError)
+
+export const getUpdateProductUrl = (id: number,) => {
+
+
+
+
+  return `/products/${id}`
+}
+
+/**
+ * @summary 商品を更新
+ */
+export const updateProduct = async (id: number,
+    updateProductRequest: UpdateProductRequest, options?: RequestInit): Promise<updateProductResponse> => {
+
+  return productFetch<updateProductResponse>(getUpdateProductUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateProductRequest)
   }
 );}
 

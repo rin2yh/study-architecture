@@ -69,6 +69,27 @@ paths:
                 $ref: "#/components/schemas/Member"
         default:
           $ref: "#/components/responses/Error"
+    put:
+      operationId: updateMember
+      summary: 会員を更新
+      tags: [member]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberRequest"
+      responses:
+        "200":
+          description: 更新された会員
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   parameters:
     IdPath:
@@ -124,6 +145,19 @@ components:
           type: string
           format: date-time
     CreateMemberRequest:
+      type: object
+      required: [email, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+          x-oapi-codegen-extra-tags:
+            binding: required,email
+        displayName:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+    UpdateMemberRequest:
       type: object
       required: [email, displayName]
       properties:

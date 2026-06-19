@@ -35,3 +35,12 @@ func FromWrite(err error) error {
 	}
 	return err
 }
+
+// 更新は対象行が無ければ no rows、unique 列を既存値に変えれば 23505 と、読み取り・書き込み
+// 双方の失敗が起こりうる。FromRead / FromWrite の片方では拾えないため両者を兼ねる。
+func FromUpdate(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	return FromWrite(err)
+}

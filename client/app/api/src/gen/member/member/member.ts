@@ -8,7 +8,8 @@
 import type {
   CreateMemberRequest,
   ErrorResponse,
-  Member
+  Member,
+  UpdateMemberRequest
 } from '../model';
 
 import { memberFetch } from '../../../mutator';
@@ -143,6 +144,49 @@ export const getMember = async (id: number, options?: RequestInit): Promise<getM
     method: 'GET'
 
 
+  }
+);}
+
+
+export type updateMemberResponse200 = {
+  data: Member
+  status: 200
+}
+
+export type updateMemberResponseDefault = {
+  data: ErrorResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type updateMemberResponseSuccess = (updateMemberResponse200) & {
+  headers: Headers;
+};
+export type updateMemberResponseError = (updateMemberResponseDefault) & {
+  headers: Headers;
+};
+
+export type updateMemberResponse = (updateMemberResponseSuccess | updateMemberResponseError)
+
+export const getUpdateMemberUrl = (id: number,) => {
+
+
+
+
+  return `/members/${id}`
+}
+
+/**
+ * @summary 会員を更新
+ */
+export const updateMember = async (id: number,
+    updateMemberRequest: UpdateMemberRequest, options?: RequestInit): Promise<updateMemberResponse> => {
+
+  return memberFetch<updateMemberResponse>(getUpdateMemberUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateMemberRequest)
   }
 );}
 

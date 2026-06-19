@@ -84,3 +84,28 @@ func (q *Queries) ListOrders(ctx context.Context) ([]OrderOrder, error) {
 	}
 	return items, nil
 }
+
+const updateOrder = `-- name: UpdateOrder :one
+UPDATE "order".orders
+SET status = $2
+WHERE id = $1
+RETURNING id, member_id, status, total_cents, created_at
+`
+
+type UpdateOrderParams struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"`
+}
+
+func (q *Queries) UpdateOrder(ctx context.Context, arg UpdateOrderParams) (OrderOrder, error) {
+	row := q.db.QueryRow(ctx, updateOrder, arg.ID, arg.Status)
+	var i OrderOrder
+	err := row.Scan(
+		&i.ID,
+		&i.MemberID,
+		&i.Status,
+		&i.TotalCents,
+		&i.CreatedAt,
+	)
+	return i, err
+}

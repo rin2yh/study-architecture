@@ -8,7 +8,8 @@
 import type {
   CreatePaymentRequest,
   ErrorResponse,
-  Payment
+  Payment,
+  UpdatePaymentRequest
 } from '../model';
 
 import { paymentFetch } from '../../../mutator';
@@ -143,6 +144,49 @@ export const getPayment = async (id: number, options?: RequestInit): Promise<get
     method: 'GET'
 
 
+  }
+);}
+
+
+export type updatePaymentResponse200 = {
+  data: Payment
+  status: 200
+}
+
+export type updatePaymentResponseDefault = {
+  data: ErrorResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type updatePaymentResponseSuccess = (updatePaymentResponse200) & {
+  headers: Headers;
+};
+export type updatePaymentResponseError = (updatePaymentResponseDefault) & {
+  headers: Headers;
+};
+
+export type updatePaymentResponse = (updatePaymentResponseSuccess | updatePaymentResponseError)
+
+export const getUpdatePaymentUrl = (id: number,) => {
+
+
+
+
+  return `/payments/${id}`
+}
+
+/**
+ * @summary 決済を更新
+ */
+export const updatePayment = async (id: number,
+    updatePaymentRequest: UpdatePaymentRequest, options?: RequestInit): Promise<updatePaymentResponse> => {
+
+  return paymentFetch<updatePaymentResponse>(getUpdatePaymentUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePaymentRequest)
   }
 );}
 
