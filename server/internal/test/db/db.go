@@ -40,7 +40,6 @@ func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	// 維持用 DB (postgres) への単発接続から発行する。
 	admin := withDB(u, "postgres")
 	createClone(t, ctx, admin, clone, template)
-	// LIFO で pool.Close より後 (= 先に Close) に走るよう、DROP を先に登録する。
 	t.Cleanup(func() { dropClone(ctx, admin, clone) })
 
 	pool, err := pgxpool.New(ctx, withDB(u, clone))
