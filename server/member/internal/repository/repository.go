@@ -11,18 +11,13 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-type MemberRepository interface {
-	ListMembers(ctx context.Context) ([]db.MemberMember, error)
-	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
-	CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error)
-	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error)
-}
-
-type Repository struct {
+type MemberQuery struct {
 	q db.Querier
 }
 
-var _ MemberRepository = (*Repository)(nil)
+type MemberCommand struct {
+	q db.Querier
+}
 
 func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := os.Getenv("DATABASE_URL")
@@ -32,15 +27,19 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	return pgxpool.New(ctx, dsn)
 }
 
-func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{q: db.New(pool)}
+func NewMemberQuery(pool *pgxpool.Pool) *MemberQuery {
+	return &MemberQuery{q: db.New(pool)}
 }
 
-func (r *Repository) ListMembers(ctx context.Context) ([]db.MemberMember, error) {
+func NewMemberCommand(pool *pgxpool.Pool) *MemberCommand {
+	return &MemberCommand{q: db.New(pool)}
+}
+
+func (r *MemberQuery) ListMembers(ctx context.Context) ([]db.MemberMember, error) {
 	return r.q.ListMembers(ctx)
 }
 
-func (r *Repository) GetMember(ctx context.Context, id int64) (db.MemberMember, error) {
+func (r *MemberQuery) GetMember(ctx context.Context, id int64) (db.MemberMember, error) {
 	row, err := r.q.GetMember(ctx, id)
 	if err != nil {
 		return db.MemberMember{}, dberr.FromRead(err)
@@ -48,7 +47,7 @@ func (r *Repository) GetMember(ctx context.Context, id int64) (db.MemberMember, 
 	return row, nil
 }
 
-func (r *Repository) CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error) {
+func (r *MemberCommand) CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error) {
 	row, err := r.q.CreateMember(ctx, arg)
 	if err != nil {
 		return db.MemberMember{}, dberr.FromWrite(err)
@@ -56,7 +55,7 @@ func (r *Repository) CreateMember(ctx context.Context, arg db.CreateMemberParams
 	return row, nil
 }
 
-func (r *Repository) UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error) {
+func (r *MemberCommand) UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error) {
 	row, err := r.q.UpdateMember(ctx, arg)
 	if err != nil {
 		return db.MemberMember{}, dberr.FromUpdate(err)

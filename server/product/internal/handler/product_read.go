@@ -12,7 +12,7 @@ import (
 )
 
 func (h *Handler) ListProducts(c *gin.Context) {
-	rows, err := h.repo.ListProducts(c.Request.Context())
+	rows, err := h.query.ListProducts(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -25,7 +25,7 @@ func (h *Handler) ListProducts(c *gin.Context) {
 }
 
 func (h *Handler) GetProduct(c *gin.Context, id api.IdPath) {
-	row, err := h.repo.GetProduct(c.Request.Context(), id)
+	row, err := h.query.GetProduct(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("product not found"))

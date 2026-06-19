@@ -12,7 +12,7 @@ import (
 )
 
 func (h *Handler) ListShipments(c *gin.Context) {
-	rows, err := h.repo.ListShipments(c.Request.Context())
+	rows, err := h.query.ListShipments(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -25,7 +25,7 @@ func (h *Handler) ListShipments(c *gin.Context) {
 }
 
 func (h *Handler) GetShipment(c *gin.Context, id api.IdPath) {
-	row, err := h.repo.GetShipment(c.Request.Context(), id)
+	row, err := h.query.GetShipment(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("shipment not found"))

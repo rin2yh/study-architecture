@@ -22,7 +22,7 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("amountCents must not be negative"))
 		return
 	}
-	row, err := h.repo.CreatePayment(c.Request.Context(), db.CreatePaymentParams{
+	row, err := h.command.CreatePayment(c.Request.Context(), db.CreatePaymentParams{
 		OrderID:     req.OrderId,
 		AmountCents: req.AmountCents,
 		Method:      req.Method,
@@ -41,7 +41,7 @@ func (h *Handler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
+	row, err := h.command.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
 		ID:     id,
 		Status: req.Status,
 	})

@@ -16,7 +16,8 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 		var zero *handler.Handler
 		return zero, err
 	}
-	repository0 := kessoku.Bind[repository.ShipmentRepository](kessoku.Provide(repository.NewRepository)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(repository0)
+	shipmentQuery := kessoku.Bind[handler.Query](kessoku.Provide(repository.NewShipmentQuery)).Fn()(pool)
+	shipmentCommand := kessoku.Bind[handler.Command](kessoku.Provide(repository.NewShipmentCommand)).Fn()(pool)
+	handler0 := kessoku.Provide(handler.New).Fn()(shipmentQuery, shipmentCommand)
 	return handler0, nil
 }

@@ -1,23 +1,34 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/product/api"
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
-	"github.com/rin2yh/study-architecture/server/product/internal/repository"
 )
 
+type Query interface {
+	ListProducts(ctx context.Context) ([]db.ProductProduct, error)
+	GetProduct(ctx context.Context, id int64) (db.ProductProduct, error)
+}
+
+type Command interface {
+	CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error)
+	UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error)
+}
+
 type Handler struct {
-	repo repository.ProductRepository
+	query   Query
+	command Command
 }
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(repo repository.ProductRepository) *Handler {
-	return &Handler{repo: repo}
+func New(query Query, command Command) *Handler {
+	return &Handler{query: query, command: command}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {

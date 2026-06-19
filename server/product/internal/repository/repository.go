@@ -11,18 +11,13 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-type ProductRepository interface {
-	ListProducts(ctx context.Context) ([]db.ProductProduct, error)
-	GetProduct(ctx context.Context, id int64) (db.ProductProduct, error)
-	CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error)
-	UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error)
-}
-
-type Repository struct {
+type ProductQuery struct {
 	q db.Querier
 }
 
-var _ ProductRepository = (*Repository)(nil)
+type ProductCommand struct {
+	q db.Querier
+}
 
 func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := os.Getenv("DATABASE_URL")
@@ -32,15 +27,19 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	return pgxpool.New(ctx, dsn)
 }
 
-func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{q: db.New(pool)}
+func NewProductQuery(pool *pgxpool.Pool) *ProductQuery {
+	return &ProductQuery{q: db.New(pool)}
 }
 
-func (r *Repository) ListProducts(ctx context.Context) ([]db.ProductProduct, error) {
+func NewProductCommand(pool *pgxpool.Pool) *ProductCommand {
+	return &ProductCommand{q: db.New(pool)}
+}
+
+func (r *ProductQuery) ListProducts(ctx context.Context) ([]db.ProductProduct, error) {
 	return r.q.ListProducts(ctx)
 }
 
-func (r *Repository) GetProduct(ctx context.Context, id int64) (db.ProductProduct, error) {
+func (r *ProductQuery) GetProduct(ctx context.Context, id int64) (db.ProductProduct, error) {
 	row, err := r.q.GetProduct(ctx, id)
 	if err != nil {
 		return db.ProductProduct{}, dberr.FromRead(err)
@@ -48,7 +47,7 @@ func (r *Repository) GetProduct(ctx context.Context, id int64) (db.ProductProduc
 	return row, nil
 }
 
-func (r *Repository) CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error) {
+func (r *ProductCommand) CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error) {
 	row, err := r.q.CreateProduct(ctx, arg)
 	if err != nil {
 		return db.ProductProduct{}, dberr.FromWrite(err)
@@ -56,7 +55,7 @@ func (r *Repository) CreateProduct(ctx context.Context, arg db.CreateProductPara
 	return row, nil
 }
 
-func (r *Repository) UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error) {
+func (r *ProductCommand) UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error) {
 	row, err := r.q.UpdateProduct(ctx, arg)
 	if err != nil {
 		return db.ProductProduct{}, dberr.FromUpdate(err)

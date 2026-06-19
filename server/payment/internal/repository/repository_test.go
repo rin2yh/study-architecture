@@ -52,7 +52,7 @@ func TestRepositoryListPayments(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewPaymentQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedPayments(t, pool, tt.seed...)
@@ -75,7 +75,7 @@ func TestRepositoryListPayments(t *testing.T) {
 
 func TestRepositoryListPaymentsError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewPaymentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListPayments(ctx); err == nil {
@@ -86,7 +86,7 @@ func TestRepositoryListPaymentsError(t *testing.T) {
 func TestRepositoryGetPayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewPaymentQuery(pool)
 	seedPayments(t, pool, db.PaymentPayment{OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRepositoryGetPayment(t *testing.T) {
 func TestRepositoryCreatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewPaymentCommand(pool)
 	seedPayments(t, pool)
 
 	got, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid"})
@@ -123,7 +123,7 @@ func TestRepositoryCreatePayment(t *testing.T) {
 func TestRepositoryUpdatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewPaymentCommand(pool)
 	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
 
 	t.Run("正常系 status のみ更新し order_id/amount_cents/method は不変", func(t *testing.T) {

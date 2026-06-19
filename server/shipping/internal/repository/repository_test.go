@@ -52,7 +52,7 @@ func TestRepositoryListShipments(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewShipmentQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedShipments(t, pool, tt.seed...)
@@ -75,7 +75,7 @@ func TestRepositoryListShipments(t *testing.T) {
 
 func TestRepositoryListShipmentsError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewShipmentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListShipments(ctx); err == nil {
@@ -86,7 +86,7 @@ func TestRepositoryListShipmentsError(t *testing.T) {
 func TestRepositoryGetShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewShipmentQuery(pool)
 	seedShipments(t, pool, db.ShippingShipment{OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRepositoryGetShipment(t *testing.T) {
 func TestRepositoryCreateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewShipmentCommand(pool)
 	seedShipments(t, pool)
 
 	got, err := r.CreateShipment(t.Context(), db.CreateShipmentParams{OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"})
@@ -123,7 +123,7 @@ func TestRepositoryCreateShipment(t *testing.T) {
 func TestRepositoryUpdateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewShipmentCommand(pool)
 	seedShipments(t, pool, db.ShippingShipment{OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"})
 
 	t.Run("正常系 status のみ更新し order_id/carrier/tracking_no は不変", func(t *testing.T) {

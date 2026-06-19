@@ -52,7 +52,7 @@ func TestRepositoryListProducts(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewProductQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedProducts(t, pool, tt.seed...)
@@ -75,7 +75,7 @@ func TestRepositoryListProducts(t *testing.T) {
 
 func TestRepositoryListProductsError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewProductQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListProducts(ctx); err == nil {
@@ -86,7 +86,7 @@ func TestRepositoryListProductsError(t *testing.T) {
 func TestRepositoryGetProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewProductQuery(pool)
 	seedProducts(t, pool, db.ProductProduct{Sku: "SKU-1", Name: "商品1", PriceCents: 1980})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRepositoryGetProduct(t *testing.T) {
 func TestRepositoryCreateProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewProductCommand(pool)
 	seedProducts(t, pool, db.ProductProduct{Sku: "SKU-EXIST", Name: "既存", PriceCents: 1000})
 
 	t.Run("正常系 作成行を返す", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestRepositoryCreateProduct(t *testing.T) {
 func TestRepositoryUpdateProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewProductCommand(pool)
 	seedProducts(t, pool, db.ProductProduct{Sku: "SKU-1", Name: "商品1", PriceCents: 1980})
 
 	t.Run("正常系 既存行を更新して返す (sku は不変)", func(t *testing.T) {

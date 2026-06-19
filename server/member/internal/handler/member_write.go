@@ -18,7 +18,7 @@ func (h *Handler) CreateMember(c *gin.Context) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.CreateMember(c.Request.Context(), db.CreateMemberParams{
+	row, err := h.command.CreateMember(c.Request.Context(), db.CreateMemberParams{
 		Email:       string(req.Email),
 		DisplayName: req.DisplayName,
 	})
@@ -39,7 +39,7 @@ func (h *Handler) UpdateMember(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.UpdateMember(c.Request.Context(), db.UpdateMemberParams{
+	row, err := h.command.UpdateMember(c.Request.Context(), db.UpdateMemberParams{
 		ID:          id,
 		Email:       string(req.Email),
 		DisplayName: req.DisplayName,

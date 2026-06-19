@@ -52,7 +52,7 @@ func TestRepositoryListOrders(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedOrders(t, pool, tt.seed...)
@@ -75,7 +75,7 @@ func TestRepositoryListOrders(t *testing.T) {
 
 func TestRepositoryListOrdersError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewOrderQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListOrders(ctx); err == nil {
@@ -86,7 +86,7 @@ func TestRepositoryListOrdersError(t *testing.T) {
 func TestRepositoryGetOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderQuery(pool)
 	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRepositoryGetOrder(t *testing.T) {
 func TestRepositoryCreateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderCommand(pool)
 	seedOrders(t, pool)
 
 	got, err := r.CreateOrder(t.Context(), db.CreateOrderParams{MemberID: 20, Status: "pending", TotalCents: 1980})
@@ -123,7 +123,7 @@ func TestRepositoryCreateOrder(t *testing.T) {
 func TestRepositoryUpdateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderCommand(pool)
 	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
 
 	t.Run("正常系 status のみ更新し member_id/total_cents は不変", func(t *testing.T) {

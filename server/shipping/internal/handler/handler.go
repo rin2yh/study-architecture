@@ -1,23 +1,34 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/repository"
 )
 
+type Query interface {
+	ListShipments(ctx context.Context) ([]db.ShippingShipment, error)
+	GetShipment(ctx context.Context, id int64) (db.ShippingShipment, error)
+}
+
+type Command interface {
+	CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error)
+	UpdateShipment(ctx context.Context, arg db.UpdateShipmentParams) (db.ShippingShipment, error)
+}
+
 type Handler struct {
-	repo repository.ShipmentRepository
+	query   Query
+	command Command
 }
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(repo repository.ShipmentRepository) *Handler {
-	return &Handler{repo: repo}
+func New(query Query, command Command) *Handler {
+	return &Handler{query: query, command: command}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {

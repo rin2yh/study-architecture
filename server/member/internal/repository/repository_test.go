@@ -52,7 +52,7 @@ func TestRepositoryListMembers(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewMemberQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedMembers(t, pool, tt.seed...)
@@ -75,7 +75,7 @@ func TestRepositoryListMembers(t *testing.T) {
 
 func TestRepositoryListMembersError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewMemberQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListMembers(ctx); err == nil {
@@ -86,7 +86,7 @@ func TestRepositoryListMembersError(t *testing.T) {
 func TestRepositoryGetMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewMemberQuery(pool)
 	seedMembers(t, pool, db.MemberMember{Email: "user@example.com", DisplayName: "会員A"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRepositoryGetMember(t *testing.T) {
 func TestRepositoryCreateMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewMemberCommand(pool)
 	seedMembers(t, pool, db.MemberMember{Email: "exist@example.com", DisplayName: "既存"})
 
 	t.Run("正常系 作成行を返す", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestRepositoryCreateMember(t *testing.T) {
 func TestRepositoryUpdateMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewMemberCommand(pool)
 	seedMembers(t, pool,
 		db.MemberMember{Email: "a@example.com", DisplayName: "会員A"},
 		db.MemberMember{Email: "b@example.com", DisplayName: "会員B"})

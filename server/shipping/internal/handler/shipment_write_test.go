@@ -44,7 +44,7 @@ func TestCreateShipment(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/shipments", bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newServer(tt.args.repo).ServeHTTP(rec, req)
+			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, req)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
@@ -90,7 +90,7 @@ func TestUpdateShipment(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPut, tt.args.path, bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newServer(tt.args.repo).ServeHTTP(rec, req)
+			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, req)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}

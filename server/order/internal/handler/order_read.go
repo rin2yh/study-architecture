@@ -12,7 +12,7 @@ import (
 )
 
 func (h *Handler) ListOrders(c *gin.Context) {
-	rows, err := h.repo.ListOrders(c.Request.Context())
+	rows, err := h.query.ListOrders(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -25,7 +25,7 @@ func (h *Handler) ListOrders(c *gin.Context) {
 }
 
 func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
-	row, err := h.repo.GetOrder(c.Request.Context(), id)
+	row, err := h.query.GetOrder(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("order not found"))

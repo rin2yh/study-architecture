@@ -11,7 +11,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/product/api"
 	"github.com/rin2yh/study-architecture/server/product/internal/handler"
-	"github.com/rin2yh/study-architecture/server/product/internal/repository"
 	"github.com/rin2yh/study-architecture/server/product/internal/stub"
 )
 
@@ -19,16 +18,16 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func newServer(repo repository.ProductRepository) http.Handler {
+func newServer(query handler.Query, command handler.Command) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
-	api.RegisterHandlers(engine, handler.New(repo))
+	api.RegisterHandlers(engine, handler.New(query, command))
 	return engine
 }
 
 func TestGetHealthz(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newServer(stub.Repo{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	newServer(stub.Repo{}, stub.Repo{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

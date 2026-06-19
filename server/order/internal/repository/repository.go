@@ -11,18 +11,13 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-type OrderRepository interface {
-	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
-	GetOrder(ctx context.Context, id int64) (db.OrderOrder, error)
-	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
-	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
-}
-
-type Repository struct {
+type OrderQuery struct {
 	q db.Querier
 }
 
-var _ OrderRepository = (*Repository)(nil)
+type OrderCommand struct {
+	q db.Querier
+}
 
 func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := os.Getenv("DATABASE_URL")
@@ -32,15 +27,19 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	return pgxpool.New(ctx, dsn)
 }
 
-func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{q: db.New(pool)}
+func NewOrderQuery(pool *pgxpool.Pool) *OrderQuery {
+	return &OrderQuery{q: db.New(pool)}
 }
 
-func (r *Repository) ListOrders(ctx context.Context) ([]db.OrderOrder, error) {
+func NewOrderCommand(pool *pgxpool.Pool) *OrderCommand {
+	return &OrderCommand{q: db.New(pool)}
+}
+
+func (r *OrderQuery) ListOrders(ctx context.Context) ([]db.OrderOrder, error) {
 	return r.q.ListOrders(ctx)
 }
 
-func (r *Repository) GetOrder(ctx context.Context, id int64) (db.OrderOrder, error) {
+func (r *OrderQuery) GetOrder(ctx context.Context, id int64) (db.OrderOrder, error) {
 	row, err := r.q.GetOrder(ctx, id)
 	if err != nil {
 		return db.OrderOrder{}, dberr.FromRead(err)
@@ -48,11 +47,11 @@ func (r *Repository) GetOrder(ctx context.Context, id int64) (db.OrderOrder, err
 	return row, nil
 }
 
-func (r *Repository) CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error) {
+func (r *OrderCommand) CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error) {
 	return r.q.CreateOrder(ctx, arg)
 }
 
-func (r *Repository) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error) {
+func (r *OrderCommand) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error) {
 	row, err := r.q.UpdateOrder(ctx, arg)
 	if err != nil {
 		return db.OrderOrder{}, dberr.FromUpdate(err)

@@ -36,7 +36,7 @@ func TestListMembers(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
+	newServer(repository.NewMemberQuery(pool), repository.NewMemberCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -55,7 +55,7 @@ func TestListMembersError(t *testing.T) {
 	repo := stub.Repo{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
+	newServer(repo, repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -98,7 +98,7 @@ func TestGetMember(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}

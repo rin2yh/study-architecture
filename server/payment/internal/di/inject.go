@@ -12,6 +12,7 @@ import (
 var _ = kessoku.Inject[*handler.Handler](
 	"InitHandler",
 	kessoku.Async(kessoku.Provide(repository.NewPool)),
-	kessoku.Bind[repository.PaymentRepository](kessoku.Provide(repository.NewRepository)),
+	kessoku.Bind[handler.Query](kessoku.Provide(repository.NewPaymentQuery)),
+	kessoku.Bind[handler.Command](kessoku.Provide(repository.NewPaymentCommand)),
 	kessoku.Provide(handler.New),
 )

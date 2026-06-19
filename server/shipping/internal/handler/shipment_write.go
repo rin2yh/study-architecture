@@ -18,7 +18,7 @@ func (h *Handler) CreateShipment(c *gin.Context) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.CreateShipment(c.Request.Context(), db.CreateShipmentParams{
+	row, err := h.command.CreateShipment(c.Request.Context(), db.CreateShipmentParams{
 		OrderID:    req.OrderId,
 		Carrier:    req.Carrier,
 		TrackingNo: req.TrackingNo,
@@ -37,7 +37,7 @@ func (h *Handler) UpdateShipment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.UpdateShipment(c.Request.Context(), db.UpdateShipmentParams{
+	row, err := h.command.UpdateShipment(c.Request.Context(), db.UpdateShipmentParams{
 		ID:     id,
 		Status: req.Status,
 	})

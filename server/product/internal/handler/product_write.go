@@ -22,7 +22,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("priceCents must not be negative"))
 		return
 	}
-	row, err := h.repo.CreateProduct(c.Request.Context(), db.CreateProductParams{
+	row, err := h.command.CreateProduct(c.Request.Context(), db.CreateProductParams{
 		Sku:        req.Sku,
 		Name:       req.Name,
 		PriceCents: req.PriceCents,
@@ -48,7 +48,7 @@ func (h *Handler) UpdateProduct(c *gin.Context, id api.IdPath) {
 		_ = c.Error(middleware.Unprocessable("priceCents must not be negative"))
 		return
 	}
-	row, err := h.repo.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
+	row, err := h.command.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
 		ID:         id,
 		Name:       req.Name,
 		PriceCents: req.PriceCents,

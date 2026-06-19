@@ -22,7 +22,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("totalCents must not be negative"))
 		return
 	}
-	row, err := h.repo.CreateOrder(c.Request.Context(), db.CreateOrderParams{
+	row, err := h.command.CreateOrder(c.Request.Context(), db.CreateOrderParams{
 		MemberID:   req.MemberId,
 		Status:     req.Status,
 		TotalCents: req.TotalCents,
@@ -40,7 +40,7 @@ func (h *Handler) UpdateOrder(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.UpdateOrder(c.Request.Context(), db.UpdateOrderParams{
+	row, err := h.command.UpdateOrder(c.Request.Context(), db.UpdateOrderParams{
 		ID:     id,
 		Status: req.Status,
 	})
