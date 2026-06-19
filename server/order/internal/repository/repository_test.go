@@ -20,7 +20,7 @@ const dbEnv = "DATABASE_URL_CUSTOMER"
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	for _, r := range rows {
