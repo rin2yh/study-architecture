@@ -147,9 +147,7 @@ jobs:
           DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
         run: |
           pkgs=$(go list ./server/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/test/|/server/[a-z]+$' | paste -sd, -)
-          # -p 1: 同一サービスの repository / handler が同じ table を共有するため、並列実行だと
-          # TRUNCATE/seed が競合する。逐次実行で直列化する。
-          go test ./server/... -race -count=1 -p 1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          go test ./server/... -race -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
           bash scripts/coverage-report.sh "server-integration" cover.out > coverage.md
 
