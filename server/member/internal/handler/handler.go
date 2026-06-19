@@ -33,8 +33,6 @@ func toAPIMember(r db.MemberMember) api.Member {
 	}
 }
 
-// toAPISession の token は呼び出し元が渡す。DB は id にハッシュしか持たないため、
-// レスポンスへ載せられる生トークンは元のリクエスト/生成時の値だけが知っている。
 func toAPISession(token string, r db.MemberSession) api.Session {
 	return api.Session{
 		Id:        token,

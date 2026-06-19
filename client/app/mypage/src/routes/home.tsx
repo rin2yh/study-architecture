@@ -7,7 +7,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   const memberId = await currentMemberId(request);
   if (memberId === null) throw redirect("/login");
 
-  // 認証済みの会員 id を下流サービスへ受け渡す経路 (Step 0 は直接呼び出し)。
   const { data } = await listOrders({ headers: { "X-Member-Id": String(memberId) } });
   return { memberId, orders: ListOrdersResponse.parse(data) };
 }
