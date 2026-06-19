@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -31,7 +32,7 @@ func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	if err != nil {
 		t.Fatalf("parse %s: %v", envVar, err)
 	}
-	template := pathDB(u)
+	template := strings.TrimPrefix(u.Path, "/")
 	clone := template + "_t_" + randSuffix(t)
 
 	ctx := context.Background()
@@ -52,13 +53,6 @@ func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	}
 	t.Cleanup(pool.Close)
 	return pool
-}
-
-func pathDB(u *url.URL) string {
-	if len(u.Path) > 0 {
-		return u.Path[1:]
-	}
-	return u.Path
 }
 
 func withDB(u *url.URL, dbname string) string {
