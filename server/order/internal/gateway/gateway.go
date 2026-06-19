@@ -1,0 +1,144 @@
+// Package gateway は order が他サービス (product / payment / shipping) を呼ぶための
+// 出力ポートと、その生成 HTTP クライアント実装をまとめる。handler はここで定義する
+// ポート interface だけに依存し、生成クライアントの型を直接は知らない。
+package gateway
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
+	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
+	"github.com/rin2yh/study-architecture/server/order/internal/client/shipping"
+)
+
+// ErrProductNotFound は checkout で指定された product が存在しないことを表す。handler は
+// クライアント起因 (422) に対応づける。
+var ErrProductNotFound = errors.New("product not found")
+
+// ErrUpstream は下流サービスの呼び出しが失敗したことを表す。handler は 502 に対応づける。
+var ErrUpstream = errors.New("upstream service error")
+
+// ProductSnapshot は注文確定時に order 側へ複写する product の属性 ([[0008]])。
+type ProductSnapshot struct {
+	ID             int64
+	Name           string
+	UnitPriceCents int64
+}
+
+type ProductPort interface {
+	FetchProduct(ctx context.Context, id int64) (ProductSnapshot, error)
+}
+
+type PaymentPort interface {
+	CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error)
+}
+
+type ShippingPort interface {
+	CreateShipment(ctx context.Context, orderID int64) (int64, error)
+}
+
+type ProductClient struct {
+	c product.ClientWithResponsesInterface
+}
+
+var _ ProductPort = (*ProductClient)(nil)
+
+func NewProductClient() (*ProductClient, error) {
+	base := os.Getenv("PRODUCT_API_URL")
+	if base == "" {
+		return nil, errors.New("PRODUCT_API_URL is required")
+	}
+	c, err := product.NewClientWithResponses(base)
+	if err != nil {
+		return nil, err
+	}
+	return &ProductClient{c: c}, nil
+}
+
+func (p *ProductClient) FetchProduct(ctx context.Context, id int64) (ProductSnapshot, error) {
+	res, err := p.c.GetProductWithResponse(ctx, id)
+	if err != nil {
+		return ProductSnapshot{}, fmt.Errorf("%w: get product %d: %v", ErrUpstream, id, err)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return ProductSnapshot{}, fmt.Errorf("%w: id %d", ErrProductNotFound, id)
+	}
+	if res.JSON200 == nil {
+		return ProductSnapshot{}, fmt.Errorf("%w: get product %d returned %d", ErrUpstream, id, res.StatusCode())
+	}
+	return ProductSnapshot{ID: res.JSON200.Id, Name: res.JSON200.Name, UnitPriceCents: res.JSON200.PriceCents}, nil
+}
+
+type PaymentClient struct {
+	c payment.ClientWithResponsesInterface
+}
+
+var _ PaymentPort = (*PaymentClient)(nil)
+
+func NewPaymentClient() (*PaymentClient, error) {
+	base := os.Getenv("PAYMENT_API_URL")
+	if base == "" {
+		return nil, errors.New("PAYMENT_API_URL is required")
+	}
+	c, err := payment.NewClientWithResponses(base)
+	if err != nil {
+		return nil, err
+	}
+	return &PaymentClient{c: c}, nil
+}
+
+func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error) {
+	res, err := p.c.CreatePaymentWithResponse(ctx, payment.CreatePaymentJSONRequestBody{
+		OrderId:     orderID,
+		AmountCents: amountCents,
+		Method:      method,
+		Status:      "pending",
+	})
+	if err != nil {
+		return 0, fmt.Errorf("%w: create payment for order %d: %v", ErrUpstream, orderID, err)
+	}
+	if res.JSON201 == nil {
+		return 0, fmt.Errorf("%w: create payment for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
+	}
+	return res.JSON201.Id, nil
+}
+
+type ShippingClient struct {
+	c shipping.ClientWithResponsesInterface
+}
+
+var _ ShippingPort = (*ShippingClient)(nil)
+
+func NewShippingClient() (*ShippingClient, error) {
+	base := os.Getenv("SHIPPING_API_URL")
+	if base == "" {
+		return nil, errors.New("SHIPPING_API_URL is required")
+	}
+	c, err := shipping.NewClientWithResponses(base)
+	if err != nil {
+		return nil, err
+	}
+	return &ShippingClient{c: c}, nil
+}
+
+func (s *ShippingClient) CreateShipment(ctx context.Context, orderID int64) (int64, error) {
+	// carrier / trackingNo は確定時点では未定。配送手配後に運用系で更新する前提で
+	// プレースホルダを入れ、status=preparing の配送枠だけ先に作る。
+	res, err := s.c.CreateShipmentWithResponse(ctx, shipping.CreateShipmentJSONRequestBody{
+		OrderId:    orderID,
+		Carrier:    "unassigned",
+		TrackingNo: "unassigned",
+		Status:     "preparing",
+	})
+	if err != nil {
+		return 0, fmt.Errorf("%w: create shipment for order %d: %v", ErrUpstream, orderID, err)
+	}
+	if res.JSON201 == nil {
+		return 0, fmt.Errorf("%w: create shipment for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
+	}
+	return res.JSON201.Id, nil
+}

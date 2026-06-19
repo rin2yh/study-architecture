@@ -141,3 +141,48 @@ func TestRepositoryUpdateOrder(t *testing.T) {
 		}
 	})
 }
+
+func TestRepositoryCheckout(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedOrders(t, pool)
+
+	lines := []CheckoutLine{
+		{ProductID: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
+		{ProductID: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
+	}
+	order, items, err := r.Checkout(t.Context(), 20, "confirmed", 2500, lines)
+	if err != nil {
+		t.Fatalf("Checkout: %v", err)
+	}
+	if order.ID == 0 || order.MemberID != 20 || order.Status != "confirmed" || order.TotalCents != 2500 {
+		t.Fatalf("unexpected order: %+v", order)
+	}
+	if len(items) != 2 || items[0].OrderID != order.ID || items[0].ProductName != "Widget" {
+		t.Fatalf("unexpected items: %+v", items)
+	}
+
+	got, err := r.GetOrderItems(t.Context(), order.ID)
+	if err != nil {
+		t.Fatalf("GetOrderItems: %v", err)
+	}
+	if diff := cmp.Diff(items, got, cmpopts.EquateEmpty()); diff != "" {
+		t.Fatalf("GetOrderItems mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestRepositoryGetOrderItemsEmpty(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewRepository(pool)
+	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+
+	got, err := r.GetOrderItems(t.Context(), 1)
+	if err != nil {
+		t.Fatalf("GetOrderItems: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("want no items, got %+v", got)
+	}
+}

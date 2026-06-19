@@ -12,6 +12,19 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// CheckoutItem defines model for CheckoutItem.
+type CheckoutItem struct {
+	ProductId int64 `binding:"required,gt=0" json:"productId"`
+	Quantity  int   `binding:"required,gt=0" json:"quantity"`
+}
+
+// CheckoutRequest defines model for CheckoutRequest.
+type CheckoutRequest struct {
+	Items         []CheckoutItem `binding:"required,min=1,dive" json:"items"`
+	MemberId      int64          `binding:"required,gt=0" json:"memberId"`
+	PaymentMethod string         `binding:"required" json:"paymentMethod"`
+}
+
 // CreateOrderRequest defines model for CreateOrderRequest.
 type CreateOrderRequest struct {
 	MemberId   int64  `binding:"required,gt=0" json:"memberId"`
@@ -35,11 +48,20 @@ type Health struct {
 
 // Order defines model for Order.
 type Order struct {
-	CreatedAt  time.Time `json:"createdAt"`
-	Id         int64     `json:"id"`
-	MemberId   int64     `json:"memberId"`
-	Status     string    `json:"status"`
-	TotalCents int64     `json:"totalCents"`
+	CreatedAt  time.Time    `json:"createdAt"`
+	Id         int64        `json:"id"`
+	Items      *[]OrderItem `json:"items,omitempty"`
+	MemberId   int64        `json:"memberId"`
+	Status     string       `json:"status"`
+	TotalCents int64        `json:"totalCents"`
+}
+
+// OrderItem defines model for OrderItem.
+type OrderItem struct {
+	ProductId      int64  `json:"productId"`
+	ProductName    string `json:"productName"`
+	Quantity       int    `json:"quantity"`
+	UnitPriceCents int64  `json:"unitPriceCents"`
 }
 
 // UpdateOrderRequest defines model for UpdateOrderRequest.
@@ -50,6 +72,9 @@ type UpdateOrderRequest struct {
 // IdPath defines model for IdPath.
 type IdPath = int64
 
+// CheckoutJSONRequestBody defines body for Checkout for application/json ContentType.
+type CheckoutJSONRequestBody = CheckoutRequest
+
 // CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
 type CreateOrderJSONRequestBody = CreateOrderRequest
 
@@ -58,6 +83,9 @@ type UpdateOrderJSONRequestBody = UpdateOrderRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// カートを確定し注文・決済・配送をまとめて作成
+	// (POST /checkout)
+	Checkout(c *gin.Context)
 	// Liveness probe
 	// (GET /healthz)
 	GetHealthz(c *gin.Context)
@@ -83,6 +111,19 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// Checkout operation middleware
+func (siw *ServerInterfaceWrapper) Checkout(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.Checkout(c)
+}
 
 // GetHealthz operation middleware
 func (siw *ServerInterfaceWrapper) GetHealthz(c *gin.Context) {
@@ -200,6 +241,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.POST(options.BaseURL+"/checkout", wrapper.Checkout)
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.GET(options.BaseURL+"/orders", wrapper.ListOrders)
 	router.POST(options.BaseURL+"/orders", wrapper.CreateOrder)

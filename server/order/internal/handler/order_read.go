@@ -25,7 +25,8 @@ func (h *Handler) ListOrders(c *gin.Context) {
 }
 
 func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
-	row, err := h.repo.GetOrder(c.Request.Context(), id)
+	ctx := c.Request.Context()
+	row, err := h.repo.GetOrder(ctx, id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("order not found"))
@@ -34,5 +35,10 @@ func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, toAPIOrder(row))
+	items, err := h.repo.GetOrderItems(ctx, id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIOrderWithItems(row, items))
 }

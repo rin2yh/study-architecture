@@ -34,6 +34,41 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 	return i, err
 }
 
+const createOrderItem = `-- name: CreateOrderItem :one
+INSERT INTO "order".order_items (order_id, product_id, product_name, unit_price_cents, quantity)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, order_id, product_id, product_name, unit_price_cents, quantity, created_at
+`
+
+type CreateOrderItemParams struct {
+	OrderID        int64  `json:"orderId"`
+	ProductID      int64  `json:"productId"`
+	ProductName    string `json:"productName"`
+	UnitPriceCents int64  `json:"unitPriceCents"`
+	Quantity       int32  `json:"quantity"`
+}
+
+func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderOrderItem, error) {
+	row := q.db.QueryRow(ctx, createOrderItem,
+		arg.OrderID,
+		arg.ProductID,
+		arg.ProductName,
+		arg.UnitPriceCents,
+		arg.Quantity,
+	)
+	var i OrderOrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.ProductID,
+		&i.ProductName,
+		&i.UnitPriceCents,
+		&i.Quantity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getOrder = `-- name: GetOrder :one
 SELECT id, member_id, status, total_cents, created_at
 FROM "order".orders
@@ -51,6 +86,41 @@ func (q *Queries) GetOrder(ctx context.Context, id int64) (OrderOrder, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listOrderItems = `-- name: ListOrderItems :many
+SELECT id, order_id, product_id, product_name, unit_price_cents, quantity, created_at
+FROM "order".order_items
+WHERE order_id = $1
+ORDER BY id
+`
+
+func (q *Queries) ListOrderItems(ctx context.Context, orderID int64) ([]OrderOrderItem, error) {
+	rows, err := q.db.Query(ctx, listOrderItems, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderOrderItem{}
+	for rows.Next() {
+		var i OrderOrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.ProductName,
+			&i.UnitPriceCents,
+			&i.Quantity,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOrders = `-- name: ListOrders :many

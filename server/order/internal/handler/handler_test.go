@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/order/api"
+	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/repository"
 	"github.com/rin2yh/study-architecture/server/order/internal/stub"
@@ -19,10 +20,15 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
+// newServer は checkout 以外の handler 検証用。外部ポートは成功スタブで固定する。
 func newServer(repo repository.OrderRepository) http.Handler {
+	return newCheckoutServer(repo, stub.Product{}, stub.Payment{}, stub.Shipping{})
+}
+
+func newCheckoutServer(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort, shipping gateway.ShippingPort) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
-	api.RegisterHandlers(engine, handler.New(repo))
+	api.RegisterHandlers(engine, handler.New(repo, product, payment, shipping))
 	return engine
 }
 

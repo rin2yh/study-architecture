@@ -53,6 +53,26 @@ paths:
                 $ref: "#/components/schemas/Order"
         default:
           $ref: "#/components/responses/Error"
+  /checkout:
+    post:
+      operationId: checkout
+      summary: カートを確定し注文・決済・配送をまとめて作成
+      tags: [order]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "201":
+          description: 確定した注文 (スナップショットした明細を含む)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
   /orders/{id}:
     get:
       operationId: getOrder
@@ -148,6 +168,56 @@ components:
         createdAt:
           type: string
           format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    OrderItem:
+      type: object
+      required: [productId, productName, unitPriceCents, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        productName:
+          type: string
+        unitPriceCents:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+    CheckoutItem:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        quantity:
+          type: integer
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+    CheckoutRequest:
+      type: object
+      required: [memberId, paymentMethod, items]
+      properties:
+        memberId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        paymentMethod:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckoutItem"
+          x-oapi-codegen-extra-tags:
+            binding: required,min=1,dive
     CreateOrderRequest:
       type: object
       required: [memberId, status, totalCents]
