@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-func TestOrderQueryListOrders(t *testing.T) {
+func TestListOrders(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -55,7 +55,7 @@ func TestOrderQueryListOrders(t *testing.T) {
 	}
 }
 
-func TestOrderQueryListOrdersError(t *testing.T) {
+func TestListOrdersError(t *testing.T) {
 	skip.Short(t)
 	r := NewOrderQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -65,7 +65,7 @@ func TestOrderQueryListOrdersError(t *testing.T) {
 	}
 }
 
-func TestOrderQueryGetOrder(t *testing.T) {
+func TestGetOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderQuery(pool)

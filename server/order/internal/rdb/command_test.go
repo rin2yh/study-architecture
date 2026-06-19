@@ -10,7 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-func TestOrderCommandCreateOrder(t *testing.T) {
+func TestCreateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderCommand(pool)
@@ -25,7 +25,7 @@ func TestOrderCommandCreateOrder(t *testing.T) {
 	}
 }
 
-func TestOrderCommandUpdateOrder(t *testing.T) {
+func TestUpdateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderCommand(pool)

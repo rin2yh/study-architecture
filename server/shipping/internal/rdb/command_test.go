@@ -10,7 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
-func TestShipmentCommandCreateShipment(t *testing.T) {
+func TestCreateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentCommand(pool)
@@ -25,7 +25,7 @@ func TestShipmentCommandCreateShipment(t *testing.T) {
 	}
 }
 
-func TestShipmentCommandUpdateShipment(t *testing.T) {
+func TestUpdateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentCommand(pool)

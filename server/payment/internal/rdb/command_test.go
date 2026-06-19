@@ -10,7 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
-func TestPaymentCommandCreatePayment(t *testing.T) {
+func TestCreatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentCommand(pool)
@@ -25,7 +25,7 @@ func TestPaymentCommandCreatePayment(t *testing.T) {
 	}
 }
 
-func TestPaymentCommandUpdatePayment(t *testing.T) {
+func TestUpdatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentCommand(pool)

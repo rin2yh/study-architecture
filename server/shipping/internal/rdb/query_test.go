@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
-func TestShipmentQueryListShipments(t *testing.T) {
+func TestListShipments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -55,7 +55,7 @@ func TestShipmentQueryListShipments(t *testing.T) {
 	}
 }
 
-func TestShipmentQueryListShipmentsError(t *testing.T) {
+func TestListShipmentsError(t *testing.T) {
 	skip.Short(t)
 	r := NewShipmentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -65,7 +65,7 @@ func TestShipmentQueryListShipmentsError(t *testing.T) {
 	}
 }
 
-func TestShipmentQueryGetShipment(t *testing.T) {
+func TestGetShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentQuery(pool)

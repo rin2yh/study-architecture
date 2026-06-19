@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-func TestMemberQueryListMembers(t *testing.T) {
+func TestListMembers(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -55,7 +55,7 @@ func TestMemberQueryListMembers(t *testing.T) {
 	}
 }
 
-func TestMemberQueryListMembersError(t *testing.T) {
+func TestListMembersError(t *testing.T) {
 	skip.Short(t)
 	r := NewMemberQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -65,7 +65,7 @@ func TestMemberQueryListMembersError(t *testing.T) {
 	}
 }
 
-func TestMemberQueryGetMember(t *testing.T) {
+func TestGetMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberQuery(pool)

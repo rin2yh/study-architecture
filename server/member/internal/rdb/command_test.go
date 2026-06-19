@@ -10,7 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-func TestMemberCommandCreateMember(t *testing.T) {
+func TestCreateMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberCommand(pool)
@@ -32,7 +32,7 @@ func TestMemberCommandCreateMember(t *testing.T) {
 	})
 }
 
-func TestMemberCommandUpdateMember(t *testing.T) {
+func TestUpdateMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberCommand(pool)

@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
-func TestPaymentQueryListPayments(t *testing.T) {
+func TestListPayments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -55,7 +55,7 @@ func TestPaymentQueryListPayments(t *testing.T) {
 	}
 }
 
-func TestPaymentQueryListPaymentsError(t *testing.T) {
+func TestListPaymentsError(t *testing.T) {
 	skip.Short(t)
 	r := NewPaymentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -65,7 +65,7 @@ func TestPaymentQueryListPaymentsError(t *testing.T) {
 	}
 }
 
-func TestPaymentQueryGetPayment(t *testing.T) {
+func TestGetPayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentQuery(pool)

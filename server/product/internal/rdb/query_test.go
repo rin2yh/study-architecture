@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-func TestProductQueryListProducts(t *testing.T) {
+func TestListProducts(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -55,7 +55,7 @@ func TestProductQueryListProducts(t *testing.T) {
 	}
 }
 
-func TestProductQueryListProductsError(t *testing.T) {
+func TestListProductsError(t *testing.T) {
 	skip.Short(t)
 	r := NewProductQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -65,7 +65,7 @@ func TestProductQueryListProductsError(t *testing.T) {
 	}
 }
 
-func TestProductQueryGetProduct(t *testing.T) {
+func TestGetProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductQuery(pool)

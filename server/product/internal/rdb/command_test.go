@@ -10,7 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-func TestProductCommandCreateProduct(t *testing.T) {
+func TestCreateProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductCommand(pool)
@@ -32,7 +32,7 @@ func TestProductCommandCreateProduct(t *testing.T) {
 	})
 }
 
-func TestProductCommandUpdateProduct(t *testing.T) {
+func TestUpdateProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductCommand(pool)
