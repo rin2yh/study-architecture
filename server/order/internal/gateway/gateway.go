@@ -1,6 +1,5 @@
-// Package gateway は order が他サービス (product / payment / shipping) を呼ぶための
-// 出力ポートと、その生成 HTTP クライアント実装をまとめる。handler はここで定義する
-// ポート interface だけに依存し、生成クライアントの型を直接は知らない。
+// Package gateway は order が他サービス (product / payment / shipping) を呼ぶ出力ポートと
+// 生成クライアント実装をまとめる。
 package gateway
 
 import (
@@ -15,11 +14,10 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/client/shipping"
 )
 
-// ErrProductNotFound は checkout で指定された product が存在しないことを表す。handler は
-// クライアント起因 (422) に対応づける。
+// ErrProductNotFound は指定された product が存在しないことを表す。
 var ErrProductNotFound = errors.New("product not found")
 
-// ErrUpstream は下流サービスの呼び出しが失敗したことを表す。handler は 502 に対応づける。
+// ErrUpstream は下流サービスの呼び出しが失敗したことを表す。
 var ErrUpstream = errors.New("upstream service error")
 
 // ProductSnapshot は注文確定時に order 側へ複写する product の属性 ([[0008]])。
@@ -126,8 +124,7 @@ func NewShippingClient() (*ShippingClient, error) {
 }
 
 func (s *ShippingClient) CreateShipment(ctx context.Context, orderID int64) (int64, error) {
-	// carrier / trackingNo は確定時点では未定。配送手配後に運用系で更新する前提で
-	// プレースホルダを入れ、status=preparing の配送枠だけ先に作る。
+	// carrier / trackingNo は確定時点で未定のためプレースホルダ ([[0008]])。
 	res, err := s.c.CreateShipmentWithResponse(ctx, shipping.CreateShipmentJSONRequestBody{
 		OrderId:    orderID,
 		Carrier:    "unassigned",

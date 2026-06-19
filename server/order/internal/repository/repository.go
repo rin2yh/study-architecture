@@ -11,7 +11,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-// CheckoutLine は確定する 1 明細。product から複写済みのスナップショット値を持つ。
+// CheckoutLine は確定する明細 1 行 ([[0008]])。
 type CheckoutLine struct {
 	ProductID      int64
 	ProductName    string
@@ -75,9 +75,7 @@ func (r *Repository) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) 
 	return row, nil
 }
 
-// Checkout は注文ヘッダと明細スナップショットを 1 トランザクションで確定する。明細は
-// order 単独で完結する整合 (横断 JOIN なし) なのでローカル tx で原子的に書ける。
-// payment / shipping への波及は別サービスのため、この tx の外で呼ぶ ([[0008]])。
+// Checkout は注文ヘッダと明細スナップショットを 1 トランザクションで確定する ([[0008]])。
 func (r *Repository) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

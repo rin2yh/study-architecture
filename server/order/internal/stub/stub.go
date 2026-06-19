@@ -39,8 +39,7 @@ func (s Repo) Checkout(context.Context, int64, string, int64, []repository.Check
 	return s.Order, s.Items, s.Err
 }
 
-// Product は ProductPort のテスト用スタブ。id をキーに引ける Snapshots を優先し、
-// 無ければ Snapshot を返す。Err があればそれを返す。
+// Product は ProductPort のテスト用スタブ。
 type Product struct {
 	Snapshots map[int64]gateway.ProductSnapshot
 	Snapshot  gateway.ProductSnapshot

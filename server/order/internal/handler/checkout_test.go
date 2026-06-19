@@ -17,8 +17,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/stub"
 )
 
-// checkoutRepo は Checkout に渡された total / lines を捕捉し、それを反映した注文を返す
-// 記録スタブ。確定値 (合計・スナップショット) を handler 越しに検証するために使う。
+// checkoutRepo は Checkout に渡された total / lines を捕捉する記録スタブ。
 type checkoutRepo struct {
 	stub.Repo
 	err      error
