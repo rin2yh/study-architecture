@@ -41,7 +41,7 @@ func Open(t *testing.T, envVar string) *pgxpool.Pool {
 	// 維持用 DB (postgres) への単発接続から発行する。
 	admin := withDB(u, "postgres")
 	createClone(t, ctx, admin, clone, template)
-	t.Cleanup(func() { dropClone(ctx, admin, clone) })
+	t.Cleanup(func() { dropClone(t, ctx, admin, clone) })
 
 	pool, err := pgxpool.New(ctx, withDB(u, clone))
 	if err != nil {
@@ -95,12 +95,16 @@ func createClone(t *testing.T, ctx context.Context, adminDSN, clone, template st
 	}
 }
 
-func dropClone(ctx context.Context, adminDSN, clone string) {
+func dropClone(t *testing.T, ctx context.Context, adminDSN, clone string) {
+	t.Helper()
 	conn, err := connectAdmin(ctx, adminDSN)
 	if err != nil {
+		t.Logf("drop %s: connect admin: %v", clone, err)
 		return
 	}
 	defer conn.Close(ctx)
 	// WITH (FORCE): pool.Close 後も残る接続があっても落とせるようにする (PG13+)。
-	conn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", pgx.Identifier{clone}.Sanitize()))
+	if _, err := conn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", pgx.Identifier{clone}.Sanitize())); err != nil {
+		t.Logf("drop %s: %v", clone, err)
+	}
 }
