@@ -15,6 +15,7 @@ type OrderRepository interface {
 	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
 	GetOrder(ctx context.Context, id int64) (db.OrderOrder, error)
 	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
+	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
 }
 
 type Repository struct {
@@ -49,4 +50,12 @@ func (r *Repository) GetOrder(ctx context.Context, id int64) (db.OrderOrder, err
 
 func (r *Repository) CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error) {
 	return r.q.CreateOrder(ctx, arg)
+}
+
+func (r *Repository) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error) {
+	row, err := r.q.UpdateOrder(ctx, arg)
+	if err != nil {
+		return db.OrderOrder{}, dberr.FromUpdate(err)
+	}
+	return row, nil
 }

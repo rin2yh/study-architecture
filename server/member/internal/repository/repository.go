@@ -15,6 +15,7 @@ type MemberRepository interface {
 	ListMembers(ctx context.Context) ([]db.MemberMember, error)
 	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
 	CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error)
+	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error)
 }
 
 type Repository struct {
@@ -51,6 +52,14 @@ func (r *Repository) CreateMember(ctx context.Context, arg db.CreateMemberParams
 	row, err := r.q.CreateMember(ctx, arg)
 	if err != nil {
 		return db.MemberMember{}, dberr.FromWrite(err)
+	}
+	return row, nil
+}
+
+func (r *Repository) UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error) {
+	row, err := r.q.UpdateMember(ctx, arg)
+	if err != nil {
+		return db.MemberMember{}, dberr.FromUpdate(err)
 	}
 	return row, nil
 }

@@ -12,6 +12,7 @@ type Querier interface {
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (PaymentPayment, error)
 	GetPayment(ctx context.Context, id int64) (PaymentPayment, error)
 	ListPayments(ctx context.Context) ([]PaymentPayment, error)
+	UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (PaymentPayment, error)
 }
 
 var _ Querier = (*Queries)(nil)

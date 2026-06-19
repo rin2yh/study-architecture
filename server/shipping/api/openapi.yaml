@@ -69,6 +69,27 @@ paths:
                 $ref: "#/components/schemas/Shipment"
         default:
           $ref: "#/components/responses/Error"
+    put:
+      operationId: updateShipment
+      summary: 配送を更新
+      tags: [shipping]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShipmentRequest"
+      responses:
+        "200":
+          description: 更新された配送
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   parameters:
     IdPath:
@@ -145,6 +166,14 @@ components:
           type: string
           x-oapi-codegen-extra-tags:
             binding: required
+        status:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+    UpdateShipmentRequest:
+      type: object
+      required: [status]
+      properties:
         status:
           type: string
           x-oapi-codegen-extra-tags:

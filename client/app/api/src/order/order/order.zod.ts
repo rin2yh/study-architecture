@@ -50,3 +50,22 @@ export const GetOrderResponse = zod.object({
   totalCents: zod.number(),
   createdAt: zod.iso.datetime({ offset: true }),
 });
+
+/**
+ * @summary 注文を更新
+ */
+export const UpdateOrderParams = zod.object({
+  id: zod.number().describe("リソース ID"),
+});
+
+export const UpdateOrderBody = zod.object({
+  status: zod.string(),
+});
+
+export const UpdateOrderResponse = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  status: zod.string(),
+  totalCents: zod.number(),
+  createdAt: zod.iso.datetime({ offset: true }),
+});

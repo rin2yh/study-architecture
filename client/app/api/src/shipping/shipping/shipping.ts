@@ -5,7 +5,12 @@
  * 配送ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { CreateShipmentRequest, ErrorResponse, Shipment } from "../model";
+import type {
+  CreateShipmentRequest,
+  ErrorResponse,
+  Shipment,
+  UpdateShipmentRequest,
+} from "../model";
 
 import { shippingFetch } from "../../mutator";
 
@@ -155,5 +160,44 @@ export const getShipment = async (
   return shippingFetch<getShipmentResponse>(getGetShipmentUrl(id), {
     ...options,
     method: "GET",
+  });
+};
+
+export type updateShipmentResponse200 = {
+  data: Shipment;
+  status: 200;
+};
+
+export type updateShipmentResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type updateShipmentResponseSuccess = updateShipmentResponse200 & {
+  headers: Headers;
+};
+export type updateShipmentResponseError = updateShipmentResponseDefault & {
+  headers: Headers;
+};
+
+export type updateShipmentResponse = updateShipmentResponseSuccess | updateShipmentResponseError;
+
+export const getUpdateShipmentUrl = (id: number) => {
+  return `/shipments/${id}`;
+};
+
+/**
+ * @summary 配送を更新
+ */
+export const updateShipment = async (
+  id: number,
+  updateShipmentRequest: UpdateShipmentRequest,
+  options?: RequestInit,
+): Promise<updateShipmentResponse> => {
+  return shippingFetch<updateShipmentResponse>(getUpdateShipmentUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateShipmentRequest),
   });
 };

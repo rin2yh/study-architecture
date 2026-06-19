@@ -93,3 +93,29 @@ func (q *Queries) ListPayments(ctx context.Context) ([]PaymentPayment, error) {
 	}
 	return items, nil
 }
+
+const updatePayment = `-- name: UpdatePayment :one
+UPDATE payment.payments
+SET status = $2
+WHERE id = $1
+RETURNING id, order_id, amount_cents, method, status, created_at
+`
+
+type UpdatePaymentParams struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"`
+}
+
+func (q *Queries) UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (PaymentPayment, error) {
+	row := q.db.QueryRow(ctx, updatePayment, arg.ID, arg.Status)
+	var i PaymentPayment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.AmountCents,
+		&i.Method,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}

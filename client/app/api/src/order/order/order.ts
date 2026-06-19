@@ -5,7 +5,7 @@
  * 注文ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { CreateOrderRequest, ErrorResponse, Order } from "../model";
+import type { CreateOrderRequest, ErrorResponse, Order, UpdateOrderRequest } from "../model";
 
 import { orderFetch } from "../../mutator";
 
@@ -152,5 +152,44 @@ export const getOrder = async (id: number, options?: RequestInit): Promise<getOr
   return orderFetch<getOrderResponse>(getGetOrderUrl(id), {
     ...options,
     method: "GET",
+  });
+};
+
+export type updateOrderResponse200 = {
+  data: Order;
+  status: 200;
+};
+
+export type updateOrderResponseDefault = {
+  data: ErrorResponse;
+  status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type updateOrderResponseSuccess = updateOrderResponse200 & {
+  headers: Headers;
+};
+export type updateOrderResponseError = updateOrderResponseDefault & {
+  headers: Headers;
+};
+
+export type updateOrderResponse = updateOrderResponseSuccess | updateOrderResponseError;
+
+export const getUpdateOrderUrl = (id: number) => {
+  return `/orders/${id}`;
+};
+
+/**
+ * @summary 注文を更新
+ */
+export const updateOrder = async (
+  id: number,
+  updateOrderRequest: UpdateOrderRequest,
+  options?: RequestInit,
+): Promise<updateOrderResponse> => {
+  return orderFetch<updateOrderResponse>(getUpdateOrderUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateOrderRequest),
   });
 };
