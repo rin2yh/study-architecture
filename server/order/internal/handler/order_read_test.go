@@ -18,7 +18,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
-	"github.com/rin2yh/study-architecture/server/order/internal/repository"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/order/internal/stub"
 )
 
@@ -36,7 +36,7 @@ func TestListOrders(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewOrderQuery(pool), repository.NewOrderCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
+	newServer(rdb.NewOrderQuery(pool), rdb.NewOrderCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

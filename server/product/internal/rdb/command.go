@@ -1,9 +1,7 @@
-package repository
+package rdb
 
 import (
 	"context"
-	"errors"
-	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -11,40 +9,12 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-type ProductQuery struct {
-	q db.Querier
-}
-
 type ProductCommand struct {
 	q db.Querier
 }
 
-func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		return nil, errors.New("DATABASE_URL is required")
-	}
-	return pgxpool.New(ctx, dsn)
-}
-
-func NewProductQuery(pool *pgxpool.Pool) *ProductQuery {
-	return &ProductQuery{q: db.New(pool)}
-}
-
 func NewProductCommand(pool *pgxpool.Pool) *ProductCommand {
 	return &ProductCommand{q: db.New(pool)}
-}
-
-func (r *ProductQuery) ListProducts(ctx context.Context) ([]db.ProductProduct, error) {
-	return r.q.ListProducts(ctx)
-}
-
-func (r *ProductQuery) GetProduct(ctx context.Context, id int64) (db.ProductProduct, error) {
-	row, err := r.q.GetProduct(ctx, id)
-	if err != nil {
-		return db.ProductProduct{}, dberr.FromRead(err)
-	}
-	return row, nil
 }
 
 func (r *ProductCommand) CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error) {

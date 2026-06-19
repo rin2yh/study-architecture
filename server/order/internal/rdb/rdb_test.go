@@ -1,4 +1,4 @@
-package repository
+package rdb
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	}
 }
 
-func TestRepositoryListOrders(t *testing.T) {
+func TestOrderQueryListOrders(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -73,7 +73,7 @@ func TestRepositoryListOrders(t *testing.T) {
 	}
 }
 
-func TestRepositoryListOrdersError(t *testing.T) {
+func TestOrderQueryListOrdersError(t *testing.T) {
 	skip.Short(t)
 	r := NewOrderQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -83,7 +83,7 @@ func TestRepositoryListOrdersError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetOrder(t *testing.T) {
+func TestOrderQueryGetOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderQuery(pool)
@@ -105,7 +105,7 @@ func TestRepositoryGetOrder(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateOrder(t *testing.T) {
+func TestOrderCommandCreateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderCommand(pool)
@@ -120,7 +120,7 @@ func TestRepositoryCreateOrder(t *testing.T) {
 	}
 }
 
-func TestRepositoryUpdateOrder(t *testing.T) {
+func TestOrderCommandUpdateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderCommand(pool)

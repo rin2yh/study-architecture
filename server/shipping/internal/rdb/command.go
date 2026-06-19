@@ -1,9 +1,7 @@
-package repository
+package rdb
 
 import (
 	"context"
-	"errors"
-	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -11,40 +9,12 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
-type ShipmentQuery struct {
-	q db.Querier
-}
-
 type ShipmentCommand struct {
 	q db.Querier
 }
 
-func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		return nil, errors.New("DATABASE_URL is required")
-	}
-	return pgxpool.New(ctx, dsn)
-}
-
-func NewShipmentQuery(pool *pgxpool.Pool) *ShipmentQuery {
-	return &ShipmentQuery{q: db.New(pool)}
-}
-
 func NewShipmentCommand(pool *pgxpool.Pool) *ShipmentCommand {
 	return &ShipmentCommand{q: db.New(pool)}
-}
-
-func (r *ShipmentQuery) ListShipments(ctx context.Context) ([]db.ShippingShipment, error) {
-	return r.q.ListShipments(ctx)
-}
-
-func (r *ShipmentQuery) GetShipment(ctx context.Context, id int64) (db.ShippingShipment, error) {
-	row, err := r.q.GetShipment(ctx, id)
-	if err != nil {
-		return db.ShippingShipment{}, dberr.FromRead(err)
-	}
-	return row, nil
 }
 
 func (r *ShipmentCommand) CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error) {

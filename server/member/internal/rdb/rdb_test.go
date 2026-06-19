@@ -1,4 +1,4 @@
-package repository
+package rdb
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	}
 }
 
-func TestRepositoryListMembers(t *testing.T) {
+func TestMemberQueryListMembers(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -73,7 +73,7 @@ func TestRepositoryListMembers(t *testing.T) {
 	}
 }
 
-func TestRepositoryListMembersError(t *testing.T) {
+func TestMemberQueryListMembersError(t *testing.T) {
 	skip.Short(t)
 	r := NewMemberQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -83,7 +83,7 @@ func TestRepositoryListMembersError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetMember(t *testing.T) {
+func TestMemberQueryGetMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberQuery(pool)
@@ -105,7 +105,7 @@ func TestRepositoryGetMember(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateMember(t *testing.T) {
+func TestMemberCommandCreateMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberCommand(pool)
@@ -127,7 +127,7 @@ func TestRepositoryCreateMember(t *testing.T) {
 	})
 }
 
-func TestRepositoryUpdateMember(t *testing.T) {
+func TestMemberCommandUpdateMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberCommand(pool)

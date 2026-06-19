@@ -1,4 +1,4 @@
-package repository
+package rdb
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...db.ShippingShipment
 	}
 }
 
-func TestRepositoryListShipments(t *testing.T) {
+func TestShipmentQueryListShipments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -73,7 +73,7 @@ func TestRepositoryListShipments(t *testing.T) {
 	}
 }
 
-func TestRepositoryListShipmentsError(t *testing.T) {
+func TestShipmentQueryListShipmentsError(t *testing.T) {
 	skip.Short(t)
 	r := NewShipmentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -83,7 +83,7 @@ func TestRepositoryListShipmentsError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetShipment(t *testing.T) {
+func TestShipmentQueryGetShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentQuery(pool)
@@ -105,7 +105,7 @@ func TestRepositoryGetShipment(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateShipment(t *testing.T) {
+func TestShipmentCommandCreateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentCommand(pool)
@@ -120,7 +120,7 @@ func TestRepositoryCreateShipment(t *testing.T) {
 	}
 }
 
-func TestRepositoryUpdateShipment(t *testing.T) {
+func TestShipmentCommandUpdateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentCommand(pool)

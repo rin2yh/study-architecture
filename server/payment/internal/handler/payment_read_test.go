@@ -18,7 +18,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
-	"github.com/rin2yh/study-architecture/server/payment/internal/repository"
+	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
 )
 
@@ -36,7 +36,7 @@ func TestListPayments(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewPaymentQuery(pool), repository.NewPaymentCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
+	newServer(rdb.NewPaymentQuery(pool), rdb.NewPaymentCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

@@ -18,7 +18,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/repository"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/stub"
 )
 
@@ -36,7 +36,7 @@ func TestListShipments(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewShipmentQuery(pool), repository.NewShipmentCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
+	newServer(rdb.NewShipmentQuery(pool), rdb.NewShipmentCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

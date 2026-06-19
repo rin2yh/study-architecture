@@ -1,4 +1,4 @@
-package repository
+package rdb
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...db.ProductProduct) {
 	}
 }
 
-func TestRepositoryListProducts(t *testing.T) {
+func TestProductQueryListProducts(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -73,7 +73,7 @@ func TestRepositoryListProducts(t *testing.T) {
 	}
 }
 
-func TestRepositoryListProductsError(t *testing.T) {
+func TestProductQueryListProductsError(t *testing.T) {
 	skip.Short(t)
 	r := NewProductQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -83,7 +83,7 @@ func TestRepositoryListProductsError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetProduct(t *testing.T) {
+func TestProductQueryGetProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductQuery(pool)
@@ -105,7 +105,7 @@ func TestRepositoryGetProduct(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateProduct(t *testing.T) {
+func TestProductCommandCreateProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductCommand(pool)
@@ -127,7 +127,7 @@ func TestRepositoryCreateProduct(t *testing.T) {
 	})
 }
 
-func TestRepositoryUpdateProduct(t *testing.T) {
+func TestProductCommandUpdateProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductCommand(pool)

@@ -1,4 +1,4 @@
-package repository
+package rdb
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
 	}
 }
 
-func TestRepositoryListPayments(t *testing.T) {
+func TestPaymentQueryListPayments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -73,7 +73,7 @@ func TestRepositoryListPayments(t *testing.T) {
 	}
 }
 
-func TestRepositoryListPaymentsError(t *testing.T) {
+func TestPaymentQueryListPaymentsError(t *testing.T) {
 	skip.Short(t)
 	r := NewPaymentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
@@ -83,7 +83,7 @@ func TestRepositoryListPaymentsError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetPayment(t *testing.T) {
+func TestPaymentQueryGetPayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentQuery(pool)
@@ -105,7 +105,7 @@ func TestRepositoryGetPayment(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreatePayment(t *testing.T) {
+func TestPaymentCommandCreatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentCommand(pool)
@@ -120,7 +120,7 @@ func TestRepositoryCreatePayment(t *testing.T) {
 	}
 }
 
-func TestRepositoryUpdatePayment(t *testing.T) {
+func TestPaymentCommandUpdatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentCommand(pool)

@@ -18,7 +18,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
-	"github.com/rin2yh/study-architecture/server/member/internal/repository"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/member/internal/stub"
 )
 
@@ -36,7 +36,7 @@ func TestListMembers(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewMemberQuery(pool), repository.NewMemberCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
+	newServer(rdb.NewMemberQuery(pool), rdb.NewMemberCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

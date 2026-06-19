@@ -18,7 +18,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/product/api"
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
-	"github.com/rin2yh/study-architecture/server/product/internal/repository"
+	"github.com/rin2yh/study-architecture/server/product/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/product/internal/stub"
 )
 
@@ -36,7 +36,7 @@ func TestListProducts(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewProductQuery(pool), repository.NewProductCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
+	newServer(rdb.NewProductQuery(pool), rdb.NewProductCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
