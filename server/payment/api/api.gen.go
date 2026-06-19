@@ -46,9 +46,7 @@ type Payment struct {
 
 // UpdatePaymentRequest defines model for UpdatePaymentRequest.
 type UpdatePaymentRequest struct {
-	AmountCents int64  `json:"amountCents"`
-	Method      string `binding:"required" json:"method"`
-	Status      string `binding:"required" json:"status"`
+	Status string `binding:"required" json:"status"`
 }
 
 // IdPath defines model for IdPath.

@@ -44,8 +44,7 @@ type Order struct {
 
 // UpdateOrderRequest defines model for UpdateOrderRequest.
 type UpdateOrderRequest struct {
-	Status     string `binding:"required" json:"status"`
-	TotalCents int64  `json:"totalCents"`
+	Status string `binding:"required" json:"status"`
 }
 
 // IdPath defines model for IdPath.

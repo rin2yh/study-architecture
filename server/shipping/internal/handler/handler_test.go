@@ -210,10 +210,10 @@ func TestUpdateShipment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 配送を更新し 200", args{stub.Repo{Shipment: updated}, "/shipments/1", `{"carrier":"ヤマト運輸","trackingNo":"TRK-99","status":"delivered"}`}, want{http.StatusOK, ""}},
-		{"異常系 carrier 欠落は 400 bad_request", args{stub.Repo{}, "/shipments/1", `{"trackingNo":"TRK-99","status":"delivered"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/shipments/99", `{"carrier":"ヤマト運輸","trackingNo":"TRK-99","status":"delivered"}`}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/shipments/1", `{"carrier":"ヤマト運輸","trackingNo":"TRK-99","status":"delivered"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 配送を更新し 200", args{stub.Repo{Shipment: updated}, "/shipments/1", `{"status":"delivered"}`}, want{http.StatusOK, ""}},
+		{"異常系 status 欠落は 400 bad_request", args{stub.Repo{}, "/shipments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/shipments/99", `{"status":"delivered"}`}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/shipments/1", `{"status":"delivered"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

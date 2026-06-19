@@ -8,5 +8,4 @@
 
 export interface UpdateOrderRequest {
   status: string;
-  totalCents: number;
 }

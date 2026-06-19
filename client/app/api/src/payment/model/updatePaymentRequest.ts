@@ -7,7 +7,5 @@
  */
 
 export interface UpdatePaymentRequest {
-  amountCents: number;
-  method: string;
   status: string;
 }

@@ -63,8 +63,6 @@ export const UpdateShipmentParams = zod.object({
 });
 
 export const UpdateShipmentBody = zod.object({
-  carrier: zod.string(),
-  trackingNo: zod.string(),
   status: zod.string(),
 });
 

@@ -59,7 +59,6 @@ export const UpdateProductParams = zod.object({
 });
 
 export const UpdateProductBody = zod.object({
-  sku: zod.string(),
   name: zod.string(),
   priceCents: zod.number(),
 });

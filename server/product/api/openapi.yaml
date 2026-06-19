@@ -164,12 +164,8 @@ components:
           format: int64
     UpdateProductRequest:
       type: object
-      required: [sku, name, priceCents]
+      required: [name, priceCents]
       properties:
-        sku:
-          type: string
-          x-oapi-codegen-extra-tags:
-            binding: required
         name:
           type: string
           x-oapi-codegen-extra-tags:

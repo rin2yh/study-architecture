@@ -77,7 +77,7 @@ func TestFromUpdate(t *testing.T) {
 	tests := []struct {
 		name string
 		in   error
-		want error // errors.Is で照合。nil はエラー無し
+		want error
 	}{
 		{"正常系 エラー無しは nil", nil, nil},
 		{"準正常系 no rows は ErrNotFound に正規化", pgx.ErrNoRows, dberr.ErrNotFound},

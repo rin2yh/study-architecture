@@ -46,9 +46,7 @@ type Shipment struct {
 
 // UpdateShipmentRequest defines model for UpdateShipmentRequest.
 type UpdateShipmentRequest struct {
-	Carrier    string `binding:"required" json:"carrier"`
-	Status     string `binding:"required" json:"status"`
-	TrackingNo string `binding:"required" json:"trackingNo"`
+	Status string `binding:"required" json:"status"`
 }
 
 // IdPath defines model for IdPath.

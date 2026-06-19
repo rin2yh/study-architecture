@@ -15,6 +15,6 @@ RETURNING id, sku, name, price_cents, created_at;
 
 -- name: UpdateProduct :one
 UPDATE product.products
-SET sku = $2, name = $3, price_cents = $4
+SET name = $2, price_cents = $3
 WHERE id = $1
 RETURNING id, sku, name, price_cents, created_at;

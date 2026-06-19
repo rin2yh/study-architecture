@@ -63,8 +63,6 @@ export const UpdatePaymentParams = zod.object({
 });
 
 export const UpdatePaymentBody = zod.object({
-  amountCents: zod.number(),
-  method: zod.string(),
   status: zod.string(),
 });
 

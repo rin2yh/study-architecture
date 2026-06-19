@@ -211,11 +211,10 @@ func TestUpdatePayment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 決済を更新し 200", args{stub.Repo{Payment: updated}, "/payments/1", `{"amountCents":3980,"method":"bank","status":"refunded"}`}, want{http.StatusOK, ""}},
-		{"異常系 method 欠落は 400 bad_request", args{stub.Repo{}, "/payments/1", `{"amountCents":3980,"status":"refunded"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 amountCents 負値は 422 unprocessable_entity", args{stub.Repo{}, "/payments/1", `{"amountCents":-1,"method":"bank","status":"refunded"}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/payments/99", `{"amountCents":3980,"method":"bank","status":"refunded"}`}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/payments/1", `{"amountCents":3980,"method":"bank","status":"refunded"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 決済を更新し 200", args{stub.Repo{Payment: updated}, "/payments/1", `{"status":"refunded"}`}, want{http.StatusOK, ""}},
+		{"異常系 status 欠落は 400 bad_request", args{stub.Repo{}, "/payments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/payments/99", `{"status":"refunded"}`}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/payments/1", `{"status":"refunded"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

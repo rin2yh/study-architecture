@@ -172,15 +172,8 @@ components:
             binding: required
     UpdatePaymentRequest:
       type: object
-      required: [amountCents, method, status]
+      required: [status]
       properties:
-        amountCents:
-          type: integer
-          format: int64
-        method:
-          type: string
-          x-oapi-codegen-extra-tags:
-            binding: required
         status:
           type: string
           x-oapi-codegen-extra-tags:

@@ -7,7 +7,5 @@
  */
 
 export interface UpdateShipmentRequest {
-  carrier: string;
-  trackingNo: string;
   status: string;
 }

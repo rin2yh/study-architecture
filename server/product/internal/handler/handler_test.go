@@ -215,12 +215,11 @@ func TestUpdateProduct(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 商品を更新し 200", args{stub.Repo{Product: updated}, "/products/1", `{"sku":"SKU-UPD","name":"更新後商品","priceCents":3980}`}, want{http.StatusOK, ""}},
-		{"異常系 sku 欠落は 400 bad_request", args{stub.Repo{}, "/products/1", `{"name":"x","priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 priceCents 負値は 422 unprocessable_entity", args{stub.Repo{}, "/products/1", `{"sku":"SKU-X","name":"x","priceCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/products/99", `{"sku":"SKU-X","name":"x","priceCents":100}`}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 sku 重複は 409 conflict", args{stub.Repo{Err: dberr.ErrConflict}, "/products/1", `{"sku":"SKU-DUP","name":"重複","priceCents":100}`}, want{http.StatusConflict, "conflict"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/products/1", `{"sku":"SKU-X","name":"x","priceCents":100}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 商品を更新し 200", args{stub.Repo{Product: updated}, "/products/1", `{"name":"更新後商品","priceCents":3980}`}, want{http.StatusOK, ""}},
+		{"異常系 name 欠落は 400 bad_request", args{stub.Repo{}, "/products/1", `{"priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 priceCents 負値は 422 unprocessable_entity", args{stub.Repo{}, "/products/1", `{"name":"x","priceCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/products/99", `{"name":"x","priceCents":100}`}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/products/1", `{"name":"x","priceCents":100}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -239,7 +238,7 @@ func TestUpdateProduct(t *testing.T) {
 			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 				t.Fatalf("unmarshal: %v", err)
 			}
-			if got.Id != 1 || got.Sku != "SKU-UPD" {
+			if got.Id != 1 || got.Name != "更新後商品" {
 				t.Fatalf("unexpected product: %+v", got)
 			}
 		})

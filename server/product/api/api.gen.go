@@ -46,7 +46,6 @@ type Product struct {
 type UpdateProductRequest struct {
 	Name       string `binding:"required" json:"name"`
 	PriceCents int64  `json:"priceCents"`
-	Sku        string `binding:"required" json:"sku"`
 }
 
 // IdPath defines model for IdPath.

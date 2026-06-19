@@ -15,6 +15,6 @@ RETURNING id, order_id, amount_cents, method, status, created_at;
 
 -- name: UpdatePayment :one
 UPDATE payment.payments
-SET amount_cents = $2, method = $3, status = $4
+SET status = $2
 WHERE id = $1
 RETURNING id, order_id, amount_cents, method, status, created_at;

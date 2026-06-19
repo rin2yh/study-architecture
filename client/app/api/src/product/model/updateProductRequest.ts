@@ -7,7 +7,6 @@
  */
 
 export interface UpdateProductRequest {
-  sku: string;
   name: string;
   priceCents: number;
 }

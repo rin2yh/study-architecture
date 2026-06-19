@@ -60,7 +60,6 @@ export const UpdateOrderParams = zod.object({
 
 export const UpdateOrderBody = zod.object({
   status: zod.string(),
-  totalCents: zod.number(),
 });
 
 export const UpdateOrderResponse = zod.object({

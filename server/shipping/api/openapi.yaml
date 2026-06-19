@@ -172,16 +172,8 @@ components:
             binding: required
     UpdateShipmentRequest:
       type: object
-      required: [carrier, trackingNo, status]
+      required: [status]
       properties:
-        carrier:
-          type: string
-          x-oapi-codegen-extra-tags:
-            binding: required
-        trackingNo:
-          type: string
-          x-oapi-codegen-extra-tags:
-            binding: required
         status:
           type: string
           x-oapi-codegen-extra-tags:

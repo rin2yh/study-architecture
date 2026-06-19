@@ -166,12 +166,9 @@ components:
           format: int64
     UpdateOrderRequest:
       type: object
-      required: [status, totalCents]
+      required: [status]
       properties:
         status:
           type: string
           x-oapi-codegen-extra-tags:
             binding: required
-        totalCents:
-          type: integer
-          format: int64
