@@ -4,10 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
@@ -75,7 +73,5 @@ func TestCheckout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOrderItems: %v", err)
 	}
-	if diff := cmp.Diff(items, got, cmpopts.EquateEmpty()); diff != "" {
-		t.Fatalf("GetOrderItems mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, items, got)
 }

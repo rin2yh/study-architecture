@@ -7,11 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -47,10 +45,7 @@ func TestListMembers(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	want := []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}
-	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Member{}, "Id", "CreatedAt")); diff != "" {
-		t.Fatalf("members mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}, got, "Id", "CreatedAt")
 }
 
 func TestListMembersError(t *testing.T) {
@@ -100,9 +95,8 @@ func TestGetMember(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Email != "user@example.com" || got.DisplayName != "サンプル会員" {
-		t.Fatalf("unexpected member: %+v", got)
-	}
+	want := api.Member{Email: "user@example.com", DisplayName: "サンプル会員"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetMemberError(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
@@ -61,9 +62,7 @@ func TestCreateOrder(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id == 0 || got.MemberId != 20 || got.Status != "pending" || got.TotalCents != 1980 {
-		t.Fatalf("unexpected order: %+v", got)
-	}
+	cmptest.Equal(t, api.Order{MemberId: 20, Status: "pending", TotalCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestCreateOrderError(t *testing.T) {
@@ -124,9 +123,7 @@ func TestUpdateOrder(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Status != "paid" || got.MemberId != 10 || got.TotalCents != 1980 {
-		t.Fatalf("unexpected order: %+v", got)
-	}
+	cmptest.Equal(t, api.Order{MemberId: 10, Status: "paid", TotalCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateOrderError(t *testing.T) {
@@ -180,9 +177,11 @@ func TestCheckout(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	// 500*2 + 1500*1 を商品スナップショットから合算した結果が永続化される
-	if got.TotalCents != 2500 || got.Status != "confirmed" || got.Items == nil || len(*got.Items) != 2 {
-		t.Fatalf("unexpected order: %+v", got)
-	}
+	want := api.Order{MemberId: 20, Status: "confirmed", TotalCents: 2500, Items: &[]api.OrderItem{
+		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
+		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
+	}}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCheckoutError(t *testing.T) {

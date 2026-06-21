@@ -7,11 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
@@ -48,9 +46,7 @@ func TestListPayments(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := []api.Payment{{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}}
-	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Payment{}, "Id", "CreatedAt")); diff != "" {
-		t.Fatalf("payments mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, want, got, "Id", "CreatedAt")
 }
 
 func TestListPaymentsError(t *testing.T) {
@@ -100,9 +96,8 @@ func TestGetPayment(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.OrderId != 10 || got.AmountCents != 1980 || got.Method != "card" || got.Status != "paid" {
-		t.Fatalf("unexpected payment: %+v", got)
-	}
+	want := api.Payment{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetPaymentError(t *testing.T) {

@@ -7,11 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/product/api"
@@ -47,10 +45,7 @@ func TestListProducts(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	want := []api.Product{{Sku: "SKU-DB-1", Name: "DB 商品", PriceCents: 500}}
-	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Product{}, "Id", "CreatedAt")); diff != "" {
-		t.Fatalf("products mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, []api.Product{{Sku: "SKU-DB-1", Name: "DB 商品", PriceCents: 500}}, got, "Id", "CreatedAt")
 }
 
 func TestListProductsError(t *testing.T) {
@@ -103,9 +98,7 @@ func TestGetProduct(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Sku != "SKU-1" || got.Name != "サンプル商品" || got.PriceCents != 1980 {
-		t.Fatalf("unexpected product: %+v", got)
-	}
+	cmptest.Equal(t, api.Product{Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestGetProductError(t *testing.T) {

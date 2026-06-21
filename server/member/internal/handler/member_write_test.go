@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -41,9 +42,7 @@ func TestCreateMember(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id == 0 || got.Email != "new@example.com" || got.DisplayName != "新規会員" {
-		t.Fatalf("unexpected member: %+v", got)
-	}
+	cmptest.Equal(t, api.Member{Email: "new@example.com", DisplayName: "新規会員"}, got, "Id", "CreatedAt")
 }
 
 func TestCreateMemberError(t *testing.T) {
@@ -104,9 +103,7 @@ func TestUpdateMember(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Email != "upd@example.com" || got.DisplayName != "更新後会員" {
-		t.Fatalf("unexpected member: %+v", got)
-	}
+	cmptest.Equal(t, api.Member{Email: "upd@example.com", DisplayName: "更新後会員"}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateMemberError(t *testing.T) {

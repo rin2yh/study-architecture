@@ -7,11 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
@@ -48,9 +46,7 @@ func TestListShipments(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := []api.Shipment{{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"}}
-	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Shipment{}, "Id", "CreatedAt")); diff != "" {
-		t.Fatalf("shipments mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, want, got, "Id", "CreatedAt")
 }
 
 func TestListShipmentsError(t *testing.T) {
@@ -100,9 +96,8 @@ func TestGetShipment(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.OrderId != 100 || got.Carrier != "ヤマト運輸" || got.TrackingNo != "TRK-1" || got.Status != "shipped" {
-		t.Fatalf("unexpected shipment: %+v", got)
-	}
+	want := api.Shipment{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetShipmentError(t *testing.T) {

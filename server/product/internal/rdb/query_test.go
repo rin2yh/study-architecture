@@ -5,11 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
@@ -64,11 +63,7 @@ func TestListProducts(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListProducts: want non-nil slice (emit_empty_slices)")
 			}
-			if diff := cmp.Diff(tt.seed, got,
-				cmpopts.IgnoreFields(db.ProductProduct{}, "ID", "CreatedAt"),
-				cmpopts.EquateEmpty()); diff != "" {
-				t.Fatalf("ListProducts mismatch (-want +got):\n%s", diff)
-			}
+			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }

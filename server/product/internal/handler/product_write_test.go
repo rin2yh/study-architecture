@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/product/api"
@@ -41,9 +42,7 @@ func TestCreateProduct(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id == 0 || got.Sku != "SKU-NEW" || got.Name != "新規商品" || got.PriceCents != 2980 {
-		t.Fatalf("unexpected product: %+v", got)
-	}
+	cmptest.Equal(t, api.Product{Sku: "SKU-NEW", Name: "新規商品", PriceCents: 2980}, got, "Id", "CreatedAt")
 }
 
 func TestCreateProductError(t *testing.T) {
@@ -105,9 +104,7 @@ func TestUpdateProduct(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Name != "更新後商品" || got.PriceCents != 3980 {
-		t.Fatalf("unexpected product: %+v", got)
-	}
+	cmptest.Equal(t, api.Product{Sku: "SKU-UPD", Name: "更新後商品", PriceCents: 3980}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateProductError(t *testing.T) {

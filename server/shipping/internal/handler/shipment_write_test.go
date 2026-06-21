@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
@@ -41,9 +42,8 @@ func TestCreateShipment(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id == 0 || got.OrderId != 200 || got.Carrier != "佐川急便" || got.TrackingNo != "TRK-10" || got.Status != "pending" {
-		t.Fatalf("unexpected shipment: %+v", got)
-	}
+	want := api.Shipment{OrderId: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCreateShipmentError(t *testing.T) {
@@ -103,9 +103,8 @@ func TestUpdateShipment(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Status != "delivered" {
-		t.Fatalf("unexpected shipment: %+v", got)
-	}
+	want := api.Shipment{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "delivered"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestUpdateShipmentError(t *testing.T) {

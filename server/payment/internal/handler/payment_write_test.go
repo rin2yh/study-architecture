@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
@@ -41,9 +42,8 @@ func TestCreatePayment(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id == 0 || got.OrderId != 20 || got.AmountCents != 2980 || got.Method != "card" || got.Status != "paid" {
-		t.Fatalf("unexpected payment: %+v", got)
-	}
+	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "paid"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCreatePaymentError(t *testing.T) {
@@ -104,9 +104,8 @@ func TestUpdatePayment(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != 1 || got.Status != "refunded" {
-		t.Fatalf("unexpected payment: %+v", got)
-	}
+	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "refunded"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestUpdatePaymentError(t *testing.T) {
