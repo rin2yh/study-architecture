@@ -9,8 +9,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
@@ -43,7 +42,7 @@ func TestCreatePayment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "paid"}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCreatePaymentError(t *testing.T) {
@@ -74,7 +73,7 @@ func TestCreatePaymentError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
@@ -105,7 +104,7 @@ func TestUpdatePayment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "refunded"}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestUpdatePaymentError(t *testing.T) {
@@ -136,7 +135,7 @@ func TestUpdatePaymentError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

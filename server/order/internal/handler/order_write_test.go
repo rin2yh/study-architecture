@@ -12,8 +12,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
@@ -62,7 +61,7 @@ func TestCreateOrder(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	cmptest.Equal(t, api.Order{MemberId: 20, Status: "pending", TotalCents: 1980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Order{MemberId: 20, Status: "pending", TotalCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestCreateOrderError(t *testing.T) {
@@ -93,7 +92,7 @@ func TestCreateOrderError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
@@ -123,7 +122,7 @@ func TestUpdateOrder(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	cmptest.Equal(t, api.Order{MemberId: 10, Status: "paid", TotalCents: 1980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Order{MemberId: 10, Status: "paid", TotalCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateOrderError(t *testing.T) {
@@ -154,7 +153,7 @@ func TestUpdateOrderError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
@@ -181,7 +180,7 @@ func TestCheckout(t *testing.T) {
 		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCheckoutError(t *testing.T) {
@@ -217,7 +216,7 @@ func TestCheckoutError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
