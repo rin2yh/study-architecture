@@ -1,7 +1,28 @@
-// TODO(#6): member 認証導入後、SSR ローダで Cookie 検証した会員 ID に差し替える。
-// ログイン状態の取得をこの 1 箇所に閉じ込め、#6 ではここだけを実装に置き換える。
-export const DEV_MEMBER_ID = 1;
+import { getSession, GetSessionResponse } from "api/member";
 
-export function getCurrentMemberId(): number {
-  return DEV_MEMBER_ID;
+export const SESSION_COOKIE = "member_session";
+
+export function readSessionToken(request: Request): string | null {
+  const header = request.headers.get("Cookie");
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === SESSION_COOKIE) {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    }
+  }
+  return null;
+}
+
+// ADR-[[202606211100]]
+export async function currentMemberId(request: Request): Promise<number | null> {
+  const token = readSessionToken(request);
+  if (!token) return null;
+  try {
+    const { data } = await getSession(token);
+    return GetSessionResponse.parse(data).memberId;
+  } catch {
+    return null;
+  }
 }

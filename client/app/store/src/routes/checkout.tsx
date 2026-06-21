@@ -4,7 +4,7 @@ import { Form, Link, useNavigation } from "react-router";
 import { checkout } from "api/order";
 import { cartTotalCents, toCheckoutItems } from "../cart";
 import { yen } from "../money";
-import { getCurrentMemberId } from "../session";
+import { currentMemberId } from "../session";
 import { useCart } from "../use-cart";
 import type { Route } from "./+types/checkout";
 
@@ -31,8 +31,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (items.length === 0) return { ok: false as const, error: "カートが空です。" };
   if (!paymentMethod) return { ok: false as const, error: "支払い方法を選択してください。" };
 
+  const memberId = await currentMemberId(request);
+  if (memberId === null) return { ok: false as const, error: "ログインが必要です。" };
+
   try {
-    const { data } = await checkout({ memberId: getCurrentMemberId(), paymentMethod, items });
+    const { data } = await checkout({ memberId, paymentMethod, items });
     // mutator は非 2xx で throw するので、ここに来た data は成功レスポンス (Order)。
     if (!("id" in data)) return { ok: false as const, error: "確定に失敗しました。" };
     return { ok: true as const, order: data };

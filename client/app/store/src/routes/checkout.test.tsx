@@ -4,9 +4,11 @@ import { createRoutesStub } from "react-router";
 
 import { checkout } from "api/order";
 import { type CartItem, readCart, writeCart } from "../cart";
+import { currentMemberId } from "../session";
 import Checkout, { action } from "./checkout";
 
 vi.mock("api/order", () => ({ checkout: vi.fn() }));
+vi.mock("../session", () => ({ currentMemberId: vi.fn() }));
 
 const order = {
   id: 7,
@@ -43,6 +45,7 @@ afterEach(() => {
 
 describe("正常系 checkout action", () => {
   it("カートと支払い方法を渡すと checkout を呼び注文を返す", async () => {
+    vi.mocked(currentMemberId).mockResolvedValue(1);
     vi.mocked(checkout).mockResolvedValue({ data: order, status: 201 } as never);
 
     const result = await callAction({
@@ -70,10 +73,21 @@ describe("準正常系 checkout action", () => {
     const result = await callAction({ items: JSON.stringify([{ productId: 1, quantity: 1 }]) });
     expect(result).toEqual({ ok: false, error: "支払い方法を選択してください。" });
   });
+
+  it("未ログインなら checkout を呼ばずエラーを返す", async () => {
+    vi.mocked(currentMemberId).mockResolvedValue(null);
+    const result = await callAction({
+      items: JSON.stringify([{ productId: 1, quantity: 1 }]),
+      paymentMethod: "card",
+    });
+    expect(checkout).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: false, error: "ログインが必要です。" });
+  });
 });
 
 describe("異常系 checkout action", () => {
   it("checkout が失敗したらエラーメッセージを返す", async () => {
+    vi.mocked(currentMemberId).mockResolvedValue(1);
     vi.mocked(checkout).mockRejectedValue(new Error("boom"));
     const result = await callAction({
       items: JSON.stringify([{ productId: 1, quantity: 1 }]),
