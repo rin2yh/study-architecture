@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { addToCart, type CartItem, readCart, removeFromCart, setQuantity, writeCart } from "./cart";
 
-// localStorage は SSR では参照できないため、初期描画は空・マウント後に読み込む。ready が
-// false の間はカート依存の UI を出さないことで hydration の不一致を避ける。
+// localStorage は SSR で読めないため、ready (マウント後) までカート依存 UI を出さず
+// hydration 不一致を避ける。
 export function useCart() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);

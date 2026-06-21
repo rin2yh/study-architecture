@@ -35,7 +35,6 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     const { data } = await checkout({ memberId: getCurrentMemberId(), paymentMethod, items });
     // mutator は非 2xx で throw するので、ここに来た data は成功レスポンス (Order)。
-    // 型は Order | ErrorResponse の union なので id の有無で絞る。
     if (!("id" in data)) return { ok: false as const, error: "確定に失敗しました。" };
     return { ok: true as const, order: data };
   } catch (e) {
