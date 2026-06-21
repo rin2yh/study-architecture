@@ -28,15 +28,14 @@ func newCheckoutServer(command handler.Command, product gateway.ProductPort, pay
 	return engine
 }
 
-// checkoutRepo は Checkout に渡された total / lines を捕捉する記録スタブ。
-type checkoutRepo struct {
+type checkoutRecorder struct {
 	stub.OrderStub
 	err      error
 	gotTotal int64
 	gotLines []rdb.CheckoutLine
 }
 
-func (r *checkoutRepo) Checkout(_ context.Context, memberID int64, status string, total int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (r *checkoutRecorder) Checkout(_ context.Context, memberID int64, status string, total int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
 	r.gotTotal = total
 	r.gotLines = lines
 	if r.err != nil {
@@ -71,10 +70,10 @@ func postCheckout(command handler.Command, product gateway.ProductPort, payment 
 func TestCheckout(t *testing.T) {
 	const valid = `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2}]}`
 	type args struct {
-		repoErr error
-		product gateway.ProductPort
-		payment gateway.PaymentPort
-		body    string
+		checkoutErr error
+		product     gateway.ProductPort
+		payment     gateway.PaymentPort
+		body        string
 	}
 	type want struct {
 		status int
@@ -98,7 +97,7 @@ func TestCheckout(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			command := &checkoutRepo{err: tt.args.repoErr}
+			command := &checkoutRecorder{err: tt.args.checkoutErr}
 			rec := postCheckout(command, tt.args.product, tt.args.payment, tt.args.body)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
@@ -111,7 +110,7 @@ func TestCheckout(t *testing.T) {
 }
 
 func TestCheckoutSnapshotAndTotal(t *testing.T) {
-	command := &checkoutRepo{}
+	command := &checkoutRecorder{}
 	body := `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`
 	rec := postCheckout(command, twoProducts(), stub.Payment{ID: 1}, body)
 
