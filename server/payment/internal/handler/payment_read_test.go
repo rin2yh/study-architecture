@@ -8,8 +8,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
@@ -46,7 +45,7 @@ func TestListPayments(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := []api.Payment{{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}}
-	cmptest.EqualSlice(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, want, got, "Id", "CreatedAt")
 }
 
 func TestListPaymentsError(t *testing.T) {
@@ -97,7 +96,7 @@ func TestGetPayment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Payment{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetPaymentError(t *testing.T) {
@@ -124,7 +123,7 @@ func TestGetPaymentError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

@@ -9,8 +9,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -62,7 +61,7 @@ func TestCreateSession(t *testing.T) {
 	if got.Id == "" {
 		t.Fatal("session id (生トークン) が空")
 	}
-	cmptest.Equal(t, api.Session{MemberId: 1}, got, "Id", "ExpiresAt")
+	assert.DeepEqual(t, api.Session{MemberId: 1}, got, "Id", "ExpiresAt")
 }
 
 func TestCreateSessionError(t *testing.T) {
@@ -95,7 +94,7 @@ func TestCreateSessionError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
@@ -143,5 +142,5 @@ func TestDeleteSessionError(t *testing.T) {
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500 (body: %s)", rec.Code, rec.Body.String())
 	}
-	apitest.AssertErrorCode(t, rec.Body.Bytes(), "internal")
+	assert.ErrorCode(t, rec.Body.Bytes(), "internal")
 }

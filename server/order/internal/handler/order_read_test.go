@@ -8,8 +8,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
@@ -45,7 +44,7 @@ func TestListOrders(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	cmptest.EqualSlice(t, []api.Order{{MemberId: 10, Status: "paid", TotalCents: 5000}}, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, []api.Order{{MemberId: 10, Status: "paid", TotalCents: 5000}}, got, "Id", "CreatedAt")
 }
 
 func TestListOrdersFilter(t *testing.T) {
@@ -80,13 +79,13 @@ func TestListOrdersFilter(t *testing.T) {
 	}
 
 	t.Run("正常系 X-Member-Id 付きは本人分だけ返す", func(t *testing.T) {
-		cmptest.EqualSlice(t, []api.Order{
+		assert.DeepEqualSlice(t, []api.Order{
 			{MemberId: 10, Status: "paid", TotalCents: 5000},
 			{MemberId: 10, Status: "pending", TotalCents: 1980},
 		}, listOrders(t, "10"), "Id", "CreatedAt")
 	})
 	t.Run("準正常系 ヘッダ無しは全件返す", func(t *testing.T) {
-		cmptest.EqualSlice(t, []api.Order{
+		assert.DeepEqualSlice(t, []api.Order{
 			{MemberId: 10, Status: "paid", TotalCents: 5000},
 			{MemberId: 20, Status: "paid", TotalCents: 3000},
 			{MemberId: 10, Status: "pending", TotalCents: 1980},
@@ -148,7 +147,7 @@ func TestGetOrder(t *testing.T) {
 		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetOrderError(t *testing.T) {
@@ -175,7 +174,7 @@ func TestGetOrderError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

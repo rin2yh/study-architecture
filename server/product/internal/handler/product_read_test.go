@@ -8,8 +8,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/product/api"
@@ -45,7 +44,7 @@ func TestListProducts(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	cmptest.EqualSlice(t, []api.Product{{Sku: "SKU-DB-1", Name: "DB 商品", PriceCents: 500}}, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, []api.Product{{Sku: "SKU-DB-1", Name: "DB 商品", PriceCents: 500}}, got, "Id", "CreatedAt")
 }
 
 func TestListProductsError(t *testing.T) {
@@ -98,7 +97,7 @@ func TestGetProduct(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	cmptest.Equal(t, api.Product{Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Product{Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestGetProductError(t *testing.T) {
@@ -125,7 +124,7 @@ func TestGetProductError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

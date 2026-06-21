@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
@@ -78,7 +78,7 @@ func TestListMembers(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListMembers: want non-nil slice (emit_empty_slices)")
 			}
-			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
+			assert.DeepEqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }
@@ -126,7 +126,7 @@ func TestGetMemberByEmail(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetMemberByEmail: %v", err)
 		}
-		cmptest.Equal(t, db.MemberMember{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
+		assert.DeepEqual(t, db.MemberMember{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
 	})
 	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetMemberByEmail(t.Context(), "none@example.com"); !errors.Is(err, dberr.ErrNotFound) {
@@ -153,7 +153,7 @@ func TestGetSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetSession: %v", err)
 		}
-		cmptest.Equal(t, db.MemberSession{ID: "live", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
+		assert.DeepEqual(t, db.MemberSession{ID: "live", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
 	})
 	t.Run("準正常系 期限切れは ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetSession(t.Context(), "expired"); !errors.Is(err, dberr.ErrNotFound) {

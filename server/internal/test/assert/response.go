@@ -1,12 +1,11 @@
-// Package apitest は API レスポンス検証の共通ヘルパー。
-package apitest
+package assert
 
 import (
 	"encoding/json"
 	"testing"
 )
 
-func AssertErrorCode(t *testing.T, body []byte, wantCode string) {
+func ErrorCode(t *testing.T, body []byte, wantCode string) {
 	t.Helper()
 	var e struct {
 		Code    string `json:"code"`
