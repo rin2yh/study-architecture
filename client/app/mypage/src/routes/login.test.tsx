@@ -66,7 +66,7 @@ describe("login action", () => {
     expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=tok123`);
   });
 
-  it("異常系 認証失敗はエラー文言を返す (リダイレクトしない)", async () => {
+  it("準正常系 認証失敗はエラー文言を返す (リダイレクトしない)", async () => {
     vi.mocked(createSession).mockRejectedValue(new Error("401"));
 
     const res = await action(

@@ -40,7 +40,7 @@ func TestUpdateShipment(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.UpdateShipment(t.Context(), db.UpdateShipmentParams{ID: 9999, Status: "x"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

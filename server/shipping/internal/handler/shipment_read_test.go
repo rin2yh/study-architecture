@@ -113,7 +113,7 @@ func TestGetShipmentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 未存在は 404 not_found", args{stub.ShipmentStub{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 未存在は 404 not_found", args{stub.ShipmentStub{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ShipmentStub{Err: errors.New("db failure")}, "/shipments/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

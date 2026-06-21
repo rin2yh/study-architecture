@@ -25,7 +25,7 @@ func TestCreateProduct(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 sku 重複は ErrConflict", func(t *testing.T) {
+	t.Run("準正常系 sku 重複は ErrConflict", func(t *testing.T) {
 		if _, err := r.CreateProduct(t.Context(), db.CreateProductParams{Sku: "SKU-EXIST", Name: "重複", PriceCents: 100}); !errors.Is(err, dberr.ErrConflict) {
 			t.Fatalf("err = %v, want ErrConflict", err)
 		}
@@ -47,7 +47,7 @@ func TestUpdateProduct(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.UpdateProduct(t.Context(), db.UpdateProductParams{ID: 9999, Name: "x", PriceCents: 1}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

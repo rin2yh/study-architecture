@@ -41,7 +41,7 @@ func TestUpdateOrder(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 9999, Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

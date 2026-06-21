@@ -108,7 +108,7 @@ func TestGetMember(t *testing.T) {
 			t.Fatalf("email = %q, want user@example.com", got.Email)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetMember(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

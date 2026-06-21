@@ -59,9 +59,9 @@ func TestCreatePaymentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 method 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":2980,"status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 orderId 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"amountCents":2980,"method":"card","status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 amountCents 負値は 422 unprocessable_entity", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":-1,"method":"card","status":"paid"}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"準正常系 method 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":2980,"status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 orderId 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"amountCents":2980,"method":"card","status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 amountCents 負値は 422 unprocessable_entity", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":-1,"method":"card","status":"paid"}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
 		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, `{"orderId":20,"amountCents":2980,"method":"card","status":"paid"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
@@ -122,8 +122,8 @@ func TestUpdatePaymentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 status 欠落は 400 bad_request", args{stub.PaymentStub{}, "/payments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.PaymentStub{Err: dberr.ErrNotFound}, "/payments/99", `{"status":"refunded"}`}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 status 欠落は 400 bad_request", args{stub.PaymentStub{}, "/payments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 未存在は 404 not_found", args{stub.PaymentStub{Err: dberr.ErrNotFound}, "/payments/99", `{"status":"refunded"}`}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, "/payments/1", `{"status":"refunded"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

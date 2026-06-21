@@ -114,7 +114,7 @@ func TestGetProductError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 未存在は 404 not_found", args{stub.ProductStub{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 未存在は 404 not_found", args{stub.ProductStub{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ProductStub{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

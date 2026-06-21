@@ -164,7 +164,7 @@ func TestGetOrderError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 未存在は 404 not_found", args{stub.OrderStub{Err: dberr.ErrNotFound}, "/orders/99"}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 未存在は 404 not_found", args{stub.OrderStub{Err: dberr.ErrNotFound}, "/orders/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, "/orders/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

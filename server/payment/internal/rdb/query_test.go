@@ -93,7 +93,7 @@ func TestGetPayment(t *testing.T) {
 			t.Fatalf("orderID = %d, want 10", got.OrderID)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetPayment(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
