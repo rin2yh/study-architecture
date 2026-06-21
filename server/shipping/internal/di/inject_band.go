@@ -5,6 +5,7 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/consumer"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 )
@@ -20,4 +21,21 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 	shipmentCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewShipmentCommand)).Fn()(pool)
 	handler0 := kessoku.Provide(handler.New).Fn()(shipmentQuery, shipmentCommand)
 	return handler0, nil
+}
+func InitConsumer(ctx0 context.Context) (*consumer.Consumer, error) {
+	var err0 error
+	client, err0 := kessoku.Provide(consumer.NewRedisClient).Fn()()
+	if err0 != nil {
+		var zero *consumer.Consumer
+		return zero, err0
+	}
+	var err1 error
+	pool0, err1 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx0)
+	if err1 != nil {
+		var zero *consumer.Consumer
+		return zero, err1
+	}
+	shipmentCommand0 := kessoku.Bind[consumer.ShipmentCreator](kessoku.Provide(rdb.NewShipmentCommand)).Fn()(pool0)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(client, shipmentCommand0)
+	return consumer0, nil
 }

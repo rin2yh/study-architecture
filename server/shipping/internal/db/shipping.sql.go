@@ -41,6 +41,28 @@ func (q *Queries) CreateShipment(ctx context.Context, arg CreateShipmentParams) 
 	return i, err
 }
 
+const createShipmentForOrder = `-- name: CreateShipmentForOrder :one
+INSERT INTO shipping.shipments (order_id)
+VALUES ($1)
+ON CONFLICT (order_id) DO NOTHING
+RETURNING id, order_id, carrier, tracking_no, status, created_at
+`
+
+// ADR-[[202606211200]]
+func (q *Queries) CreateShipmentForOrder(ctx context.Context, orderID int64) (ShippingShipment, error) {
+	row := q.db.QueryRow(ctx, createShipmentForOrder, orderID)
+	var i ShippingShipment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Carrier,
+		&i.TrackingNo,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getShipment = `-- name: GetShipment :one
 SELECT id, order_id, carrier, tracking_no, status, created_at
 FROM shipping.shipments

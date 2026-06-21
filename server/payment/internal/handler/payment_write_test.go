@@ -13,13 +13,19 @@ import (
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
+	"github.com/rin2yh/study-architecture/server/payment/internal/db"
+	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
 )
 
 func newWriteServer(command handler.Command) http.Handler {
-	return newServer(handler.New(nil, command))
+	return newServer(handler.New(nil, command, &stub.PublisherStub{}))
+}
+
+func newWriteServerWithPublisher(command handler.Command, publisher *stub.PublisherStub) http.Handler {
+	return newServer(handler.New(nil, command, publisher))
 }
 
 func TestCreatePayment(t *testing.T) {
@@ -105,6 +111,52 @@ func TestUpdatePayment(t *testing.T) {
 	}
 	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "refunded"}
 	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
+}
+
+func TestUpdatePaymentPublishesSettled(t *testing.T) {
+	type args struct {
+		row    db.PaymentPayment
+		body   string
+		pubErr error
+	}
+	type want struct {
+		status int
+		calls  []event.PaymentSettled
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			"正常系 確定 status で payment.settled を 1 件 publish",
+			args{db.PaymentPayment{ID: 1, OrderID: 20, AmountCents: 2980, Status: "paid"}, `{"status":"paid"}`, nil},
+			want{http.StatusOK, []event.PaymentSettled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
+		},
+		{
+			"準正常系 非確定 status では publish しない",
+			args{db.PaymentPayment{ID: 1, OrderID: 20, AmountCents: 2980, Status: "refunded"}, `{"status":"refunded"}`, nil},
+			want{http.StatusOK, nil},
+		},
+		{
+			"異常系 publish 失敗でも 200 を返す",
+			args{db.PaymentPayment{ID: 1, OrderID: 20, AmountCents: 2980, Status: "settled"}, `{"status":"settled"}`, errors.New("broker down")},
+			want{http.StatusOK, []event.PaymentSettled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pub := &stub.PublisherStub{Err: tt.args.pubErr}
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPut, "/payments/1", bytes.NewReader([]byte(tt.args.body)))
+			req.Header.Set("Content-Type", "application/json")
+			newWriteServerWithPublisher(stub.PaymentStub{Payment: tt.args.row}, pub).ServeHTTP(rec, req)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
+			}
+			assert.DeepEqualSlice(t, tt.want.calls, pub.Calls)
+		})
+	}
 }
 
 func TestUpdatePaymentError(t *testing.T) {

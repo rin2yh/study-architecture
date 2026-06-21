@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
+	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 )
 
 type PaymentStub struct {
@@ -26,4 +27,14 @@ func (s PaymentStub) CreatePayment(context.Context, db.CreatePaymentParams) (db.
 
 func (s PaymentStub) UpdatePayment(context.Context, db.UpdatePaymentParams) (db.PaymentPayment, error) {
 	return s.Payment, s.Err
+}
+
+type PublisherStub struct {
+	Calls []event.PaymentSettled
+	Err   error
+}
+
+func (s *PublisherStub) PublishPaymentSettled(_ context.Context, e event.PaymentSettled) error {
+	s.Calls = append(s.Calls, e)
+	return s.Err
 }

@@ -23,6 +23,17 @@ services:
     networks: [external-public, external-private, internal-private]
     depends_on: [product, order, payment, member, shipping]
 
+  # 顧客系 (payment) → 運用系 (shipping) の決済確定イベントを運ぶ非同期チャネル。
+  # 両 private network に足を持つ唯一の業務外 infra (ADR-[[202606211200]])。
+  broker:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [external-private, internal-private]
+
   db-customer:
     image: postgres:17-alpine
     environment:
@@ -90,9 +101,12 @@ services:
       dockerfile: server/payment/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+      REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8003:80"]
     depends_on:
       db-customer:
+        condition: service_healthy
+      broker:
         condition: service_healthy
     networks: [external-private]
 
@@ -114,9 +128,12 @@ services:
       dockerfile: server/shipping/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8005:80"]
     depends_on:
       db-ops:
+        condition: service_healthy
+      broker:
         condition: service_healthy
     networks: [internal-private]
 
