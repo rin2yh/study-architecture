@@ -119,9 +119,9 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
         with:
           name: ${{ matrix.package }}
-          # json/config を package 基準で解決させる (コメント見出しにも package パスが出る)。
+          # 既定の repo root のままだと package 配下の coverage json/config を解決できない。
           working-directory: client/app/${{ matrix.package }}
-          # v2.12.1 は閾値を読んでも Status が 🔵 のまま。threshold-icons で 60% を境に色付けする (server gate と同基準)。
+          # v2.12.1 は閾値を読んでも Status が 🔵 のまま。60% 境界は server の coverage gate と揃える。
           threshold-icons: "{0: '🔴', 60: '🟢'}"
 
       - name: build
