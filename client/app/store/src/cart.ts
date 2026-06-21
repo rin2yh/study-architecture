@@ -1,5 +1,4 @@
-// カートはサーバに持たず確定 (checkout) までクライアントの作業状態とする。スナップショットは
-// 確定時に order 側で取る ([[0008]])。
+// カートはサーバに持たず確定 (checkout) までクライアントの作業状態とする ([[0008]])。
 
 export interface CartItem {
   productId: number;
@@ -54,7 +53,7 @@ export function cartTotalCents(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0);
 }
 
-// 商品名・単価は order が product を参照してスナップショットするため送らない ([[0008]])。
+// 商品名・単価は送らない ([[0008]])。
 export function toCheckoutItems(items: CartItem[]): { productId: number; quantity: number }[] {
   return items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
 }

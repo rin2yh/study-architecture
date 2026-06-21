@@ -22,8 +22,7 @@ function parseItems(raw: FormDataEntryValue | null): CheckoutItemInput[] {
   }
 }
 
-// カートはクライアント状態なので、明細は hidden field でサーバ action に渡し、
-// 外部サービス呼び出し (order /checkout) はサーバ側で行う ([[0006]])。
+// カートはクライアント状態なので明細は hidden field で action に渡す ([[0006]])。
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const items = parseItems(form.get("items"));
