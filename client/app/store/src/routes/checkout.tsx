@@ -22,7 +22,7 @@ function parseItems(raw: FormDataEntryValue | null): CheckoutItemInput[] {
   }
 }
 
-// [[0006]]
+// ADR-[[202606170905]]
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const items = parseItems(form.get("items"));
