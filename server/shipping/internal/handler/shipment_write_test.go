@@ -15,8 +15,13 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/stub"
 )
+
+func newWriteServer(command handler.Command) http.Handler {
+	return newServer(handler.New(nil, command))
+}
 
 func TestCreateShipment(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)

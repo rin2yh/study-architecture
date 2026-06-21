@@ -24,14 +24,6 @@ func newServer(h *handler.Handler) http.Handler {
 	return engine
 }
 
-func newReadServer(query handler.Query) http.Handler {
-	return newServer(handler.New(query, nil))
-}
-
-func newWriteServer(command handler.Command) http.Handler {
-	return newServer(handler.New(nil, command))
-}
-
 func TestGetHealthz(t *testing.T) {
 	rec := httptest.NewRecorder()
 	newServer(handler.New(nil, nil)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))

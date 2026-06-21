@@ -18,9 +18,14 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/handler"
 	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/member/internal/stub"
 )
+
+func newReadServer(query handler.Query) http.Handler {
+	return newServer(handler.New(query, nil))
+}
 
 func TestListMembers(t *testing.T) {
 	skip.Short(t)
