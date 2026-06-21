@@ -93,7 +93,7 @@ func TestGetProduct(t *testing.T) {
 			t.Fatalf("sku = %q, want SKU-1", got.Sku)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetProduct(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

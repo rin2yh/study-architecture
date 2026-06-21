@@ -58,10 +58,10 @@ func TestCreateMemberError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 displayName 欠落は 400 bad_request", args{stub.MemberStub{}, `{"email":"new@example.com","password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 形式不正は 400 bad_request", args{stub.MemberStub{}, `{"email":"not-an-email","displayName":"x","password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 password が短いと 400 bad_request", args{stub.MemberStub{}, `{"email":"new@example.com","displayName":"x","password":"short"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 重複は 409 conflict", args{stub.MemberStub{Err: dberr.ErrConflict}, `{"email":"dup@example.com","displayName":"重複","password":"password123"}`}, want{http.StatusConflict, "conflict"}},
+		{"準正常系 displayName 欠落は 400 bad_request", args{stub.MemberStub{}, `{"email":"new@example.com","password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 email 形式不正は 400 bad_request", args{stub.MemberStub{}, `{"email":"not-an-email","displayName":"x","password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 password が短いと 400 bad_request", args{stub.MemberStub{}, `{"email":"new@example.com","displayName":"x","password":"short"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 email 重複は 409 conflict", args{stub.MemberStub{Err: dberr.ErrConflict}, `{"email":"dup@example.com","displayName":"重複","password":"password123"}`}, want{http.StatusConflict, "conflict"}},
 		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, `{"email":"x@example.com","displayName":"x","password":"password123"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
@@ -121,10 +121,10 @@ func TestUpdateMemberError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 displayName 欠落は 400 bad_request", args{stub.MemberStub{}, "/members/1", `{"email":"upd@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 形式不正は 400 bad_request", args{stub.MemberStub{}, "/members/1", `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99", `{"email":"upd@example.com","displayName":"x"}`}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 email 重複は 409 conflict", args{stub.MemberStub{Err: dberr.ErrConflict}, "/members/1", `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
+		{"準正常系 displayName 欠落は 400 bad_request", args{stub.MemberStub{}, "/members/1", `{"email":"upd@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 email 形式不正は 400 bad_request", args{stub.MemberStub{}, "/members/1", `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99", `{"email":"upd@example.com","displayName":"x"}`}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 email 重複は 409 conflict", args{stub.MemberStub{Err: dberr.ErrConflict}, "/members/1", `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

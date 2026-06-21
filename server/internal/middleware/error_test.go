@@ -59,9 +59,9 @@ func TestErrorJSON(t *testing.T) {
 		{"準正常系 NewError は任意の status/code を透過", args{middleware.NewError(http.StatusTooManyRequests, "rate_limited", "slow down"), 0}, want{http.StatusTooManyRequests, "rate_limited", "slow down"}},
 		{"準正常系 5xx の AppError はサーバ起因としてログ", args{middleware.NewError(http.StatusBadGateway, "upstream", "bad gateway"), 0}, want{http.StatusBadGateway, "upstream", "bad gateway"}},
 
-		// 異常系
-		{"異常系 Bind エラーは 400 bad_request で文言透過", args{errors.New("invalid body"), gin.ErrorTypeBind}, want{http.StatusBadRequest, "bad_request", "invalid body"}},
-		{"異常系 Public エラーは 400 bad_request で文言透過", args{errors.New("missing query param"), gin.ErrorTypePublic}, want{http.StatusBadRequest, "bad_request", "missing query param"}},
+		// gin のエラー型有無でクライアント入力起因 (4xx) かサーバ起因 (5xx) かを分ける
+		{"準正常系 Bind エラーは 400 bad_request で文言透過", args{errors.New("invalid body"), gin.ErrorTypeBind}, want{http.StatusBadRequest, "bad_request", "invalid body"}},
+		{"準正常系 Public エラーは 400 bad_request で文言透過", args{errors.New("missing query param"), gin.ErrorTypePublic}, want{http.StatusBadRequest, "bad_request", "missing query param"}},
 		{"異常系 通常エラーは 500 internal で内部詳細を隠す", args{errors.New("db connection refused"), 0}, want{http.StatusInternalServerError, "internal", "internal server error"}},
 	}
 	for _, tt := range tests {

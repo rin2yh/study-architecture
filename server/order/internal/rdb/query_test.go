@@ -132,7 +132,7 @@ func TestGetOrder(t *testing.T) {
 			t.Fatalf("memberID = %d, want 10", got.MemberID)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetOrder(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

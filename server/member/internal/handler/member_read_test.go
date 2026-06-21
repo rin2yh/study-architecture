@@ -112,7 +112,7 @@ func TestGetMemberError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, "/members/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
