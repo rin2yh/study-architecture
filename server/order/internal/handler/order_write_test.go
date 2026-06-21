@@ -176,7 +176,7 @@ func TestCheckout(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	// 500*2 + 1500*1 を商品スナップショットから合算した結果が永続化される
+	// 500*2 + 1500*1
 	want := api.Order{MemberId: 20, Status: "confirmed", TotalCents: 2500, Items: &[]api.OrderItem{
 		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},

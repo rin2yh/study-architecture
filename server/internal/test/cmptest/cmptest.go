@@ -1,5 +1,5 @@
-// Package cmptest は go-cmp による等値アサーションを 1 箇所に集約し、各テストの
-// cmp.Diff 定型 (IgnoreFields / EquateEmpty / 失敗時の -want +got 出力) の重複を無くす。
+// Package cmptest は cmp.Diff の定型 (IgnoreFields / EquateEmpty / -want +got 出力) を
+// 集約し、各テストでの重複を無くす。
 package cmptest
 
 import (
@@ -9,8 +9,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-// Equal は構造体 1 件を比較する。ignoreFields には T のフィールド名 (生成 id や
-// CreatedAt 等、検証対象外のもの) を渡す。
 func Equal[T any](t *testing.T, want, got T, ignoreFields ...string) {
 	t.Helper()
 	if d := cmp.Diff(want, got, opts[T](ignoreFields)...); d != "" {
@@ -18,7 +16,6 @@ func Equal[T any](t *testing.T, want, got T, ignoreFields ...string) {
 	}
 }
 
-// EqualSlice はスライスを比較する。ignoreFields は要素型 E のフィールド名。
 func EqualSlice[E any](t *testing.T, want, got []E, ignoreFields ...string) {
 	t.Helper()
 	if d := cmp.Diff(want, got, opts[E](ignoreFields)...); d != "" {
