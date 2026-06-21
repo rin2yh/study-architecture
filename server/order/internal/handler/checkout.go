@@ -12,7 +12,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/repository"
 )
 
-// Checkout はカートを確定する ([[0008]])。
 func (h *Handler) Checkout(c *gin.Context) {
 	var req api.CheckoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

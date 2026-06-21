@@ -39,7 +39,6 @@ func (s Repo) Checkout(context.Context, int64, string, int64, []repository.Check
 	return s.Order, s.Items, s.Err
 }
 
-// Product は ProductPort のテスト用スタブ。
 type Product struct {
 	Snapshots map[int64]gateway.ProductSnapshot
 	Snapshot  gateway.ProductSnapshot
@@ -56,7 +55,6 @@ func (s Product) FetchProduct(_ context.Context, id int64) (gateway.ProductSnaps
 	return s.Snapshot, nil
 }
 
-// Payment は PaymentPort のテスト用スタブ。
 type Payment struct {
 	ID  int64
 	Err error
