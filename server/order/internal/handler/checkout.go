@@ -46,7 +46,7 @@ func (h *Handler) Checkout(c *gin.Context) {
 		return
 	}
 
-	// 配送は同期 checkout に含めない ([[0008]])。
+	// [[0008]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod); err != nil {
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
