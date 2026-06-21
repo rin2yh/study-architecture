@@ -28,8 +28,6 @@ type writeHandler struct {
 	command Command
 }
 
-// Handler は readHandler / writeHandler を束ねて単一の api.ServerInterface を満たす。
-// 各サブハンドラは Query / Command の片側にしか依存しないため、読み書きの依存が型で分離される。
 type Handler struct {
 	*readHandler
 	*writeHandler
