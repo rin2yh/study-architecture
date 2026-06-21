@@ -40,12 +40,15 @@ case "$file" in
   *.sql)             marker='--' ;;
   *)                 marker='//|/\*' ;;
 esac
-printf '%s' "$added" | grep -qE "$marker" || exit 0
+# grep に "--" を素で渡すとオプション終端と解釈されるため -e で必ずパターン扱いにする。
+printf '%s' "$added" | grep -qE -e "$marker" || exit 0
 
 snippet="$(printf '%s' "$added" | head -n 400)"
 prompt="あなたはコメント規約の linter です。下記「規約」に従い、「対象コード」のコメントのうち
 what コメント (コードを読めば分かる処理の言い換え) だけを指摘してください。
 why コメント・doc コメント・生成マーカー・ADR 参照 ([[NNNN]]) は指摘しないこと。
+とくに Go の公開識別子に付く doc コメント (識別子名で始まる行) は規約の明示的な例外なので、
+署名から読み取れる内容を含んでいても指摘しない。
 
 # 規約
 $(cat "$rules")
