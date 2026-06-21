@@ -36,7 +36,7 @@ func TestListPayments(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(rdb.NewPaymentQuery(pool), rdb.NewPaymentCommand(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
+	newReadServer(rdb.NewPaymentQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -55,7 +55,7 @@ func TestListPaymentsError(t *testing.T) {
 	fake := stub.PaymentStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
+	newReadServer(fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -98,7 +98,7 @@ func TestGetPayment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newReadServer(tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}

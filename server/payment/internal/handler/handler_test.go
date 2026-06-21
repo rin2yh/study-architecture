@@ -11,23 +11,30 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
-	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
 )
 
 func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func newServer(query handler.Query, command handler.Command) http.Handler {
+func newServer(h *handler.Handler) http.Handler {
 	engine := gin.New()
 	engine.Use(middleware.ErrorJSON())
-	api.RegisterHandlers(engine, handler.New(query, command))
+	api.RegisterHandlers(engine, h)
 	return engine
+}
+
+func newReadServer(query handler.Query) http.Handler {
+	return newServer(handler.New(query, nil))
+}
+
+func newWriteServer(command handler.Command) http.Handler {
+	return newServer(handler.New(nil, command))
 }
 
 func TestGetHealthz(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newServer(stub.PaymentStub{}, stub.PaymentStub{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	newServer(handler.New(nil, nil)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

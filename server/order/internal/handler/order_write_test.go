@@ -45,7 +45,7 @@ func TestCreateOrder(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, req)
+			newWriteServer(tt.args.fake).ServeHTTP(rec, req)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
@@ -91,7 +91,7 @@ func TestUpdateOrder(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPut, tt.args.path, bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, req)
+			newWriteServer(tt.args.fake).ServeHTTP(rec, req)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
