@@ -1,6 +1,6 @@
 # ADR-202606180900: マイグレーションをサービスごとに分割する
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-18
 - Supersedes (一部): ADR-[[202606170903]] の「マイグレーション中央集約 (`db/migration/`)」前提
 

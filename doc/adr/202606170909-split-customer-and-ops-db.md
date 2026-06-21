@@ -1,6 +1,6 @@
 # ADR-202606170909: 顧客系 (社外) と運用系 (社内) で DB とネットワーク経路を分離
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-17
 - Supersedes (一部): ADR-[[202606170903]] の「共有 Postgres 1 つ」前提
 
