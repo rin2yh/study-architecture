@@ -21,9 +21,13 @@ paths:
 
 - 見出し: `# ADR-<timestamp>: <タイトル>` (例: `# ADR-202606170900: サービスベースアーキテクチャを採用する`)
 - メタ情報 (箇条書き):
-  - `Status:` — `Proposed` / `Accepted` / `Superseded` のいずれか。下記ライフサイクル参照。
+  - `Status:` — `Proposed` / `Accepted` / `Superseded`。全面的に後継へ移ったら Status 行に
+    インラインで `Superseded by ADR-[[<ID>]]` と後継を書く。下記ライフサイクル参照。
   - `Date:` — `YYYY-MM-DD`。
-  - 必要なときだけ `Supersedes:` / `Superseded by:` / `Relates to:` を足す (関連 ADR・ファイルへの参照)。
+  - 必要なときだけ標準メタ行を足す:
+    - `Supersedes: ADR-[[<ID>]]` — この ADR が置き換える対象 (置き換えた新 ADR 側に書く)。
+      範囲を限定するなら ID の後ろに対象部分を添える。
+    - `Relates to:` — 関連する ADR・ファイルへの参照。
 - 本文セクション (この順序・見出しで統一):
   - `## Context` — なぜこの判断が要るか。背景・制約・問題。可能なら推測でなく計測・実例で語る。
   - `## Decision` — 何を決めたか。決め手 (why) を明示する。
@@ -34,9 +38,11 @@ paths:
 
 - 新規は `Accepted` で起こす。理由: レビューで問題があれば指摘される運用のため、`Proposed` で
   寝かせず確定として進める。見送り・差し戻しになったものだけ後から Status を落とす。
-- 既存判断を置き換える ADR を新たに起こしたら、**古い方を `Superseded`** にし、双方に
-  `Supersedes:` / `Superseded by:` で相互リンクを張る。古い ADR の本文や結論は消さない
-  (履歴として残す)。
+- 既存判断を**全面的に**置き換える ADR を起こしたら、新 ADR に `Supersedes: ADR-[[旧ID]]` を足し、
+  旧 ADR の Status 行を `Superseded by ADR-[[新ID]]` に変える (双方向リンク)。
+- **一部だけ**更新する場合は旧 ADR を `Accepted` のまま残し、Status 行の括弧で「どの部分が
+  ADR-[[新ID]] で更新 / Superseded されたか」を添える (例: ADR-[[202606170901]])。
+- いずれも古い ADR の本文や結論は消さない (履歴として残す)。
 
 ## 相互参照
 
