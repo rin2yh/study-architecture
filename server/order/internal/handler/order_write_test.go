@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -127,30 +126,6 @@ func TestUpdateOrder(t *testing.T) {
 	}
 }
 
-type checkoutRecorder struct {
-	stub.OrderStub
-	err      error
-	gotTotal int64
-	gotLines []rdb.CheckoutLine
-}
-
-func (r *checkoutRecorder) Checkout(_ context.Context, memberID int64, status string, total int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
-	r.gotTotal = total
-	r.gotLines = lines
-	if r.err != nil {
-		return db.OrderOrder{}, nil, r.err
-	}
-	order := db.OrderOrder{ID: 7, MemberID: memberID, Status: status, TotalCents: total}
-	items := make([]db.OrderOrderItem, 0, len(lines))
-	for i, l := range lines {
-		items = append(items, db.OrderOrderItem{
-			ID: int64(i + 1), OrderID: order.ID, ProductID: l.ProductID,
-			ProductName: l.ProductName, UnitPriceCents: l.UnitPriceCents, Quantity: l.Quantity,
-		})
-	}
-	return order, items, nil
-}
-
 func twoProducts() stub.Product {
 	return stub.Product{Snapshots: map[int64]gateway.ProductSnapshot{
 		100: {ID: 100, Name: "Widget", UnitPriceCents: 500},
@@ -196,7 +171,7 @@ func TestCheckout(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			command := &checkoutRecorder{err: tt.args.checkoutErr}
+			command := &stub.CheckoutRecorder{Err: tt.args.checkoutErr}
 			rec := postCheckout(command, tt.args.product, tt.args.payment, tt.args.body)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
@@ -209,7 +184,7 @@ func TestCheckout(t *testing.T) {
 }
 
 func TestCheckoutSnapshotAndTotal(t *testing.T) {
-	command := &checkoutRecorder{}
+	command := &stub.CheckoutRecorder{}
 	body := `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`
 	rec := postCheckout(command, twoProducts(), stub.Payment{ID: 1}, body)
 
@@ -218,19 +193,19 @@ func TestCheckoutSnapshotAndTotal(t *testing.T) {
 	}
 
 	// 500*2 + 1500*1
-	if command.gotTotal != 2500 {
-		t.Fatalf("total = %d, want 2500", command.gotTotal)
+	if command.GotTotal != 2500 {
+		t.Fatalf("total = %d, want 2500", command.GotTotal)
 	}
 	want := []rdb.CheckoutLine{
 		{ProductID: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductID: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}
-	if len(command.gotLines) != len(want) {
-		t.Fatalf("lines = %+v, want %+v", command.gotLines, want)
+	if len(command.GotLines) != len(want) {
+		t.Fatalf("lines = %+v, want %+v", command.GotLines, want)
 	}
 	for i := range want {
-		if command.gotLines[i] != want[i] {
-			t.Fatalf("line[%d] = %+v, want %+v", i, command.gotLines[i], want[i])
+		if command.GotLines[i] != want[i] {
+			t.Fatalf("line[%d] = %+v, want %+v", i, command.GotLines[i], want[i])
 		}
 	}
 
