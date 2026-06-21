@@ -56,16 +56,8 @@ END {
 echo
 echo "</details>"
 
-# GitHub Actions 上でだけ Vitest と同じ出典フッタを付ける (ローカル実行では env が無く skip)。
-if [[ -n "${GITHUB_RUN_ID:-}" ]]; then
-  run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-  # PR では GITHUB_SHA が merge commit になるため、workflow から head sha を COMMIT_SHA で渡す。
-  sha="${COMMIT_SHA:-${GITHUB_SHA:-}}"
-  echo
-  if [[ -n "$sha" ]]; then
-    commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${sha}"
-    echo "*Generated in workflow [#${GITHUB_RUN_NUMBER}](${run_url}) for commit [${sha:0:7}](${commit_url}) by \`scripts/coverage-report.sh\`*"
-  else
-    echo "*Generated in workflow [#${GITHUB_RUN_NUMBER}](${run_url}) by \`scripts/coverage-report.sh\`*"
-  fi
-fi
+run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+# PR では GITHUB_SHA が merge commit になるため、workflow から head sha を COMMIT_SHA で渡す。
+commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${COMMIT_SHA}"
+echo
+echo "*Generated in workflow [#${GITHUB_RUN_NUMBER}](${run_url}) for commit [${COMMIT_SHA:0:7}](${commit_url}) by \`scripts/coverage-report.sh\`*"
