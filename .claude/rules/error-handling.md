@@ -22,7 +22,3 @@
 - ✗ `try { await deleteSession(t); } catch { /* noop */ }`（失敗が消える）
 - ✗ `try { ... } catch (e) { throw e; }`（素の再スローは無駄。捕まえず素通しでよい）
 - ✓ `try { await deleteSession(t); } catch (e) { console.warn("...", e); }`（続行するが可視化）
-
-補足（強制の限界）: TS は oxlint の `no-empty`（`allowEmptyCatch: false`）で空の `catch {}` を、
-`no-useless-catch` で素の再スローを弾く。ただし `catch { /* ... */ }` のようにコメントを入れると
-no-empty は回避できるため、lint だけでは noop を完全には防げない。最終的な担保はこの規約。
