@@ -5,6 +5,7 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/internal/broker"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/consumer"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
@@ -24,7 +25,7 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 }
 func InitConsumer(ctx0 context.Context) (*consumer.Consumer, error) {
 	var err0 error
-	client, err0 := kessoku.Provide(consumer.NewRedisClient).Fn()()
+	client, err0 := kessoku.Provide(broker.NewClient).Fn()()
 	if err0 != nil {
 		var zero *consumer.Consumer
 		return zero, err0

@@ -23,8 +23,7 @@ services:
     networks: [external-public, external-private, internal-private]
     depends_on: [product, order, payment, member, shipping]
 
-  # 顧客系 (payment) → 運用系 (shipping) の決済確定イベントを運ぶ非同期チャネル。
-  # 両 private network に足を持つ唯一の業務外 infra (ADR-[[202606211200]])。
+  # multi-home が許される例外 (ADR-[[202606211200]])
   broker:
     image: redis:7-alpine
     healthcheck:

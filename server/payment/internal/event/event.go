@@ -1,13 +1,12 @@
-// Package event は payment が確定などのドメインイベントを broker (Redis Streams) へ
-// publish する出力ポートと実装をまとめる。配送手配の起点 (ADR-[[202606211200]])。
+// Package event は payment のドメインイベントの publish を担う。
 package event
 
 import (
 	"context"
-	"errors"
-	"os"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/rin2yh/study-architecture/server/internal/broker"
 )
 
 const (
@@ -43,15 +42,11 @@ type RedisPublisher struct {
 var _ Publisher = (*RedisPublisher)(nil)
 
 func NewRedisPublisher() (*RedisPublisher, error) {
-	url := os.Getenv("REDIS_URL")
-	if url == "" {
-		return nil, errors.New("REDIS_URL is required")
-	}
-	opt, err := redis.ParseURL(url)
+	rc, err := broker.NewClient()
 	if err != nil {
 		return nil, err
 	}
-	return &RedisPublisher{rdb: redis.NewClient(opt)}, nil
+	return &RedisPublisher{rdb: rc}, nil
 }
 
 func (p *RedisPublisher) PublishPaymentSettled(ctx context.Context, e PaymentSettled) error {

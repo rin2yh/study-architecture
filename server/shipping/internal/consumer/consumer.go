@@ -1,5 +1,4 @@
-// Package consumer は決済確定イベント (Redis Streams) を購読して配送 (shipment) を
-// 手配する。配送のトリガは決済確定であって注文確定ではない (ADR-[[202606211200]])。
+// Package consumer は決済確定イベントを購読して配送を手配する。
 package consumer
 
 import (
@@ -33,18 +32,6 @@ type Consumer struct {
 	name    string
 	block   time.Duration
 	backoff time.Duration
-}
-
-func NewRedisClient() (*redis.Client, error) {
-	url := os.Getenv("REDIS_URL")
-	if url == "" {
-		return nil, errors.New("REDIS_URL is required")
-	}
-	opt, err := redis.ParseURL(url)
-	if err != nil {
-		return nil, err
-	}
-	return redis.NewClient(opt), nil
 }
 
 func New(rc *redis.Client, creator ShipmentCreator) *Consumer {
