@@ -119,10 +119,10 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
         with:
           name: ${{ matrix.package }}
-          # status の色付けは working-directory を package 直下にしないと効かない (trend_diary の実例)。
-          # vite.config.ts に閾値が無く auto-detect では拾えないため vitest.config.ts を明示する。
+          # json/config を package 基準で解決させる (コメント見出しにも package パスが出る)。
           working-directory: client/app/${{ matrix.package }}
-          vite-config-path: vitest.config.ts
+          # v2.12.1 は閾値を読んでも Status が 🔵 のまま。threshold-icons で 60% を境に色付けする (server gate と同基準)。
+          threshold-icons: "{0: '🔴', 60: '🟢'}"
 
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
