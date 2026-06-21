@@ -13,6 +13,7 @@ import (
 
 type OrderRepository interface {
 	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
+	ListOrdersByMember(ctx context.Context, memberID int64) ([]db.OrderOrder, error)
 	GetOrder(ctx context.Context, id int64) (db.OrderOrder, error)
 	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
 	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
@@ -38,6 +39,10 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) ListOrders(ctx context.Context) ([]db.OrderOrder, error) {
 	return r.q.ListOrders(ctx)
+}
+
+func (r *Repository) ListOrdersByMember(ctx context.Context, memberID int64) ([]db.OrderOrder, error) {
+	return r.q.ListOrdersByMember(ctx, memberID)
 }
 
 func (r *Repository) GetOrder(ctx context.Context, id int64) (db.OrderOrder, error) {

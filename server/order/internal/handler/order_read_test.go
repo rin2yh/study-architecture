@@ -51,6 +51,53 @@ func TestListOrders(t *testing.T) {
 	}
 }
 
+func TestListOrdersFilter(t *testing.T) {
+	all := []db.OrderOrder{
+		{ID: 1, MemberID: 10, Status: "paid", TotalCents: 5000},
+		{ID: 2, MemberID: 20, Status: "paid", TotalCents: 3000},
+	}
+	mine := []db.OrderOrder{{ID: 1, MemberID: 10, Status: "paid", TotalCents: 5000}}
+	type args struct {
+		repo   stub.Repo
+		header string
+	}
+	type want struct {
+		count       int
+		firstMember int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 X-Member-Id 付きは本人分だけ返す", args{stub.Repo{Orders: all, ByMember: mine}, "10"}, want{1, 10}},
+		{"準正常系 ヘッダ無しは全件返す", args{stub.Repo{Orders: all, ByMember: mine}, ""}, want{2, 10}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/orders", nil)
+			if tt.args.header != "" {
+				req.Header.Set("X-Member-Id", tt.args.header)
+			}
+			rec := httptest.NewRecorder()
+			newServer(tt.args.repo).ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+			}
+			var got []api.Order
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if len(got) != tt.want.count {
+				t.Fatalf("count = %d, want %d", len(got), tt.want.count)
+			}
+			if got[0].MemberId != tt.want.firstMember {
+				t.Fatalf("first memberId = %d, want %d", got[0].MemberId, tt.want.firstMember)
+			}
+		})
+	}
+}
+
 func TestListOrdersError(t *testing.T) {
 	repo := stub.Repo{Err: errors.New("db failure")}
 

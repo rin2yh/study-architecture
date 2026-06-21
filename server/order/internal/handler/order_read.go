@@ -9,10 +9,19 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/order/api"
+	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-func (h *Handler) ListOrders(c *gin.Context) {
-	rows, err := h.repo.ListOrders(c.Request.Context())
+func (h *Handler) ListOrders(c *gin.Context, params api.ListOrdersParams) {
+	var (
+		rows []db.OrderOrder
+		err  error
+	)
+	if params.XMemberId != nil {
+		rows, err = h.repo.ListOrdersByMember(c.Request.Context(), *params.XMemberId)
+	} else {
+		rows, err = h.repo.ListOrders(c.Request.Context())
+	}
 	if err != nil {
 		_ = c.Error(err)
 		return

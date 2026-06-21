@@ -12,6 +12,7 @@ type Querier interface {
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (OrderOrder, error)
 	GetOrder(ctx context.Context, id int64) (OrderOrder, error)
 	ListOrders(ctx context.Context) ([]OrderOrder, error)
+	ListOrdersByMember(ctx context.Context, memberID int64) ([]OrderOrder, error)
 	UpdateOrder(ctx context.Context, arg UpdateOrderParams) (OrderOrder, error)
 }
 

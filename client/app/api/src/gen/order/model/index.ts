@@ -10,5 +10,6 @@ export * from './createOrderRequest.ts';
 export * from './error.ts';
 export * from './errorResponse.ts';
 export * from './health.ts';
+export * from './memberIdHeaderParameter.ts';
 export * from './order.ts';
 export * from './updateOrderRequest.ts';

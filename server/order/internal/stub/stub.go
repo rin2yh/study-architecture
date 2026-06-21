@@ -7,13 +7,18 @@ import (
 )
 
 type Repo struct {
-	Orders []db.OrderOrder
-	Order  db.OrderOrder
-	Err    error
+	Orders   []db.OrderOrder
+	ByMember []db.OrderOrder
+	Order    db.OrderOrder
+	Err      error
 }
 
 func (s Repo) ListOrders(context.Context) ([]db.OrderOrder, error) {
 	return s.Orders, s.Err
+}
+
+func (s Repo) ListOrdersByMember(context.Context, int64) ([]db.OrderOrder, error) {
+	return s.ByMember, s.Err
 }
 
 func (s Repo) GetOrder(context.Context, int64) (db.OrderOrder, error) {
