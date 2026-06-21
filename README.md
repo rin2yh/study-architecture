@@ -3,14 +3,7 @@
 『アーキテクチャの基礎』のサービスベースアーキテクチャを題材に、ローカル完結・費用ゼロで
 EC サイトを段階的に育てる学習プロジェクト。バックエンドは Go、コード生成中心。
 
-- アーキテクチャ方針: [doc/adr/202606170900](doc/adr/202606170900-service-based-architecture.md)
-- 技術スタック: [doc/adr/202606170901](doc/adr/202606170901-codegen-first-tech-stack.md)
-- リポジトリ構成: [doc/adr/202606170902](doc/adr/202606170902-single-root-gomod-monorepo.md)
-- データ戦略: [doc/adr/202606170903](doc/adr/202606170903-shared-postgres-schema-per-domain.md)
-- 横断データ/スナップショット: [doc/adr/202606190900](doc/adr/202606190900-cross-domain-snapshot.md)
-- フロントエンド: [doc/adr/202606170904](doc/adr/202606170904-frontend-tanstack-start.md)
-- UI データ取得: [doc/adr/202606170905](doc/adr/202606170905-ui-server-loader-data-fetching.md)
-- UI モノレポ/命名: [doc/adr/202606170906](doc/adr/202606170906-frontend-pnpm-monorepo-tooling.md)
+- 設計判断 (ADR 一覧): [doc/adr/](doc/adr/README.md)
 - 既知問題: [doc/known-issues.md](doc/known-issues.md)
 
 ## 構成（Step 0）
