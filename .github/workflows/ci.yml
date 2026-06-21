@@ -22,6 +22,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# PR では GITHUB_SHA が merge commit になるため、coverage コメントのフッタには head sha を渡す。
+env:
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   server-unit:
     name: server-unit-${{ matrix.service }}
@@ -47,8 +51,6 @@ jobs:
 
       - name: unit test
         id: cov
-        env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           svc=${{ matrix.service }}
           pkgs=$(go list ./server/$svc/... ./server/internal/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/client/|/internal/test/|/server/[a-z]+$' | paste -sd, -)
@@ -145,7 +147,6 @@ jobs:
         id: cov
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
           DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
         run: |
