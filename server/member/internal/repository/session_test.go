@@ -33,7 +33,7 @@ func expiresIn(d time.Duration) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: time.Now().Add(d), Valid: true}
 }
 
-func TestRepositoryGetMemberByEmail(t *testing.T) {
+func TestGetMemberByEmail(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewRepository(pool)
@@ -55,7 +55,7 @@ func TestRepositoryGetMemberByEmail(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateSession(t *testing.T) {
+func TestCreateSession(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewRepository(pool)
@@ -83,7 +83,7 @@ func TestRepositoryCreateSession(t *testing.T) {
 	})
 }
 
-func TestRepositoryGetSession(t *testing.T) {
+func TestGetSession(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewRepository(pool)
@@ -118,7 +118,7 @@ func TestRepositoryGetSession(t *testing.T) {
 	})
 }
 
-func TestRepositoryDeleteSession(t *testing.T) {
+func TestDeleteSession(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewRepository(pool)
