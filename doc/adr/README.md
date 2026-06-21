@@ -26,3 +26,4 @@
 | [202606210900](202606210900-what-comment-lint-via-claude-hook.md) | Accepted | what コメント検出を Claude Code hook + LLM 判定で行う |
 | [202606211000](202606211000-adr-timestamp-naming.md) | Accepted | ADR の識別子を連番からタイムスタンプ (YYYYMMDDHHmm) に変える |
 | [202606211100](202606211100-member-auth-httponly-cookie-session.md) | Accepted | 認証は HttpOnly Cookie + member 所有のサーバ側セッション |
+| [202606211200](202606211200-single-merchant-ec-not-marketplace.md) | Accepted | 単一事業者の EC（storefront）であり、マーケットプレイスではない |
