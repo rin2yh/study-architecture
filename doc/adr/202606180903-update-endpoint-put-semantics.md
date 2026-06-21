@@ -1,6 +1,6 @@
 # ADR-202606180903: 更新エンドポイント (PUT) はドメイン上ミュータブルな属性のみ置換する
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-18
 - Related: ADR-[[202606180901]] (API エラーモデル / 取得・作成), ADR-[[202606170901]] (codegen-first), ADR-[[202606170903]] (schema 分離)
 

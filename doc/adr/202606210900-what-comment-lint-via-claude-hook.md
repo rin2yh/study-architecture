@@ -1,6 +1,6 @@
 # ADR-202606210900: what コメント検出を Claude Code hook + LLM 判定で行う
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-21
 - Relates to: `.claude/rules/comments.md` (コメント規約)
 

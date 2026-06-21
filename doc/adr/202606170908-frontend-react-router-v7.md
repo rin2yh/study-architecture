@@ -1,6 +1,6 @@
 # ADR-202606170908: フロントエンドは React Router v7 (旧 Remix 統合) に切替
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-17
 - Supersedes: ADR-[[202606170904]]
 
