@@ -9,8 +9,8 @@ export async function action({ request }: Route.ActionArgs) {
     // ADR 0009
     try {
       await deleteSession(token);
-    } catch {
-      /* noop */
+    } catch (e) {
+      console.warn("logout: server session の破棄に失敗", e);
     }
   }
   return redirect("/login", { headers: { "Set-Cookie": clearSessionCookie() } });
