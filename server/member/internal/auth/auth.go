@@ -1,5 +1,5 @@
-// Package auth は member ドメインのパスワードハッシュとセッショントークン生成を担う。
-// repository/handler から分離し、暗号方式 (bcrypt / SHA-256) の選択を 1 箇所に閉じる。
+// Package auth は暗号方式 (bcrypt / SHA-256) の選択を 1 箇所に閉じ、handler/repository から
+// その詳細を切り離すために置く。
 package auth
 
 import (
