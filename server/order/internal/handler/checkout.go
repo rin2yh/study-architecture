@@ -47,7 +47,7 @@ func (h *Handler) Checkout(c *gin.Context) {
 		return
 	}
 
-	// 配送手配は決済確定後に運用系で行う想定で、同期 checkout には含めない ([[0008]])。
+	// 配送は同期 checkout に含めない ([[0008]])。
 	if _, err := h.payment.CreatePayment(ctx, order.ID, totalCents, req.PaymentMethod); err != nil {
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return

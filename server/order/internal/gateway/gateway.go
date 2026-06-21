@@ -19,7 +19,7 @@ var ErrProductNotFound = errors.New("product not found")
 // ErrUpstream は下流サービスの呼び出しが失敗したことを表す。
 var ErrUpstream = errors.New("upstream service error")
 
-// ProductSnapshot は注文確定時に order 側へ複写する product の属性 ([[0008]])。
+// ProductSnapshot は product 属性のスナップショット ([[0008]])。
 type ProductSnapshot struct {
 	ID             int64
 	Name           string
