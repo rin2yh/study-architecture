@@ -1,15 +1,14 @@
-package repository
+package rdb
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
@@ -32,7 +31,7 @@ func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...db.ShippingShipment
 	}
 }
 
-func TestRepositoryListShipments(t *testing.T) {
+func TestListShipments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -52,7 +51,7 @@ func TestRepositoryListShipments(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewShipmentQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedShipments(t, pool, tt.seed...)
@@ -64,18 +63,14 @@ func TestRepositoryListShipments(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListShipments: want non-nil slice (emit_empty_slices)")
 			}
-			if diff := cmp.Diff(tt.seed, got,
-				cmpopts.IgnoreFields(db.ShippingShipment{}, "ID", "CreatedAt"),
-				cmpopts.EquateEmpty()); diff != "" {
-				t.Fatalf("ListShipments mismatch (-want +got):\n%s", diff)
-			}
+			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }
 
-func TestRepositoryListShipmentsError(t *testing.T) {
+func TestListShipmentsError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewShipmentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListShipments(ctx); err == nil {
@@ -83,10 +78,10 @@ func TestRepositoryListShipmentsError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetShipment(t *testing.T) {
+func TestGetShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewShipmentQuery(pool)
 	seedShipments(t, pool, db.ShippingShipment{OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -100,43 +95,6 @@ func TestRepositoryGetShipment(t *testing.T) {
 	})
 	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetShipment(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
-			t.Fatalf("err = %v, want ErrNotFound", err)
-		}
-	})
-}
-
-func TestRepositoryCreateShipment(t *testing.T) {
-	skip.Short(t)
-	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedShipments(t, pool)
-
-	got, err := r.CreateShipment(t.Context(), db.CreateShipmentParams{OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"})
-	if err != nil {
-		t.Fatalf("CreateShipment: %v", err)
-	}
-	if got.ID == 0 || got.TrackingNo != "TRK-10" {
-		t.Fatalf("unexpected row: %+v", got)
-	}
-}
-
-func TestRepositoryUpdateShipment(t *testing.T) {
-	skip.Short(t)
-	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedShipments(t, pool, db.ShippingShipment{OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"})
-
-	t.Run("正常系 status のみ更新し order_id/carrier/tracking_no は不変", func(t *testing.T) {
-		got, err := r.UpdateShipment(t.Context(), db.UpdateShipmentParams{ID: 1, Status: "delivered"})
-		if err != nil {
-			t.Fatalf("UpdateShipment: %v", err)
-		}
-		if got.ID != 1 || got.Status != "delivered" || got.OrderID != 200 || got.Carrier != "佐川急便" || got.TrackingNo != "TRK-10" {
-			t.Fatalf("unexpected row: %+v", got)
-		}
-	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.UpdateShipment(t.Context(), db.UpdateShipmentParams{ID: 9999, Status: "x"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})

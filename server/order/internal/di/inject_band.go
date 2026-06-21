@@ -7,7 +7,7 @@ import (
 	"github.com/mazrean/kessoku"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
-	"github.com/rin2yh/study-architecture/server/order/internal/repository"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
 func InitHandler(ctx context.Context) (*handler.Handler, error) {
@@ -24,12 +24,13 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 		return zero, err0
 	}
 	var err1 error
-	pool, err1 := kessoku.Async(kessoku.Provide(repository.NewPool)).Fn()(ctx)
+	pool, err1 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
 	if err1 != nil {
 		var zero *handler.Handler
 		return zero, err1
 	}
-	repository0 := kessoku.Bind[repository.OrderRepository](kessoku.Provide(repository.NewRepository)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(repository0, productClient, paymentClient)
+	orderQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewOrderQuery)).Fn()(pool)
+	orderCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewOrderCommand)).Fn()(pool)
+	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, paymentClient)
 	return handler0, nil
 }

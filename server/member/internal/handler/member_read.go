@@ -11,8 +11,8 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/api"
 )
 
-func (h *Handler) ListMembers(c *gin.Context) {
-	rows, err := h.repo.ListMembers(c.Request.Context())
+func (h *readHandler) ListMembers(c *gin.Context) {
+	rows, err := h.query.ListMembers(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -24,8 +24,8 @@ func (h *Handler) ListMembers(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-func (h *Handler) GetMember(c *gin.Context, id api.IdPath) {
-	row, err := h.repo.GetMember(c.Request.Context(), id)
+func (h *readHandler) GetMember(c *gin.Context, id api.IdPath) {
+	row, err := h.query.GetMember(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("member not found"))
