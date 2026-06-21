@@ -79,9 +79,9 @@ func TestCreateSessionError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 password 不一致は 401 unauthorized", args{stub.MemberStub{Member: withPassword}, `{"email":"user@example.com","password":"wrong-password"}`}, want{http.StatusUnauthorized, "unauthorized"}},
-		{"異常系 未登録 email は 401 unauthorized", args{stub.MemberStub{Err: dberr.ErrNotFound}, `{"email":"none@example.com","password":"password123"}`}, want{http.StatusUnauthorized, "unauthorized"}},
-		{"異常系 email 欠落は 400 bad_request", args{stub.MemberStub{}, `{"password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 password 不一致は 401 unauthorized", args{stub.MemberStub{Member: withPassword}, `{"email":"user@example.com","password":"wrong-password"}`}, want{http.StatusUnauthorized, "unauthorized"}},
+		{"準正常系 未登録 email は 401 unauthorized", args{stub.MemberStub{Err: dberr.ErrNotFound}, `{"email":"none@example.com","password":"password123"}`}, want{http.StatusUnauthorized, "unauthorized"}},
+		{"準正常系 email 欠落は 400 bad_request", args{stub.MemberStub{}, `{"password":"password123"}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 会員照会の DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, `{"email":"user@example.com","password":"password123"}`}, want{http.StatusInternalServerError, "internal"}},
 		{"異常系 セッション発行の DB エラーは 500 internal", args{stub.MemberStub{Member: withPassword, SessionErr: errors.New("db failure")}, `{"email":"user@example.com","password":"password123"}`}, want{http.StatusInternalServerError, "internal"}},
 	}

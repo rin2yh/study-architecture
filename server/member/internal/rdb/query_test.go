@@ -128,7 +128,7 @@ func TestGetMemberByEmail(t *testing.T) {
 		}
 		assert.DeepEqual(t, db.MemberMember{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetMemberByEmail(t.Context(), "none@example.com"); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
@@ -160,7 +160,7 @@ func TestGetSession(t *testing.T) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetSession(t.Context(), "missing"); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

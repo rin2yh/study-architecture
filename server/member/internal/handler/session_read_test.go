@@ -62,7 +62,7 @@ func TestGetSessionError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 未存在/期限切れは 404 not_found", args{stub.MemberStub{SessionErr: dberr.ErrNotFound}}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 未存在/期限切れは 404 not_found", args{stub.MemberStub{SessionErr: dberr.ErrNotFound}}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{SessionErr: errors.New("db failure")}}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

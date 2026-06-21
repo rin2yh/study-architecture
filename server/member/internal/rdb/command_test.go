@@ -84,7 +84,7 @@ func TestCreateSession(t *testing.T) {
 		}
 		assert.DeepEqual(t, db.MemberSession{ID: "hash-new", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
 	})
-	t.Run("異常系 同一 id は ErrConflict", func(t *testing.T) {
+	t.Run("準正常系 同一 id は ErrConflict", func(t *testing.T) {
 		p := db.CreateSessionParams{ID: "hash-dup", MemberID: memberID, ExpiresAt: expiresIn(time.Hour)}
 		if _, err := r.CreateSession(t.Context(), p); err != nil {
 			t.Fatalf("setup CreateSession: %v", err)
