@@ -50,7 +50,6 @@ jobs:
         run: |
           svc=${{ matrix.service }}
           pkgs=$(go list ./server/$svc/... ./server/internal/... | grep -vE '/api$|/internal/db$|/internal/di$|/internal/client/|/internal/test/|/server/[a-z]+$' | paste -sd, -)
-          # race detector は実行が数倍遅く Actions 分課金を押し上げるため CI からは外す (data race 検証はローカルで)
           go test ./server/$svc/... ./server/internal/... -short -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
           bash scripts/coverage-report.sh "server-$svc" cover.out > coverage.md
