@@ -1,12 +1,12 @@
-# ADR 0010: Go サーバの HTTP フレームワークに Gin を採用
+# ADR-202606170907: Go サーバの HTTP フレームワークに Gin を採用
 
 - Status: Proposed
 - Date: 2026-06-17
-- Supersedes: [[0002]] の「`std-http-server` / FW 非依存」部分
+- Supersedes: ADR-[[202606170901]] の「`std-http-server` / FW 非依存」部分
 
 ## Context
 
-[[0002]] では oapi-codegen の `std-http-server` (`net/http` + Go 1.22+ `ServeMux`)
+ADR-[[202606170901]] では oapi-codegen の `std-http-server` (`net/http` + Go 1.22+ `ServeMux`)
 を採用して FW 非依存とした。Step 0 の薄い骨格には十分だったが、続く実装で
 
 - ミドルウェア (リクエストログ / panic 復帰 / CORS / 認証 / rate limit / トレース)
@@ -59,7 +59,7 @@
 - **echo / fiber / iris**: 機能差は大きくないが、Gin の方が国内外含めて事例・
   middleware の流通量が安定。シンプルな選定で済む。
 - **Connect / gRPC-Gateway 系**: 契約は protobuf。本プロジェクトは OpenAPI が SSOT
-  ([[0002]]) なので合わない。
+  (ADR-[[202606170901]]) なので合わない。
 
 ## Rollout
 
@@ -68,5 +68,5 @@
 - 各 `main.go` を gin ベースに書き換え (`api.RegisterHandlers(engine, si)`)
 - 各 `handler_test.go` の `newServer` を gin ベースに調整
 - `go mod tidy` で `gin` を `require` に追加
-- [[0002]] の Status を Accepted のまま (Step 0 の出発点として尊重) とし、本 ADR が
+- ADR-[[202606170901]] の Status を Accepted のまま (Step 0 の出発点として尊重) とし、本 ADR が
   当該 framework 部分を **置き換える** (Supersedes) と明記する
