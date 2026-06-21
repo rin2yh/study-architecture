@@ -1,5 +1,3 @@
-// Package cmptest は cmp.Diff の定型 (IgnoreFields / EquateEmpty / -want +got 出力) を
-// 集約し、各テストでの重複を無くす。
 package cmptest
 
 import (
