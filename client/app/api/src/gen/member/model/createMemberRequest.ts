@@ -9,4 +9,9 @@
 export interface CreateMemberRequest {
   email: string;
   displayName: string;
+  /**
+     * 平文。サーバ側で bcrypt ハッシュ化して保存する。
+     * @minLength 8
+     */
+  password: string;
 }

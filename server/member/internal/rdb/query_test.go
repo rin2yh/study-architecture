@@ -19,7 +19,7 @@ const dbEnv = "DATABASE_URL_CUSTOMER"
 func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	t.Helper()
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	for _, r := range rows {
@@ -29,6 +29,21 @@ func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 			t.Fatalf("insert: %v", err)
 		}
 	}
+}
+
+func seedOneMember(t *testing.T, pool *pgxpool.Pool, email, hash string) int64 {
+	t.Helper()
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	var id int64
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO member.members (email, display_name, password_hash) VALUES ($1, $2, $3) RETURNING id`,
+		email, "会員", hash).Scan(&id); err != nil {
+		t.Fatalf("insert member: %v", err)
+	}
+	return id
 }
 
 func TestListMembers(t *testing.T) {
@@ -95,6 +110,58 @@ func TestGetMember(t *testing.T) {
 	})
 	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetMember(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}
+
+func TestGetMemberByEmail(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberQuery(pool)
+	seedOneMember(t, pool, "user@example.com", "stored-hash")
+
+	t.Run("正常系 email で会員を引け password_hash も載る", func(t *testing.T) {
+		got, err := r.GetMemberByEmail(t.Context(), "user@example.com")
+		if err != nil {
+			t.Fatalf("GetMemberByEmail: %v", err)
+		}
+		assert.DeepEqual(t, db.MemberMember{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
+	})
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetMemberByEmail(t.Context(), "none@example.com"); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}
+
+func TestGetSession(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberQuery(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "stored-hash")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO member.sessions (id, member_id, expires_at) VALUES
+		 ('live', $1, now() + interval '1 hour'),
+		 ('expired', $1, now() - interval '1 hour')`, memberID); err != nil {
+		t.Fatalf("insert sessions: %v", err)
+	}
+
+	t.Run("正常系 有効なセッションを返す", func(t *testing.T) {
+		got, err := r.GetSession(t.Context(), "live")
+		if err != nil {
+			t.Fatalf("GetSession: %v", err)
+		}
+		assert.DeepEqual(t, db.MemberSession{ID: "live", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
+	})
+	t.Run("準正常系 期限切れは ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetSession(t.Context(), "expired"); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetSession(t.Context(), "missing"); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})

@@ -32,3 +32,15 @@ func (r *MemberCommand) UpdateMember(ctx context.Context, arg db.UpdateMemberPar
 	}
 	return row, nil
 }
+
+func (r *MemberCommand) CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.MemberSession, error) {
+	row, err := r.q.CreateSession(ctx, arg)
+	if err != nil {
+		return db.MemberSession{}, dberr.FromWrite(err)
+	}
+	return row, nil
+}
+
+func (r *MemberCommand) DeleteSession(ctx context.Context, id string) error {
+	return r.q.DeleteSession(ctx, id)
+}

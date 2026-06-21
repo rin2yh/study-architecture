@@ -9,14 +9,19 @@ import (
 )
 
 type OrderStub struct {
-	Orders []db.OrderOrder
-	Order  db.OrderOrder
-	Items  []db.OrderOrderItem
-	Err    error
+	Orders   []db.OrderOrder
+	ByMember []db.OrderOrder
+	Order    db.OrderOrder
+	Items    []db.OrderOrderItem
+	Err      error
 }
 
 func (s OrderStub) ListOrders(context.Context) ([]db.OrderOrder, error) {
 	return s.Orders, s.Err
+}
+
+func (s OrderStub) ListOrdersByMember(context.Context, int64) ([]db.OrderOrder, error) {
+	return s.ByMember, s.Err
 }
 
 func (s OrderStub) GetOrder(context.Context, int64) (db.OrderOrder, error) {

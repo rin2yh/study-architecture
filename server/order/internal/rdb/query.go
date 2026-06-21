@@ -21,6 +21,10 @@ func (r *OrderQuery) ListOrders(ctx context.Context) ([]db.OrderOrder, error) {
 	return r.q.ListOrders(ctx)
 }
 
+func (r *OrderQuery) ListOrdersByMember(ctx context.Context, memberID int64) ([]db.OrderOrder, error) {
+	return r.q.ListOrdersByMember(ctx, memberID)
+}
+
 func (r *OrderQuery) GetOrder(ctx context.Context, id int64) (db.OrderOrder, error) {
 	row, err := r.q.GetOrder(ctx, id)
 	if err != nil {

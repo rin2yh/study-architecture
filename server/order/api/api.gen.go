@@ -34,7 +34,7 @@ type CreateOrderRequest struct {
 
 // Error defines model for Error.
 type Error struct {
-	// Code 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
+	// Code 機械可読なエラー種別 (snake_case)。取りうる値は共通ミドルウェア server/internal/middleware (ErrorJSON / AppError) を唯一の出所とする。
 	Code string `json:"code"`
 
 	// Message 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
@@ -72,6 +72,15 @@ type UpdateOrderRequest struct {
 // IdPath defines model for IdPath.
 type IdPath = int64
 
+// MemberIdHeader defines model for MemberIdHeader.
+type MemberIdHeader = int64
+
+// ListOrdersParams defines parameters for ListOrders.
+type ListOrdersParams struct {
+	// XMemberId 認証済み会員 id。UI のサーバ側ローダがセッション検証後に付与する。 与えられた場合はその会員の注文だけに絞り込む (ADR-[[202606211100]])。
+	XMemberId *MemberIdHeader `json:"X-Member-Id,omitempty"`
+}
+
 // CheckoutJSONRequestBody defines body for Checkout for application/json ContentType.
 type CheckoutJSONRequestBody = CheckoutRequest
 
@@ -91,7 +100,7 @@ type ServerInterface interface {
 	GetHealthz(c *gin.Context)
 	// 注文一覧
 	// (GET /orders)
-	ListOrders(c *gin.Context)
+	ListOrders(c *gin.Context, params ListOrdersParams)
 	// 注文を作成
 	// (POST /orders)
 	CreateOrder(c *gin.Context)
@@ -141,6 +150,33 @@ func (siw *ServerInterfaceWrapper) GetHealthz(c *gin.Context) {
 // ListOrders operation middleware
 func (siw *ServerInterfaceWrapper) ListOrders(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListOrdersParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-Member-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Member-Id")]; found {
+		var XMemberId MemberIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Member-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Member-Id", valueList[0], &XMemberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: "int64"})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Member-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XMemberId = &XMemberId
+
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -148,7 +184,7 @@ func (siw *ServerInterfaceWrapper) ListOrders(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListOrders(c)
+	siw.Handler.ListOrders(c, params)
 }
 
 // CreateOrder operation middleware

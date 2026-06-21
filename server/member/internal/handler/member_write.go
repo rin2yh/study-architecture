@@ -9,6 +9,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/member/api"
+	"github.com/rin2yh/study-architecture/server/member/internal/auth"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
@@ -18,9 +19,15 @@ func (h *writeHandler) CreateMember(c *gin.Context) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	row, err := h.command.CreateMember(c.Request.Context(), db.CreateMemberParams{
-		Email:       string(req.Email),
-		DisplayName: req.DisplayName,
+		Email:        string(req.Email),
+		DisplayName:  req.DisplayName,
+		PasswordHash: hash,
 	})
 	if err != nil {
 		if errors.Is(err, dberr.ErrConflict) {

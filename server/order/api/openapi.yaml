@@ -23,6 +23,8 @@ paths:
       operationId: listOrders
       summary: 注文一覧
       tags: [order]
+      parameters:
+        - $ref: "#/components/parameters/MemberIdHeader"
       responses:
         "200":
           description: 注文の配列
@@ -120,6 +122,16 @@ components:
       schema:
         type: integer
         format: int64
+    MemberIdHeader:
+      name: X-Member-Id
+      in: header
+      required: false
+      description: >-
+        認証済み会員 id。UI のサーバ側ローダがセッション検証後に付与する。
+        与えられた場合はその会員の注文だけに絞り込む (ADR-[[202606211100]])。
+      schema:
+        type: integer
+        format: int64
   responses:
     Error:
       description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
@@ -135,9 +147,8 @@ components:
         code:
           type: string
           description: >-
-            機械可読なエラー種別。
-            bad_request (400) / not_found (404) / conflict (409) /
-            unprocessable_entity (422) / internal (500) など。
+            機械可読なエラー種別 (snake_case)。取りうる値は共通ミドルウェア
+            server/internal/middleware (ErrorJSON / AppError) を唯一の出所とする。
           example: not_found
         message:
           type: string

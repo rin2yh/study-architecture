@@ -14,6 +14,7 @@ import (
 
 type Query interface {
 	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
+	ListOrdersByMember(ctx context.Context, memberID int64) ([]db.OrderOrder, error)
 	GetOrder(ctx context.Context, id int64) (db.OrderOrder, error)
 	GetOrderItems(ctx context.Context, orderID int64) ([]db.OrderOrderItem, error)
 }
