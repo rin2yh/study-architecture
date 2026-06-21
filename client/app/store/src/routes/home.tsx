@@ -1,4 +1,8 @@
+import { Link } from "react-router";
+
 import { listProducts, ListProductsResponse } from "api/product";
+import { yen } from "../money";
+import { useCart } from "../use-cart";
 import type { Route } from "./+types/home";
 
 export async function loader() {
@@ -8,9 +12,15 @@ export async function loader() {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const products = loaderData;
+  const cart = useCart();
   return (
     <div className="mx-auto max-w-2xl p-8">
-      <h1 className="text-3xl font-bold">商品一覧</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">商品一覧</h1>
+        <Link to="/cart" className="text-sm text-blue-600 underline">
+          カート
+        </Link>
+      </div>
       <ul className="mt-6 divide-y divide-gray-200">
         {products.map((p) => (
           <li key={p.id} className="flex items-center justify-between py-3">
@@ -18,7 +28,19 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <p className="font-medium">{p.name}</p>
               <p className="text-sm text-gray-500">{p.sku}</p>
             </div>
-            <span className="tabular-nums">¥{(p.priceCents / 100).toLocaleString()}</span>
+            <div className="flex items-center gap-4">
+              <span className="tabular-nums">{yen(p.priceCents)}</span>
+              <button
+                type="button"
+                disabled={!cart.ready}
+                onClick={() =>
+                  cart.add({ productId: p.id, name: p.name, priceCents: p.priceCents })
+                }
+                className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+              >
+                カートに入れる
+              </button>
+            </div>
           </li>
         ))}
       </ul>

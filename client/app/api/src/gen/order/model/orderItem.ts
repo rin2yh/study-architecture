@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpdateOrderRequest {
-  status: string;
+export interface OrderItem {
+  productId: number;
+  productName: string;
+  unitPriceCents: number;
+  quantity: number;
 }

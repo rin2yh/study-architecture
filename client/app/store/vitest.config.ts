@@ -13,7 +13,15 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],
       reportsDirectory: "./coverage",
-      include: ["src/routes/home.tsx"],
+      include: [
+        "src/cart.ts",
+        "src/use-cart.ts",
+        "src/session.ts",
+        "src/money.ts",
+        "src/routes/home.tsx",
+        "src/routes/cart.tsx",
+        "src/routes/checkout.tsx",
+      ],
       exclude: ["**/*.config.*", "src/root.tsx", "src/routes.ts", ".react-router/**", "build/**"],
       thresholds: {
         lines: 60,

@@ -5,7 +5,10 @@
  * 注文ドメイン。カート確定 (checkout) で注文を作成し、注文の一覧/取得と状態更新を提供する。
  * OpenAPI spec version: 0.1.0
  */
+import type { CheckoutItem } from './checkoutItem.ts';
 
-export interface UpdateOrderRequest {
-  status: string;
+export interface CheckoutRequest {
+  memberId: number;
+  paymentMethod: string;
+  items: CheckoutItem[];
 }
