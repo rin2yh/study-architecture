@@ -1,6 +1,6 @@
 # ADR-202606190902: 結合テストはテンプレート DB クローンで分離し並列実行する
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-19
 - Related: ADR-[[202606170909]] (customer/ops 物理 DB 分割) / ADR-[[202606180900]] (migration をサービスごとに分割) / ADR-[[202606180902]] (repository は実 DB 結合テストで検証)
 

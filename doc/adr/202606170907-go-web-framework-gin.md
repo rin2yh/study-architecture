@@ -1,6 +1,6 @@
 # ADR-202606170907: Go サーバの HTTP フレームワークに Gin を採用
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-17
 - Supersedes: ADR-[[202606170901]] の「`std-http-server` / FW 非依存」部分
 

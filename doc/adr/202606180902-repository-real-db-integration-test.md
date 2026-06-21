@@ -1,6 +1,6 @@
 # ADR-202606180902: repository 層は実 DB 結合テストで検証する
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-18
 - Related: ADR-[[202606170909]] (customer/ops 物理 DB 分割) / ADR-[[202606180900]] (migration をサービスごとに分割)
 
