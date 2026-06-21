@@ -21,7 +21,7 @@ type CreateOrderRequest struct {
 
 // Error defines model for Error.
 type Error struct {
-	// Code 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
+	// Code 機械可読なエラー種別 (snake_case)。取りうる値は共通ミドルウェア server/internal/middleware (ErrorJSON / AppError) を唯一の出所とする。
 	Code string `json:"code"`
 
 	// Message 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)

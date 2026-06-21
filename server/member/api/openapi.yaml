@@ -169,9 +169,8 @@ components:
         code:
           type: string
           description: >-
-            機械可読なエラー種別。
-            bad_request (400) / unauthorized (401) / not_found (404) /
-            conflict (409) / unprocessable_entity (422) / internal (500) など。
+            機械可読なエラー種別 (snake_case)。取りうる値は共通ミドルウェア
+            server/internal/middleware (ErrorJSON / AppError) を唯一の出所とする。
           example: not_found
         message:
           type: string
