@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-func (h *Handler) CreateProduct(c *gin.Context) {
+func (h *writeHandler) CreateProduct(c *gin.Context) {
 	var req api.CreateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -38,7 +38,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIProduct(row))
 }
 
-func (h *Handler) UpdateProduct(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdateProduct(c *gin.Context, id api.IdPath) {
 	var req api.UpdateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)

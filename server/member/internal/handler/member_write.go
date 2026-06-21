@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-func (h *Handler) CreateMember(c *gin.Context) {
+func (h *writeHandler) CreateMember(c *gin.Context) {
 	var req api.CreateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -33,7 +33,7 @@ func (h *Handler) CreateMember(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIMember(row))
 }
 
-func (h *Handler) UpdateMember(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdateMember(c *gin.Context, id api.IdPath) {
 	var req api.UpdateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)

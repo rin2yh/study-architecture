@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
-func (h *Handler) CreatePayment(c *gin.Context) {
+func (h *writeHandler) CreatePayment(c *gin.Context) {
 	var req api.CreatePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -35,7 +35,7 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIPayment(row))
 }
 
-func (h *Handler) UpdatePayment(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 	var req api.UpdatePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)

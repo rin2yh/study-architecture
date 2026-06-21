@@ -11,7 +11,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/api"
 )
 
-func (h *Handler) ListShipments(c *gin.Context) {
+func (h *readHandler) ListShipments(c *gin.Context) {
 	rows, err := h.query.ListShipments(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
@@ -24,7 +24,7 @@ func (h *Handler) ListShipments(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-func (h *Handler) GetShipment(c *gin.Context, id api.IdPath) {
+func (h *readHandler) GetShipment(c *gin.Context, id api.IdPath) {
 	row, err := h.query.GetShipment(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {

@@ -20,15 +20,28 @@ type Command interface {
 	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
 }
 
-type Handler struct {
-	query   Query
+type readHandler struct {
+	query Query
+}
+
+type writeHandler struct {
 	command Command
+}
+
+// Handler は readHandler / writeHandler を束ねて単一の api.ServerInterface を満たす。
+// 各サブハンドラは Query / Command の片側にしか依存しないため、読み書きの依存が型で分離される。
+type Handler struct {
+	*readHandler
+	*writeHandler
 }
 
 var _ api.ServerInterface = (*Handler)(nil)
 
 func New(query Query, command Command) *Handler {
-	return &Handler{query: query, command: command}
+	return &Handler{
+		readHandler:  &readHandler{query: query},
+		writeHandler: &writeHandler{command: command},
+	}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {

@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-func (h *Handler) CreateOrder(c *gin.Context) {
+func (h *writeHandler) CreateOrder(c *gin.Context) {
 	var req api.CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -34,7 +34,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIOrder(row))
 }
 
-func (h *Handler) UpdateOrder(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdateOrder(c *gin.Context, id api.IdPath) {
 	var req api.UpdateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
