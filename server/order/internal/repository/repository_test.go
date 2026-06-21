@@ -172,17 +172,38 @@ func TestRepositoryCheckout(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetOrderItemsEmpty(t *testing.T) {
+func TestRepositoryGetOrderItems(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewRepository(pool)
-	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
 
-	got, err := r.GetOrderItems(t.Context(), 1)
-	if err != nil {
-		t.Fatalf("GetOrderItems: %v", err)
-	}
-	if len(got) != 0 {
-		t.Fatalf("want no items, got %+v", got)
-	}
+	t.Run("正常系 明細を id 昇順で返す", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 2500})
+		ctx := t.Context()
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO "order".order_items (order_id, product_id, product_name, unit_price_cents, quantity)
+			 VALUES (1, 100, 'Widget', 500, 2), (1, 200, 'Gadget', 1500, 1)`); err != nil {
+			t.Fatalf("seed items: %v", err)
+		}
+
+		got, err := r.GetOrderItems(ctx, 1)
+		if err != nil {
+			t.Fatalf("GetOrderItems: %v", err)
+		}
+		if len(got) != 2 || got[0].ProductName != "Widget" || got[1].ProductName != "Gadget" {
+			t.Fatalf("unexpected items: %+v", got)
+		}
+	})
+
+	t.Run("準正常系 明細が無ければ空スライス", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+
+		got, err := r.GetOrderItems(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetOrderItems: %v", err)
+		}
+		if len(got) != 0 {
+			t.Fatalf("want no items, got %+v", got)
+		}
+	})
 }
