@@ -1,5 +1,3 @@
-// カートはサーバに持たず確定 (checkout) までクライアントの作業状態とする ([[0008]])。
-
 export interface CartItem {
   productId: number;
   name: string;
@@ -53,7 +51,7 @@ export function cartTotalCents(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0);
 }
 
-// 商品名・単価は送らない ([[0008]])。
+// [[0008]]
 export function toCheckoutItems(items: CartItem[]): { productId: number; quantity: number }[] {
   return items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
 }
