@@ -45,7 +45,7 @@ func TestListPayments(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := []api.Payment{{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}}
-	assert.EqualSlice(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, want, got, "Id", "CreatedAt")
 }
 
 func TestListPaymentsError(t *testing.T) {
@@ -96,7 +96,7 @@ func TestGetPayment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Payment{OrderId: 10, AmountCents: 1980, Method: "card", Status: "paid"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetPaymentError(t *testing.T) {

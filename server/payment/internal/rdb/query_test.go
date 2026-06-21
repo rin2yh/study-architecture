@@ -63,7 +63,7 @@ func TestListPayments(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListPayments: want non-nil slice (emit_empty_slices)")
 			}
-			assert.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
+			assert.DeepEqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }

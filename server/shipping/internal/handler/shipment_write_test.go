@@ -42,7 +42,7 @@ func TestCreateShipment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Shipment{OrderId: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCreateShipmentError(t *testing.T) {
@@ -103,7 +103,7 @@ func TestUpdateShipment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Shipment{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "delivered"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestUpdateShipmentError(t *testing.T) {

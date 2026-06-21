@@ -61,7 +61,7 @@ func TestCreateOrder(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.Equal(t, api.Order{MemberId: 20, Status: "pending", TotalCents: 1980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Order{MemberId: 20, Status: "pending", TotalCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestCreateOrderError(t *testing.T) {
@@ -122,7 +122,7 @@ func TestUpdateOrder(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.Equal(t, api.Order{MemberId: 10, Status: "paid", TotalCents: 1980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Order{MemberId: 10, Status: "paid", TotalCents: 1980}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateOrderError(t *testing.T) {
@@ -180,7 +180,7 @@ func TestCheckout(t *testing.T) {
 		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCheckoutError(t *testing.T) {

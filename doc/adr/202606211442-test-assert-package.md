@@ -18,7 +18,9 @@
 
 **両パッケージを `internal/test/assert` に統合する。**
 
-- 公開 API: `assert.Equal` / `assert.EqualSlice` / `assert.ErrorCode`。
+- 公開 API: `assert.DeepEqual` / `assert.DeepEqualSlice` / `assert.ErrorCode`。
+- cmp.Diff を使う比較は浅い `==` でなく深い構造比較なので、`reflect.DeepEqual` に倣って
+  `Deep` 接頭辞を付け、浅い等価でないことを名前で示す。
 - `apitest.AssertErrorCode` は `assert` 配下では `assert.Assert...` の stutter になるため、
   Go の慣習に従い `Assert` 接頭辞を落として `assert.ErrorCode` にする。
 - 旧 `apitest` / `cmptest` パッケージは削除し、参照を全面的に差し替える。

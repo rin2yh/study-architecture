@@ -73,5 +73,5 @@ func TestCheckout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOrderItems: %v", err)
 	}
-	assert.EqualSlice(t, items, got)
+	assert.DeepEqualSlice(t, items, got)
 }

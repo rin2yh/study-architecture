@@ -42,7 +42,7 @@ func TestCreatePayment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "paid"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCreatePaymentError(t *testing.T) {
@@ -104,7 +104,7 @@ func TestUpdatePayment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "refunded"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestUpdatePaymentError(t *testing.T) {

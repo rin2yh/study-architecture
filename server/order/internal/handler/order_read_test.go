@@ -44,7 +44,7 @@ func TestListOrders(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.EqualSlice(t, []api.Order{{MemberId: 10, Status: "paid", TotalCents: 5000}}, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, []api.Order{{MemberId: 10, Status: "paid", TotalCents: 5000}}, got, "Id", "CreatedAt")
 }
 
 func TestListOrdersError(t *testing.T) {
@@ -101,7 +101,7 @@ func TestGetOrder(t *testing.T) {
 		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetOrderError(t *testing.T) {

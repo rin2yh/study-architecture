@@ -9,14 +9,14 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func Equal[T any](t *testing.T, want, got T, ignoreFields ...string) {
+func DeepEqual[T any](t *testing.T, want, got T, ignoreFields ...string) {
 	t.Helper()
 	if d := cmp.Diff(want, got, opts[T](ignoreFields)...); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 }
 
-func EqualSlice[E any](t *testing.T, want, got []E, ignoreFields ...string) {
+func DeepEqualSlice[E any](t *testing.T, want, got []E, ignoreFields ...string) {
 	t.Helper()
 	if d := cmp.Diff(want, got, opts[E](ignoreFields)...); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)

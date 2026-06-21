@@ -45,7 +45,7 @@ func TestListShipments(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := []api.Shipment{{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"}}
-	assert.EqualSlice(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, want, got, "Id", "CreatedAt")
 }
 
 func TestListShipmentsError(t *testing.T) {
@@ -96,7 +96,7 @@ func TestGetShipment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Shipment{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetShipmentError(t *testing.T) {

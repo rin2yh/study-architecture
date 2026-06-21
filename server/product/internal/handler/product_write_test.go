@@ -41,7 +41,7 @@ func TestCreateProduct(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.Equal(t, api.Product{Sku: "SKU-NEW", Name: "新規商品", PriceCents: 2980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Product{Sku: "SKU-NEW", Name: "新規商品", PriceCents: 2980}, got, "Id", "CreatedAt")
 }
 
 func TestCreateProductError(t *testing.T) {
@@ -103,7 +103,7 @@ func TestUpdateProduct(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.Equal(t, api.Product{Sku: "SKU-UPD", Name: "更新後商品", PriceCents: 3980}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Product{Sku: "SKU-UPD", Name: "更新後商品", PriceCents: 3980}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateProductError(t *testing.T) {

@@ -41,7 +41,7 @@ func TestCreateMember(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.Equal(t, api.Member{Email: "new@example.com", DisplayName: "新規会員"}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Member{Email: "new@example.com", DisplayName: "新規会員"}, got, "Id", "CreatedAt")
 }
 
 func TestCreateMemberError(t *testing.T) {
@@ -102,7 +102,7 @@ func TestUpdateMember(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.Equal(t, api.Member{Email: "upd@example.com", DisplayName: "更新後会員"}, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, api.Member{Email: "upd@example.com", DisplayName: "更新後会員"}, got, "Id", "CreatedAt")
 }
 
 func TestUpdateMemberError(t *testing.T) {

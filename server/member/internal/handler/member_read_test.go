@@ -44,7 +44,7 @@ func TestListMembers(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.EqualSlice(t, []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}, got, "Id", "CreatedAt")
+	assert.DeepEqualSlice(t, []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}, got, "Id", "CreatedAt")
 }
 
 func TestListMembersError(t *testing.T) {
@@ -95,7 +95,7 @@ func TestGetMember(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Member{Email: "user@example.com", DisplayName: "サンプル会員"}
-	assert.Equal(t, want, got, "Id", "CreatedAt")
+	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetMemberError(t *testing.T) {
