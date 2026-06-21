@@ -5,18 +5,31 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/repository"
 )
 
 func InitHandler(ctx context.Context) (*handler.Handler, error) {
 	var err error
-	pool, err := kessoku.Async(kessoku.Provide(repository.NewPool)).Fn()(ctx)
+	productClient, err := kessoku.Bind[gateway.ProductPort](kessoku.Provide(gateway.NewProductClient)).Fn()()
 	if err != nil {
 		var zero *handler.Handler
 		return zero, err
 	}
+	var err0 error
+	paymentClient, err0 := kessoku.Bind[gateway.PaymentPort](kessoku.Provide(gateway.NewPaymentClient)).Fn()()
+	if err0 != nil {
+		var zero *handler.Handler
+		return zero, err0
+	}
+	var err1 error
+	pool, err1 := kessoku.Async(kessoku.Provide(repository.NewPool)).Fn()(ctx)
+	if err1 != nil {
+		var zero *handler.Handler
+		return zero, err1
+	}
 	repository0 := kessoku.Bind[repository.OrderRepository](kessoku.Provide(repository.NewRepository)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(repository0)
+	handler0 := kessoku.Provide(handler.New).Fn()(repository0, productClient, paymentClient)
 	return handler0, nil
 }

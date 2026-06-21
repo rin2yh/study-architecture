@@ -15,3 +15,13 @@ type OrderOrder struct {
 	TotalCents int64              `json:"totalCents"`
 	CreatedAt  pgtype.Timestamptz `json:"createdAt"`
 }
+
+type OrderOrderItem struct {
+	ID             int64              `json:"id"`
+	OrderID        int64              `json:"orderId"`
+	ProductID      int64              `json:"productId"`
+	ProductName    string             `json:"productName"`
+	UnitPriceCents int64              `json:"unitPriceCents"`
+	Quantity       int32              `json:"quantity"`
+	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
+}

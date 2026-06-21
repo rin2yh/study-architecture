@@ -7,17 +7,20 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
+	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/repository"
 )
 
 type Handler struct {
-	repo repository.OrderRepository
+	repo    repository.OrderRepository
+	product gateway.ProductPort
+	payment gateway.PaymentPort
 }
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(repo repository.OrderRepository) *Handler {
-	return &Handler{repo: repo}
+func New(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort) *Handler {
+	return &Handler{repo: repo, product: product, payment: payment}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {
@@ -32,4 +35,19 @@ func toAPIOrder(r db.OrderOrder) api.Order {
 		TotalCents: r.TotalCents,
 		CreatedAt:  r.CreatedAt.Time,
 	}
+}
+
+func toAPIOrderWithItems(r db.OrderOrder, items []db.OrderOrderItem) api.Order {
+	o := toAPIOrder(r)
+	out := make([]api.OrderItem, 0, len(items))
+	for _, it := range items {
+		out = append(out, api.OrderItem{
+			ProductId:      it.ProductID,
+			ProductName:    it.ProductName,
+			UnitPriceCents: it.UnitPriceCents,
+			Quantity:       int(it.Quantity),
+		})
+	}
+	o.Items = &out
+	return o
 }

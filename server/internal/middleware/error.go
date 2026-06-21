@@ -50,6 +50,10 @@ func Unprocessable(message string) *AppError {
 	return &AppError{Status: http.StatusUnprocessableEntity, Code: "unprocessable_entity", Message: message}
 }
 
+func BadGateway(message string) *AppError {
+	return &AppError{Status: http.StatusBadGateway, Code: "bad_gateway", Message: message}
+}
+
 // ErrorJSON は handler が c.Error(err) で積んだ最後のエラーを共通フォーマットの
 // JSON に整形する。マッピング規則:
 //
