@@ -52,7 +52,7 @@ func TestListShipments(t *testing.T) {
 }
 
 func TestListShipmentsError(t *testing.T) {
-	fake := stub.RDB{Err: errors.New("db failure")}
+	fake := stub.ShipmentStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
 	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
@@ -79,7 +79,7 @@ func TestGetShipment(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	shipment := db.ShippingShipment{ID: 1, OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		fake stub.RDB
+		fake stub.ShipmentStub
 		path string
 	}
 	type want struct {
@@ -91,9 +91,9 @@ func TestGetShipment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 配送を返す", args{stub.RDB{Shipment: shipment}, "/shipments/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/shipments/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 配送を返す", args{stub.ShipmentStub{Shipment: shipment}, "/shipments/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.ShipmentStub{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.ShipmentStub{Err: errors.New("db failure")}, "/shipments/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

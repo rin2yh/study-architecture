@@ -27,7 +27,7 @@ func newServer(query handler.Query, command handler.Command) http.Handler {
 
 func TestGetHealthz(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newServer(stub.RDB{}, stub.RDB{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	newServer(stub.OrderStub{}, stub.OrderStub{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

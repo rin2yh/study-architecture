@@ -52,7 +52,7 @@ func TestListPayments(t *testing.T) {
 }
 
 func TestListPaymentsError(t *testing.T) {
-	fake := stub.RDB{Err: errors.New("db failure")}
+	fake := stub.PaymentStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
 	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments", nil))
@@ -79,7 +79,7 @@ func TestGetPayment(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	payment := db.PaymentPayment{ID: 1, OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		fake stub.RDB
+		fake stub.PaymentStub
 		path string
 	}
 	type want struct {
@@ -91,9 +91,9 @@ func TestGetPayment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 決済を返す", args{stub.RDB{Payment: payment}, "/payments/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/payments/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/payments/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 決済を返す", args{stub.PaymentStub{Payment: payment}, "/payments/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.PaymentStub{Err: dberr.ErrNotFound}, "/payments/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, "/payments/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -52,7 +52,7 @@ func TestListProducts(t *testing.T) {
 }
 
 func TestListProductsError(t *testing.T) {
-	fake := stub.RDB{Err: errors.New("db failure")}
+	fake := stub.ProductStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
 	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
@@ -82,7 +82,7 @@ func TestGetProduct(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	product := db.ProductProduct{ID: 1, Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		fake stub.RDB
+		fake stub.ProductStub
 		path string
 	}
 	type want struct {
@@ -94,9 +94,9 @@ func TestGetProduct(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 商品を返す", args{stub.RDB{Product: product}, "/products/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 商品を返す", args{stub.ProductStub{Product: product}, "/products/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.ProductStub{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.ProductStub{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

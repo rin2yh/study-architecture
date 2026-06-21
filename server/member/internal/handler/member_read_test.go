@@ -52,7 +52,7 @@ func TestListMembers(t *testing.T) {
 }
 
 func TestListMembersError(t *testing.T) {
-	fake := stub.RDB{Err: errors.New("db failure")}
+	fake := stub.MemberStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
 	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
@@ -79,7 +79,7 @@ func TestGetMember(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	member := db.MemberMember{ID: 1, Email: "user@example.com", DisplayName: "サンプル会員", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		fake stub.RDB
+		fake stub.MemberStub
 		path string
 	}
 	type want struct {
@@ -91,9 +91,9 @@ func TestGetMember(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 会員を返す", args{stub.RDB{Member: member}, "/members/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/members/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 会員を返す", args{stub.MemberStub{Member: member}, "/members/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, "/members/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

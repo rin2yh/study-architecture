@@ -22,7 +22,7 @@ func TestCreateMember(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	created := db.MemberMember{ID: 10, Email: "new@example.com", DisplayName: "新規会員", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		fake stub.RDB
+		fake stub.MemberStub
 		body string
 	}
 	type want struct {
@@ -34,11 +34,11 @@ func TestCreateMember(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 会員を作成し 201", args{stub.RDB{Member: created}, `{"email":"new@example.com","displayName":"新規会員"}`}, want{http.StatusCreated, ""}},
-		{"異常系 displayName 欠落は 400 bad_request", args{stub.RDB{}, `{"email":"new@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 形式不正は 400 bad_request", args{stub.RDB{}, `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 重複は 409 conflict", args{stub.RDB{Err: dberr.ErrConflict}, `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
-		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, `{"email":"x@example.com","displayName":"x"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 会員を作成し 201", args{stub.MemberStub{Member: created}, `{"email":"new@example.com","displayName":"新規会員"}`}, want{http.StatusCreated, ""}},
+		{"異常系 displayName 欠落は 400 bad_request", args{stub.MemberStub{}, `{"email":"new@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 email 形式不正は 400 bad_request", args{stub.MemberStub{}, `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 email 重複は 409 conflict", args{stub.MemberStub{Err: dberr.ErrConflict}, `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
+		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, `{"email":"x@example.com","displayName":"x"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestUpdateMember(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	updated := db.MemberMember{ID: 1, Email: "upd@example.com", DisplayName: "更新後会員", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		fake stub.RDB
+		fake stub.MemberStub
 		path string
 		body string
 	}
@@ -81,12 +81,12 @@ func TestUpdateMember(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 会員を更新し 200", args{stub.RDB{Member: updated}, "/members/1", `{"email":"upd@example.com","displayName":"更新後会員"}`}, want{http.StatusOK, ""}},
-		{"異常系 displayName 欠落は 400 bad_request", args{stub.RDB{}, "/members/1", `{"email":"upd@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 email 形式不正は 400 bad_request", args{stub.RDB{}, "/members/1", `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/members/99", `{"email":"upd@example.com","displayName":"x"}`}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 email 重複は 409 conflict", args{stub.RDB{Err: dberr.ErrConflict}, "/members/1", `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
-		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/members/1", `{"email":"x@example.com","displayName":"x"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 会員を更新し 200", args{stub.MemberStub{Member: updated}, "/members/1", `{"email":"upd@example.com","displayName":"更新後会員"}`}, want{http.StatusOK, ""}},
+		{"異常系 displayName 欠落は 400 bad_request", args{stub.MemberStub{}, "/members/1", `{"email":"upd@example.com"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 email 形式不正は 400 bad_request", args{stub.MemberStub{}, "/members/1", `{"email":"not-an-email","displayName":"x"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99", `{"email":"upd@example.com","displayName":"x"}`}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 email 重複は 409 conflict", args{stub.MemberStub{Err: dberr.ErrConflict}, "/members/1", `{"email":"dup@example.com","displayName":"重複"}`}, want{http.StatusConflict, "conflict"}},
+		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, "/members/1", `{"email":"x@example.com","displayName":"x"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

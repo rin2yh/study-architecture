@@ -6,24 +6,24 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
-type RDB struct {
+type PaymentStub struct {
 	Payments []db.PaymentPayment
 	Payment  db.PaymentPayment
 	Err      error
 }
 
-func (s RDB) ListPayments(context.Context) ([]db.PaymentPayment, error) {
+func (s PaymentStub) ListPayments(context.Context) ([]db.PaymentPayment, error) {
 	return s.Payments, s.Err
 }
 
-func (s RDB) GetPayment(context.Context, int64) (db.PaymentPayment, error) {
+func (s PaymentStub) GetPayment(context.Context, int64) (db.PaymentPayment, error) {
 	return s.Payment, s.Err
 }
 
-func (s RDB) CreatePayment(context.Context, db.CreatePaymentParams) (db.PaymentPayment, error) {
+func (s PaymentStub) CreatePayment(context.Context, db.CreatePaymentParams) (db.PaymentPayment, error) {
 	return s.Payment, s.Err
 }
 
-func (s RDB) UpdatePayment(context.Context, db.UpdatePaymentParams) (db.PaymentPayment, error) {
+func (s PaymentStub) UpdatePayment(context.Context, db.UpdatePaymentParams) (db.PaymentPayment, error) {
 	return s.Payment, s.Err
 }
