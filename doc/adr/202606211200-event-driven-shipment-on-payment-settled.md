@@ -78,5 +78,11 @@ preparing 枠を作れるようにした。
 - **Outbox + relay (Postgres ベース)**: publish 取りこぼしを無くせる正攻法だが、relay
   プロセス・ポーリング・境界越えの配信を自前で組む実装量が Step 0 に対して過大。まず broker で
   疎結合の形を作り、信頼配信 (outbox) は後で足す。
+- **Redis Pub/Sub (PUBLISH/SUBSCRIBE)**: 同じ Redis でもこちらは at-most-once・非永続で、
+  publish 時に購読者が居なければメッセージが消える。shipping の再起動中に決済が確定すると
+  「入金済みなのに配送が永遠に作られない注文」が出るため不採用。本 ADR の可用性の主張 (配送側
+  ダウン中の確定を復旧後に拾う) と冪等化 (at-least-once 前提) は、永続ログ + consumer group +
+  ack/再配送を持つ Streams だからこそ成り立つ。Pub/Sub が向くのは取りこぼし許容の fan-out
+  (ライブ通知・キャッシュ無効化ヒント等) で、業務イベントには合わない。
 - **分散トランザクション / saga + 補償**: 下流まで強整合にできるが Step 0 には過剰
   (ADR-[[202606190900]] と同じ理由)。
