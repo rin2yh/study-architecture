@@ -1,10 +1,13 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import viteReact from "@vitejs/plugin-react";
 
-// テスト専用設定。React Router の dev plugin は build/SSR 用なので vitest では読まず、
-// JSX 変換に必要な react プラグインのみ。
+// React Router の dev plugin は build/SSR 用なので vitest では読まない。
 export default defineConfig({
   plugins: [viteReact()],
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   test: {
     environment: "jsdom",
     globals: true,

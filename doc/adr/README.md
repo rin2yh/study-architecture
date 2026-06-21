@@ -27,3 +27,4 @@
 | [202606211000](202606211000-adr-timestamp-naming.md) | Accepted | ADR の識別子を連番からタイムスタンプ (YYYYMMDDHHmm) に変える |
 | [202606211100](202606211100-member-auth-httponly-cookie-session.md) | Accepted | 認証は HttpOnly Cookie + member 所有のサーバ側セッション |
 | [202606211200](202606211200-single-merchant-ec-not-marketplace.md) | Accepted | 単一事業者の EC（storefront）であり、マーケットプレイスではない |
+| [202606211300](202606211300-ui-component-library-shadcn.md) | Accepted | UI コンポーネントは shadcn/ui (Radix + Tailwind) を取り込み式で持つ |

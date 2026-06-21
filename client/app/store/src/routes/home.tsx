@@ -1,6 +1,11 @@
 import { Link } from "react-router";
+import { ShoppingCart } from "lucide-react";
 
 import { listProducts, ListProductsResponse } from "api/product";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { yen } from "../money";
 import { useCart } from "../use-cart";
 import type { Route } from "./+types/home";
@@ -17,34 +22,37 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <div className="mx-auto max-w-2xl p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">商品一覧</h1>
-        <Link to="/cart" className="text-sm text-blue-600 underline">
-          カート
-        </Link>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/cart">
+            <ShoppingCart />
+            カート
+          </Link>
+        </Button>
       </div>
-      <ul className="mt-6 divide-y divide-gray-200">
+      <div className="mt-6 space-y-3">
         {products.map((p) => (
-          <li key={p.id} className="flex items-center justify-between py-3">
-            <div>
-              <p className="font-medium">{p.name}</p>
-              <p className="text-sm text-gray-500">{p.sku}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="tabular-nums">{yen(p.priceCents)}</span>
-              <button
-                type="button"
-                disabled={!cart.ready}
-                onClick={() =>
-                  cart.add({ productId: p.id, name: p.name, priceCents: p.priceCents })
-                }
-                className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-              >
-                カートに入れる
-              </button>
-            </div>
-          </li>
+          <Card key={p.id}>
+            <CardContent className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="font-medium">{p.name}</p>
+                <Badge variant="secondary">{p.sku}</Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="tabular-nums">{yen(p.priceCents)}</span>
+                <Button
+                  disabled={!cart.ready}
+                  onClick={() =>
+                    cart.add({ productId: p.id, name: p.name, priceCents: p.priceCents })
+                  }
+                >
+                  カートに入れる
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </ul>
-      {products.length === 0 && <p className="mt-6 text-gray-500">商品がありません。</p>}
+      </div>
+      {products.length === 0 && <p className="mt-6 text-muted-foreground">商品がありません。</p>}
     </div>
   );
 }
@@ -52,19 +60,21 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const message = error instanceof Error ? error.message : "unknown error";
   return (
-    <div className="mx-auto max-w-2xl p-8" role="alert">
-      <h1 className="text-3xl font-bold">エラーが発生しました</h1>
-      <p className="mt-4 text-red-600">商品一覧の取得に失敗しました。</p>
-      <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700">
-        {message}
-      </pre>
+    <div className="mx-auto max-w-2xl p-8">
+      <Alert variant="destructive">
+        <AlertTitle>エラーが発生しました</AlertTitle>
+        <AlertDescription>
+          <p>商品一覧の取得に失敗しました。</p>
+          <pre className="mt-2 overflow-x-auto text-xs">{message}</pre>
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }
 
 export function HydrateFallback() {
   return (
-    <div className="mx-auto max-w-2xl p-8 text-gray-500" role="status" aria-live="polite">
+    <div className="mx-auto max-w-2xl p-8 text-muted-foreground" role="status" aria-live="polite">
       読み込み中…
     </div>
   );

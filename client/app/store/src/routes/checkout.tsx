@@ -1,7 +1,20 @@
 import { useEffect } from "react";
 import { Form, Link, useNavigation } from "react-router";
+import { CheckCircle2 } from "lucide-react";
 
 import { checkout } from "api/order";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { cartTotalCents, toCheckoutItems } from "../cart";
 import { yen } from "../money";
 import { currentMemberId } from "../session";
@@ -59,31 +72,38 @@ export default function Checkout({ actionData }: Route.ComponentProps) {
     const order = actionData.order;
     return (
       <div className="mx-auto max-w-2xl p-8">
-        <h1 className="text-3xl font-bold">注文が確定しました</h1>
-        <p className="mt-4">
-          注文番号 <span className="font-mono">#{order.id}</span> / 合計{" "}
-          <span className="tabular-nums">{yen(order.totalCents)}</span>
-        </p>
-        <ul className="mt-4 divide-y divide-gray-200">
-          {(order.items ?? []).map((it) => (
-            <li key={it.productId} className="flex justify-between py-2">
-              <span>
-                {it.productName} × {it.quantity}
-              </span>
-              <span className="tabular-nums">{yen(it.unitPriceCents * it.quantity)}</span>
-            </li>
-          ))}
-        </ul>
-        <Link to="/" className="mt-6 inline-block text-blue-600 underline">
-          商品一覧へ戻る
-        </Link>
+        <div className="flex items-center gap-2 text-green-600">
+          <CheckCircle2 />
+          <h1 className="text-3xl font-bold text-foreground">注文が確定しました</h1>
+        </div>
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>
+              注文番号 <span className="font-mono">#{order.id}</span> / 合計{" "}
+              <span className="tabular-nums">{yen(order.totalCents)}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(order.items ?? []).map((it) => (
+              <div key={it.productId} className="flex justify-between">
+                <span>
+                  {it.productName} × {it.quantity}
+                </span>
+                <span className="tabular-nums">{yen(it.unitPriceCents * it.quantity)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Button asChild variant="link" className="mt-6 px-0">
+          <Link to="/">商品一覧へ戻る</Link>
+        </Button>
       </div>
     );
   }
 
   if (!cart.ready) {
     return (
-      <div className="mx-auto max-w-2xl p-8 text-gray-500" role="status" aria-live="polite">
+      <div className="mx-auto max-w-2xl p-8 text-muted-foreground" role="status" aria-live="polite">
         読み込み中…
       </div>
     );
@@ -93,10 +113,10 @@ export default function Checkout({ actionData }: Route.ComponentProps) {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <h1 className="text-3xl font-bold">チェックアウト</h1>
-        <p className="mt-6 text-gray-500">カートが空です。</p>
-        <Link to="/" className="mt-4 inline-block text-blue-600 underline">
-          商品一覧へ
-        </Link>
+        <p className="mt-6 text-muted-foreground">カートが空です。</p>
+        <Button asChild variant="link" className="mt-4 px-0">
+          <Link to="/">商品一覧へ</Link>
+        </Button>
       </div>
     );
   }
@@ -104,47 +124,47 @@ export default function Checkout({ actionData }: Route.ComponentProps) {
   return (
     <div className="mx-auto max-w-2xl p-8">
       <h1 className="text-3xl font-bold">チェックアウト</h1>
-      <ul className="mt-6 divide-y divide-gray-200">
-        {cart.items.map((i) => (
-          <li key={i.productId} className="flex justify-between py-2">
-            <span>
-              {i.name} × {i.quantity}
-            </span>
-            <span className="tabular-nums">{yen(i.priceCents * i.quantity)}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 flex justify-between text-lg font-bold">
-        <span>合計</span>
-        <span className="tabular-nums">{yen(cartTotalCents(cart.items))}</span>
-      </div>
+      <Card className="mt-6">
+        <CardContent className="space-y-3">
+          {cart.items.map((i) => (
+            <div key={i.productId} className="flex justify-between">
+              <span>
+                {i.name} × {i.quantity}
+              </span>
+              <span className="tabular-nums">{yen(i.priceCents * i.quantity)}</span>
+            </div>
+          ))}
+          <Separator />
+          <div className="flex justify-between text-lg font-bold">
+            <span>合計</span>
+            <span className="tabular-nums">{yen(cartTotalCents(cart.items))}</span>
+          </div>
+        </CardContent>
+      </Card>
 
       <Form method="post" className="mt-8 space-y-4">
         <input type="hidden" name="items" value={JSON.stringify(toCheckoutItems(cart.items))} />
-        <label className="block">
-          <span className="text-sm font-medium">支払い方法</span>
-          <select
-            name="paymentMethod"
-            defaultValue="card"
-            className="mt-1 block w-full rounded border p-2"
-          >
-            <option value="card">カード</option>
-            <option value="bank_transfer">銀行振込</option>
-            <option value="cod">代引き</option>
-          </select>
-        </label>
+        <div className="space-y-2">
+          <Label htmlFor="paymentMethod">支払い方法</Label>
+          <Select name="paymentMethod" defaultValue="card">
+            <SelectTrigger id="paymentMethod" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="card">カード</SelectItem>
+              <SelectItem value="bank_transfer">銀行振込</SelectItem>
+              <SelectItem value="cod">代引き</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {actionData?.error && (
-          <p role="alert" className="text-red-600">
-            {actionData.error}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>{actionData.error}</AlertDescription>
+          </Alert>
         )}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-        >
+        <Button type="submit" disabled={submitting}>
           {submitting ? "確定中…" : "注文を確定する"}
-        </button>
+        </Button>
       </Form>
     </div>
   );

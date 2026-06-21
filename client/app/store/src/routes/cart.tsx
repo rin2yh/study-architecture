@@ -1,5 +1,9 @@
 import { Link } from "react-router";
+import { Minus, Plus, Trash2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { cartTotalCents } from "../cart";
 import { yen } from "../money";
 import { useCart } from "../use-cart";
@@ -9,7 +13,7 @@ export default function Cart() {
 
   if (!cart.ready) {
     return (
-      <div className="mx-auto max-w-2xl p-8 text-gray-500" role="status" aria-live="polite">
+      <div className="mx-auto max-w-2xl p-8 text-muted-foreground" role="status" aria-live="polite">
         読み込み中…
       </div>
     );
@@ -19,10 +23,10 @@ export default function Cart() {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <h1 className="text-3xl font-bold">カート</h1>
-        <p className="mt-6 text-gray-500">カートは空です。</p>
-        <Link to="/" className="mt-4 inline-block text-blue-600 underline">
-          商品一覧へ
-        </Link>
+        <p className="mt-6 text-muted-foreground">カートは空です。</p>
+        <Button asChild variant="link" className="mt-4 px-0">
+          <Link to="/">商品一覧へ</Link>
+        </Button>
       </div>
     );
   }
@@ -30,49 +34,56 @@ export default function Cart() {
   return (
     <div className="mx-auto max-w-2xl p-8">
       <h1 className="text-3xl font-bold">カート</h1>
-      <ul className="mt-6 divide-y divide-gray-200">
-        {cart.items.map((i) => (
-          <li key={i.productId} className="flex items-center justify-between py-3">
-            <div>
-              <p className="font-medium">{i.name}</p>
-              <p className="text-sm text-gray-500">{yen(i.priceCents)}</p>
+      <Card className="mt-6">
+        <CardContent className="space-y-3">
+          {cart.items.map((i) => (
+            <div key={i.productId} className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{i.name}</p>
+                <p className="text-sm text-muted-foreground">{yen(i.priceCents)}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="減らす"
+                  onClick={() => cart.setQty(i.productId, i.quantity - 1)}
+                >
+                  <Minus />
+                </Button>
+                <span className="w-6 text-center tabular-nums">{i.quantity}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="増やす"
+                  onClick={() => cart.setQty(i.productId, i.quantity + 1)}
+                >
+                  <Plus />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => cart.remove(i.productId)}
+                >
+                  <Trash2 />
+                  削除
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                aria-label="減らす"
-                onClick={() => cart.setQty(i.productId, i.quantity - 1)}
-                className="rounded border px-2"
-              >
-                −
-              </button>
-              <span className="w-6 text-center tabular-nums">{i.quantity}</span>
-              <button
-                type="button"
-                aria-label="増やす"
-                onClick={() => cart.setQty(i.productId, i.quantity + 1)}
-                className="rounded border px-2"
-              >
-                ＋
-              </button>
-              <button
-                type="button"
-                onClick={() => cart.remove(i.productId)}
-                className="ml-2 text-sm text-red-600 underline"
-              >
-                削除
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-6 flex items-center justify-between">
-        <span className="text-lg font-bold">合計</span>
-        <span className="text-lg font-bold tabular-nums">{yen(cartTotalCents(cart.items))}</span>
-      </div>
-      <Link to="/checkout" className="mt-6 inline-block rounded bg-blue-600 px-4 py-2 text-white">
-        チェックアウトへ
-      </Link>
+          ))}
+          <Separator />
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-bold">合計</span>
+            <span className="text-lg font-bold tabular-nums">
+              {yen(cartTotalCents(cart.items))}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+      <Button asChild className="mt-6">
+        <Link to="/checkout">チェックアウトへ</Link>
+      </Button>
     </div>
   );
 }
