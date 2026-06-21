@@ -1,12 +1,12 @@
-# ADR 0016: 結合テストはテンプレート DB クローンで分離し並列実行する
+# ADR-202606190902: 結合テストはテンプレート DB クローンで分離し並列実行する
 
 - Status: Proposed
 - Date: 2026-06-19
-- Related: [[0012]] (customer/ops 物理 DB 分割) / [[0013]] (migration をサービスごとに分割) / [[0014]] (repository は実 DB 結合テストで検証)
+- Related: ADR-[[202606170909]] (customer/ops 物理 DB 分割) / ADR-[[202606180900]] (migration をサービスごとに分割) / ADR-[[202606180902]] (repository は実 DB 結合テストで検証)
 
 ## Context
 
-[[0014]] で repository / handler を実 DB の結合テストで検証するようにした。接続先は
+ADR-[[202606180902]] で repository / handler を実 DB の結合テストで検証するようにした。接続先は
 `DATABASE_URL_CUSTOMER` / `DATABASE_URL_OPS` が指す**共有 DB** (`ec_customer` /
 `ec_ops`) で、各テストは対象 table を `TRUNCATE ... RESTART IDENTITY` してから seed する。
 
@@ -41,7 +41,7 @@ handler) でパッケージが増えており、並列化したい。
   効果を取り、パッケージ内並列は分離が効くと確認できてから別途入れられる (Open がテスト
   単位で分離するので後付けは安全)。
 
-テンプレートは [[0013]] の `scripts/migrate.sh` が migration を流した `ec_customer` /
+テンプレートは ADR-[[202606180900]] の `scripts/migrate.sh` が migration を流した `ec_customer` /
 `ec_ops` をそのまま使う。クローンは migration 済み状態を丸ごと引き継ぐので、テスト側で
 流し直す必要はない。
 
@@ -57,7 +57,7 @@ handler) でパッケージが増えており、並列化したい。
   ユーザ (postgres 初期化ユーザ = superuser) で満たす。別環境で回すときは権限に注意。
 - **クローンの作成/破棄コストが乗る**: テンプレートは数 table と小さく、`CREATE DATABASE`
   はファイルコピーなので軽い。migration を毎回流す方式より速い。
-- **CI のセットアップは不変**: DB 起動 → migrate の流れ ([[0013]]/[[0014]]) はそのまま。
+- **CI のセットアップは不変**: DB 起動 → migrate の流れ (ADR-[[202606180900]]/ADR-[[202606180902]]) はそのまま。
   migrate がテンプレートを用意し、テストがそこからクローンする。
 
 ## Alternatives considered
@@ -71,7 +71,7 @@ handler) でパッケージが増えており、並列化したい。
   sqlc 生成クエリが schema 修飾 (`member.members` 等) を埋め込んでおり search_path で
   逃がせない。テンプレート DB クローンの方が既存コードに手を入れずに済む。
 - **testcontainers でテストごとに Postgres を起動**: 分離は最も強いがコンテナ起動が重く、
-  [[0014]] で既存 compose DB を流用すると決めた方針とも整合しない。テンプレートクローンは
+  ADR-[[202606180902]] で既存 compose DB を流用すると決めた方針とも整合しない。テンプレートクローンは
   同一インスタンス内の安価な複製で目的を満たす。
 - **パッケージごとに DB を分ける (TestMain で 1 DB)**: クローン数は減るが各 integration
   パッケージに `TestMain` を足す必要があり、パッケージ内のテーブル共有 (TRUNCATE 競合) は

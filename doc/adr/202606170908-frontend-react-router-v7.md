@@ -1,12 +1,12 @@
-# ADR 0011: フロントエンドは React Router v7 (旧 Remix 統合) に切替
+# ADR-202606170908: フロントエンドは React Router v7 (旧 Remix 統合) に切替
 
 - Status: Proposed
 - Date: 2026-06-17
-- Supersedes: [[0005]]
+- Supersedes: ADR-[[202606170904]]
 
 ## Context
 
-[[0005]] で TanStack Start を採用したが、Docker 本番ビルドで Nitro が混在させる
+ADR-[[202606170904]] で TanStack Start を採用したが、Docker 本番ビルドで Nitro が混在させる
 Vite-dev 用 SSR fallback (`fetch(req, {viteEnv:"ssr"})`) によりブラウザ要求が
 self-fetch デッドロックする問題が顕在化した (詳細は doc/known-issues.md)。
 
@@ -30,7 +30,7 @@ self-fetch デッドロックする問題が顕在化した (詳細は doc/known
 - ルートは `src/routes.ts` に明示的に書き、`Route.ComponentProps` / `Route.ErrorBoundaryProps`
   などの型は `react-router typegen` が生成。
 - `loader` / `ErrorBoundary` / `HydrateFallback` を route ファイルに同居させる規約に従う。
-- [[0006]] の「サーバ側ローダ + orval(zod)」は方針として維持 (実装は `loader` 内で
+- ADR-[[202606170905]] の「サーバ側ローダ + orval(zod)」は方針として維持 (実装は `loader` 内で
   `@ec/api` の生成クライアントを呼ぶ形)。
 
 ## Consequences
@@ -40,7 +40,7 @@ self-fetch デッドロックする問題が顕在化した (詳細は doc/known
 - 既存の `routes/index.tsx` / `__root.tsx` / `router.tsx` / `routeTree.gen.ts` を撤去し、
   `src/root.tsx` + `src/routes.ts` + `src/routes/home.tsx` 構成に書き換える。
 - Docker (compose) で `localhost:5173/5174/5175` の SSR が安定動作することを確認済。
-- BFF への育成方針 ([[0005]] の意図) は維持される (loader はサーバ側で実行、
+- BFF への育成方針 (ADR-[[202606170904]] の意図) は維持される (loader はサーバ側で実行、
   ブラウザはオリジンだけを叩く)。
 
 ## Alternatives considered
