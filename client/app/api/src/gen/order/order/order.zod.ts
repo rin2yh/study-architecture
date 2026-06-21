@@ -12,7 +12,7 @@ import * as zod from 'zod';
  * @summary 注文一覧
  */
 export const ListOrdersHeader = zod.object({
-  "X-Member-Id": zod.number().optional().describe('認証済み会員 id。UI のサーバ側ローダがセッション検証後に付与する。 与えられた場合はその会員の注文だけに絞り込む (ADR 0009)。')
+  "X-Member-Id": zod.number().optional().describe('認証済み会員 id。UI のサーバ側ローダがセッション検証後に付与する。 与えられた場合はその会員の注文だけに絞り込む (ADR-[[202606211100]])。')
 })
 
 export const ListOrdersResponseItem = zod.object({

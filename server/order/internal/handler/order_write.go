@@ -91,7 +91,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 		return
 	}
 
-	// [[0008]]
+	// ADR-[[202606190900]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod); err != nil {
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return

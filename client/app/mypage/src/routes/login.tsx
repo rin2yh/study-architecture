@@ -17,7 +17,7 @@ export async function action({ request }: Route.ActionArgs) {
     const { id } = CreateSessionResponse.parse(data);
     return redirect("/", { headers: { "Set-Cookie": sessionCookie(id) } });
   } catch {
-    // ADR 0009
+    // ADR-[[202606211100]]
     return { error: "メールアドレスまたはパスワードが違います" };
   }
 }

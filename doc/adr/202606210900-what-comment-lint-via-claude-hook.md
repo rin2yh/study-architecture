@@ -1,4 +1,4 @@
-# ADR 0017: what コメント検出を Claude Code hook + LLM 判定で行う
+# ADR-202606210900: what コメント検出を Claude Code hook + LLM 判定で行う
 
 - Status: Proposed
 - Date: 2026-06-21

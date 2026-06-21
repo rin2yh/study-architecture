@@ -1,8 +1,8 @@
 -- +goose Up
--- ADR 0009
+-- ADR-[[202606211100]]
 ALTER TABLE member.members ADD COLUMN password_hash text NOT NULL DEFAULT '';
 
--- ADR 0009
+-- ADR-[[202606211100]]
 CREATE TABLE member.sessions (
     id         text PRIMARY KEY,
     member_id  bigint NOT NULL REFERENCES member.members (id) ON DELETE CASCADE,

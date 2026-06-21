@@ -2,7 +2,7 @@ import { getSession, GetSessionResponse } from "api/member";
 
 export const SESSION_COOKIE = "member_session";
 
-// ADR 0009
+// ADR-[[202606211100]]
 const MAX_AGE_SEC = 7 * 24 * 60 * 60;
 
 export function readSessionToken(request: Request): string | null {
@@ -18,7 +18,7 @@ export function readSessionToken(request: Request): string | null {
   return null;
 }
 
-// ADR 0009
+// ADR-[[202606211100]]
 export function sessionCookie(token: string): string {
   return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE_SEC}`;
 }

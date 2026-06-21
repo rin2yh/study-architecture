@@ -15,10 +15,10 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-// ADR 0009
+// ADR-[[202606211100]]
 const sessionTTL = 7 * 24 * time.Hour
 
-// ADR 0009
+// ADR-[[202606211100]]
 const invalidCredentials = "invalid email or password"
 
 func (h *writeHandler) CreateSession(c *gin.Context) {

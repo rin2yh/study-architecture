@@ -23,7 +23,7 @@ func VerifyPassword(hash, plain string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
 }
 
-// ADR 0009
+// ADR-[[202606211100]]
 func NewSessionToken() (token, id string, err error) {
 	var b [32]byte
 	if _, err := rand.Read(b[:]); err != nil {

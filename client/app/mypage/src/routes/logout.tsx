@@ -6,7 +6,7 @@ import { clearSessionCookie, readSessionToken } from "../session";
 export async function action({ request }: Route.ActionArgs) {
   const token = readSessionToken(request);
   if (token) {
-    // ADR 0009
+    // ADR-[[202606211100]]
     try {
       await deleteSession(token);
     } catch (e) {

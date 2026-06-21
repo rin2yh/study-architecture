@@ -1,4 +1,4 @@
-# ADR 0003: 単一ルート go.mod のモノレポ構成
+# ADR-202606170902: 単一ルート go.mod のモノレポ構成
 
 - Status: Accepted
 - Date: 2026-06-17

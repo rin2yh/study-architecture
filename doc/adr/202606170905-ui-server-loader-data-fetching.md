@@ -1,11 +1,11 @@
-# ADR 0006: UI のデータ取得はサーバ側ローダ + orval(zod)
+# ADR-202606170905: UI のデータ取得はサーバ側ローダ + orval(zod)
 
-- Status: Accepted (FW は [[0005]] → [[0011]] により React Router v7 へ置換、本 ADR の方針 (サーバ側ローダ + orval/zod) は維持)
+- Status: Accepted (FW は ADR-[[202606170904]] → ADR-[[202606170908]] により React Router v7 へ置換、本 ADR の方針 (サーバ側ローダ + orval/zod) は維持)
 - Date: 2026-06-17
 
 ## Context
 
-[[0005]] で UI を TanStack Start に決めた。Step 0 の「直接呼び出し（別ファサードを立てない）」を
+ADR-[[202606170904]] で UI を TanStack Start に決めた。Step 0 の「直接呼び出し（別ファサードを立てない）」を
 保ちつつ、ブラウザ→各サービスの直接ファンアウトに伴う CORS・認証・集約の負担を避けたい。
 各 Go サービスには現状 CORS ミドルウェアが無い。
 
@@ -21,10 +21,10 @@ HTTP 呼び出しする**。生成クライアントは **orval**（`client: 'fe
 - レスポンスは orval 生成の **zod スキーマで検証**してから利用（`ListProductsResponse.parse`）。
 - 生成コード（`client/package/api/src/**`）は共有パッケージ `@ec/api` に集約してコミットし、
   Docker ビルドは `client/` ワークスペースに閉じる（生成は `pnpm api:gen`、入力は
-  `server/<svc>/api/openapi.yaml`）。詳細は [[0007]]。
+  `server/<svc>/api/openapi.yaml`）。詳細は ADR-[[202606170906]]。
 
 「別ファサードを立てない」という Step 0 方針は、UI 自身のサーバ層が呼ぶ形なので維持される。
-この UI サーバ層が [[0005]] の言う Step 1 の BFF/ファサードへ自然に育つ。
+この UI サーバ層が ADR-[[202606170904]] の言う Step 1 の BFF/ファサードへ自然に育つ。
 
 ## Consequences
 

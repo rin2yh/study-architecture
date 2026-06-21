@@ -77,7 +77,7 @@ type MemberIdHeader = int64
 
 // ListOrdersParams defines parameters for ListOrders.
 type ListOrdersParams struct {
-	// XMemberId 認証済み会員 id。UI のサーバ側ローダがセッション検証後に付与する。 与えられた場合はその会員の注文だけに絞り込む (ADR 0009)。
+	// XMemberId 認証済み会員 id。UI のサーバ側ローダがセッション検証後に付与する。 与えられた場合はその会員の注文だけに絞り込む (ADR-[[202606211100]])。
 	XMemberId *MemberIdHeader `json:"X-Member-Id,omitempty"`
 }
 

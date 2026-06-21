@@ -1,6 +1,6 @@
-# ADR 0002: コード生成中心の技術スタック
+# ADR-202606170901: コード生成中心の技術スタック
 
-- Status: Accepted (Go サーバの `std-http-server` 部分は [[0010]] により Superseded)
+- Status: Accepted (Go サーバの `std-http-server` 部分は ADR-[[202606170907]] により Superseded)
 - Date: 2026-06-17
 
 ## Context
