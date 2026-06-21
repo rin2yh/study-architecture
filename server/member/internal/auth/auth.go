@@ -23,8 +23,7 @@ func VerifyPassword(hash, plain string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
 }
 
-// 生トークンは Cookie だけが持ち、DB には SHA-256 ハッシュを格納する。
-// DB 流出時に生トークンを復元できないようにするため。
+// ADR 0009
 func NewSessionToken() (token, id string, err error) {
 	var b [32]byte
 	if _, err := rand.Read(b[:]); err != nil {

@@ -6,7 +6,7 @@ import { clearSessionCookie, readSessionToken } from "../session";
 export async function action({ request }: Route.ActionArgs) {
   const token = readSessionToken(request);
   if (token) {
-    // サーバ側セッションの破棄に失敗しても、Cookie は必ず消してログアウトを成立させる。
+    // ADR 0009
     try {
       await deleteSession(token);
     } catch {

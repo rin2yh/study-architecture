@@ -17,7 +17,7 @@ export async function action({ request }: Route.ActionArgs) {
     const { id } = CreateSessionResponse.parse(data);
     return redirect("/", { headers: { "Set-Cookie": sessionCookie(id) } });
   } catch {
-    // 401 と他の失敗を UI で区別しない (member 側で user enumeration を避けているため)。
+    // ADR 0009
     return { error: "メールアドレスまたはパスワードが違います" };
   }
 }

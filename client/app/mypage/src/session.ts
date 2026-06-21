@@ -2,7 +2,7 @@ import { getSession, GetSessionResponse } from "api/member";
 
 export const SESSION_COOKIE = "member_session";
 
-// member サービスのセッション TTL (7 日) と揃える。
+// ADR 0009
 const MAX_AGE_SEC = 7 * 24 * 60 * 60;
 
 export function readSessionToken(request: Request): string | null {
@@ -18,8 +18,7 @@ export function readSessionToken(request: Request): string | null {
   return null;
 }
 
-// Secure を付けないのは、ローカル学習スタック (edge-proxy が http 終端) では Secure Cookie が
-// 保存されずログインが成立しないため。TLS 終端を入れる段で Secure を足す (ADR 0009)。
+// ADR 0009
 export function sessionCookie(token: string): string {
   return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE_SEC}`;
 }

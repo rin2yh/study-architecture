@@ -117,7 +117,6 @@ func TestGetSession(t *testing.T) {
 			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 				t.Fatalf("unmarshal: %v", err)
 			}
-			// 渡した生トークンがそのまま id として返る (DB はハッシュしか持たない)。
 			if got.Id != "raw-token" || got.MemberId != 7 {
 				t.Fatalf("unexpected session: %+v", got)
 			}

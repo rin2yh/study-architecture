@@ -15,12 +15,10 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-// UI 側の Cookie Max-Age (client/app/mypage/src/session.ts) と揃える必要がある。
-// ずれると Cookie だけ先に失効する/逆に死んだセッションを送り続けることになる。
+// ADR 0009
 const sessionTTL = 7 * 24 * time.Hour
 
-// invalidCredentials は「メール無し」と「パスワード不一致」で文言を変えない。
-// 差異から会員の存在有無を推測される (user enumeration) のを防ぐため。
+// ADR 0009
 const invalidCredentials = "invalid email or password"
 
 func (h *Handler) CreateSession(c *gin.Context) {
