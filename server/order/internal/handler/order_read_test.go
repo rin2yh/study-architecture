@@ -80,20 +80,17 @@ func TestListOrdersFilter(t *testing.T) {
 	}
 
 	t.Run("正常系 X-Member-Id 付きは本人分だけ返す", func(t *testing.T) {
-		got := listOrders(t, "10")
-		if len(got) != 2 {
-			t.Fatalf("count = %d, want 2", len(got))
-		}
-		for _, o := range got {
-			if o.MemberId != 10 {
-				t.Fatalf("memberId = %d, want 10", o.MemberId)
-			}
-		}
+		cmptest.EqualSlice(t, []api.Order{
+			{MemberId: 10, Status: "paid", TotalCents: 5000},
+			{MemberId: 10, Status: "pending", TotalCents: 1980},
+		}, listOrders(t, "10"), "Id", "CreatedAt")
 	})
 	t.Run("準正常系 ヘッダ無しは全件返す", func(t *testing.T) {
-		if got := listOrders(t, ""); len(got) != 3 {
-			t.Fatalf("count = %d, want 3", len(got))
-		}
+		cmptest.EqualSlice(t, []api.Order{
+			{MemberId: 10, Status: "paid", TotalCents: 5000},
+			{MemberId: 20, Status: "paid", TotalCents: 3000},
+			{MemberId: 10, Status: "pending", TotalCents: 1980},
+		}, listOrders(t, ""), "Id", "CreatedAt")
 	})
 }
 

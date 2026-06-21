@@ -9,6 +9,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -46,9 +47,7 @@ func TestGetSession(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Id != "raw-token" || got.MemberId != memberID {
-		t.Fatalf("unexpected session: %+v", got)
-	}
+	cmptest.Equal(t, api.Session{Id: "raw-token", MemberId: memberID}, got, "ExpiresAt")
 }
 
 func TestGetSessionError(t *testing.T) {

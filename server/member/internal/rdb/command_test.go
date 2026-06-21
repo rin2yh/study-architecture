@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
@@ -81,9 +82,7 @@ func TestCreateSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateSession: %v", err)
 		}
-		if got.ID != "hash-new" || got.MemberID != memberID {
-			t.Fatalf("unexpected row: %+v", got)
-		}
+		cmptest.Equal(t, db.MemberSession{ID: "hash-new", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
 	})
 	t.Run("異常系 同一 id は ErrConflict", func(t *testing.T) {
 		p := db.CreateSessionParams{ID: "hash-dup", MemberID: memberID, ExpiresAt: expiresIn(time.Hour)}

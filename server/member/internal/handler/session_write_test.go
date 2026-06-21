@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -61,9 +62,7 @@ func TestCreateSession(t *testing.T) {
 	if got.Id == "" {
 		t.Fatal("session id (生トークン) が空")
 	}
-	if got.MemberId != 1 {
-		t.Fatalf("memberId = %d, want 1", got.MemberId)
-	}
+	cmptest.Equal(t, api.Session{MemberId: 1}, got, "Id", "ExpiresAt")
 }
 
 func TestCreateSessionError(t *testing.T) {

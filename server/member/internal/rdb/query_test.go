@@ -126,9 +126,7 @@ func TestGetMemberByEmail(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetMemberByEmail: %v", err)
 		}
-		if got.Email != "user@example.com" || got.PasswordHash != "stored-hash" {
-			t.Fatalf("unexpected member: %+v", got)
-		}
+		cmptest.Equal(t, db.MemberMember{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
 	})
 	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetMemberByEmail(t.Context(), "none@example.com"); !errors.Is(err, dberr.ErrNotFound) {
@@ -155,9 +153,7 @@ func TestGetSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetSession: %v", err)
 		}
-		if got.MemberID != memberID {
-			t.Fatalf("memberID = %d, want %d", got.MemberID, memberID)
-		}
+		cmptest.Equal(t, db.MemberSession{ID: "live", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
 	})
 	t.Run("準正常系 期限切れは ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetSession(t.Context(), "expired"); !errors.Is(err, dberr.ErrNotFound) {
