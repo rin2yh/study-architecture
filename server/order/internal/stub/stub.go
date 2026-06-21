@@ -6,24 +6,24 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-type Repo struct {
+type RDB struct {
 	Orders []db.OrderOrder
 	Order  db.OrderOrder
 	Err    error
 }
 
-func (s Repo) ListOrders(context.Context) ([]db.OrderOrder, error) {
+func (s RDB) ListOrders(context.Context) ([]db.OrderOrder, error) {
 	return s.Orders, s.Err
 }
 
-func (s Repo) GetOrder(context.Context, int64) (db.OrderOrder, error) {
+func (s RDB) GetOrder(context.Context, int64) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
+func (s RDB) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
+func (s RDB) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }

@@ -22,7 +22,7 @@ func TestCreateOrder(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	created := db.OrderOrder{ID: 10, MemberID: 20, Status: "pending", TotalCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		repo stub.Repo
+		fake stub.RDB
 		body string
 	}
 	type want struct {
@@ -34,18 +34,18 @@ func TestCreateOrder(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 注文を作成し 201", args{stub.Repo{Order: created}, `{"memberId":20,"status":"pending","totalCents":1980}`}, want{http.StatusCreated, ""}},
-		{"異常系 status 欠落は 400 bad_request", args{stub.Repo{}, `{"memberId":20,"totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 memberId 欠落は 400 bad_request", args{stub.Repo{}, `{"status":"pending","totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 totalCents 負値は 422 unprocessable_entity", args{stub.Repo{}, `{"memberId":20,"status":"pending","totalCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, `{"memberId":20,"status":"pending","totalCents":1980}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 注文を作成し 201", args{stub.RDB{Order: created}, `{"memberId":20,"status":"pending","totalCents":1980}`}, want{http.StatusCreated, ""}},
+		{"異常系 status 欠落は 400 bad_request", args{stub.RDB{}, `{"memberId":20,"totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 memberId 欠落は 400 bad_request", args{stub.RDB{}, `{"status":"pending","totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 totalCents 負値は 422 unprocessable_entity", args{stub.RDB{}, `{"memberId":20,"status":"pending","totalCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, `{"memberId":20,"status":"pending","totalCents":1980}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, req)
+			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, req)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
@@ -68,7 +68,7 @@ func TestUpdateOrder(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	updated := db.OrderOrder{ID: 1, MemberID: 20, Status: "paid", TotalCents: 4980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		repo stub.Repo
+		fake stub.RDB
 		path string
 		body string
 	}
@@ -81,17 +81,17 @@ func TestUpdateOrder(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 注文を更新し 200", args{stub.Repo{Order: updated}, "/orders/1", `{"status":"paid"}`}, want{http.StatusOK, ""}},
-		{"異常系 status 欠落は 400 bad_request", args{stub.Repo{}, "/orders/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/orders/99", `{"status":"paid"}`}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/orders/1", `{"status":"paid"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 注文を更新し 200", args{stub.RDB{Order: updated}, "/orders/1", `{"status":"paid"}`}, want{http.StatusOK, ""}},
+		{"異常系 status 欠落は 400 bad_request", args{stub.RDB{}, "/orders/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/orders/99", `{"status":"paid"}`}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/orders/1", `{"status":"paid"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPut, tt.args.path, bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, req)
+			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, req)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}

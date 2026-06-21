@@ -1,5 +1,5 @@
 // Package dberr は 5 サービス共通で、postgres ドライバ (pgx) 固有のエラーを
-// repository 層が返すセンチネルエラーに正規化する。handler はこのセンチネルを見て
+// rdb 層が返すセンチネルエラーに正規化する。handler はこのセンチネルを見て
 // middleware.NotFound / Conflict に対応づけるため、db 依存が handler に漏れない。
 package dberr
 

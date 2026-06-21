@@ -52,10 +52,10 @@ func TestListShipments(t *testing.T) {
 }
 
 func TestListShipmentsError(t *testing.T) {
-	repo := stub.Repo{Err: errors.New("db failure")}
+	fake := stub.RDB{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(repo, repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
+	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shipments", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -79,7 +79,7 @@ func TestGetShipment(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	shipment := db.ShippingShipment{ID: 1, OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		repo stub.Repo
+		fake stub.RDB
 		path string
 	}
 	type want struct {
@@ -91,14 +91,14 @@ func TestGetShipment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 配送を返す", args{stub.Repo{Shipment: shipment}, "/shipments/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/shipments/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 配送を返す", args{stub.RDB{Shipment: shipment}, "/shipments/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/shipments/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/shipments/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}

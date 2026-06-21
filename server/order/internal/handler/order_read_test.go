@@ -52,10 +52,10 @@ func TestListOrders(t *testing.T) {
 }
 
 func TestListOrdersError(t *testing.T) {
-	repo := stub.Repo{Err: errors.New("db failure")}
+	fake := stub.RDB{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(repo, repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
+	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -79,7 +79,7 @@ func TestGetOrder(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	order := db.OrderOrder{ID: 1, MemberID: 10, Status: "paid", TotalCents: 5000, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		repo stub.Repo
+		fake stub.RDB
 		path string
 	}
 	type want struct {
@@ -91,14 +91,14 @@ func TestGetOrder(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 注文を返す", args{stub.Repo{Order: order}, "/orders/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/orders/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/orders/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 注文を返す", args{stub.RDB{Order: order}, "/orders/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/orders/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/orders/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}

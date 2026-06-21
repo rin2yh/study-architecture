@@ -52,10 +52,10 @@ func TestListProducts(t *testing.T) {
 }
 
 func TestListProductsError(t *testing.T) {
-	repo := stub.Repo{Err: errors.New("db failure")}
+	fake := stub.RDB{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(repo, repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
+	newServer(fake, fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -82,7 +82,7 @@ func TestGetProduct(t *testing.T) {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	product := db.ProductProduct{ID: 1, Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
 	type args struct {
-		repo stub.Repo
+		fake stub.RDB
 		path string
 	}
 	type want struct {
@@ -94,14 +94,14 @@ func TestGetProduct(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 商品を返す", args{stub.Repo{Product: product}, "/products/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"正常系 商品を返す", args{stub.RDB{Product: product}, "/products/1"}, want{http.StatusOK, ""}},
+		{"異常系 未存在は 404 not_found", args{stub.RDB{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.RDB{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.repo, tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newServer(tt.args.fake, tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
