@@ -119,6 +119,8 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
         with:
           name: ${{ matrix.package }}
+          # しきい値は vite.config.ts ではなく vitest.config.ts 側にあり、自動検出だと前者を拾って全行 🔵 になる。
+          vite-config-path: client/app/${{ matrix.package }}/vitest.config.ts
           json-summary-path: client/app/${{ matrix.package }}/coverage/coverage-summary.json
           json-final-path: client/app/${{ matrix.package }}/coverage/coverage-final.json
 
