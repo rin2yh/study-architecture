@@ -22,9 +22,14 @@ export const ListMembersResponse = zod.array(ListMembersResponseItem)
 /**
  * @summary 会員を作成
  */
+export const createMemberBodyPasswordMin = 8;
+
+
+
 export const CreateMemberBody = zod.object({
   "email": zod.email(),
-  "displayName": zod.string()
+  "displayName": zod.string(),
+  "password": zod.string().min(createMemberBodyPasswordMin).describe('平文。サーバ側で bcrypt ハッシュ化して保存する。')
 })
 
 export const CreateMemberResponse = zod.object({

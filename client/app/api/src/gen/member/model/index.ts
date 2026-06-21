@@ -7,8 +7,10 @@
  */
 
 export * from './createMemberRequest.ts';
+export * from './createSessionRequest.ts';
 export * from './error.ts';
 export * from './errorResponse.ts';
 export * from './health.ts';
 export * from './member.ts';
+export * from './session.ts';
 export * from './updateMemberRequest.ts';

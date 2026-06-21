@@ -3,6 +3,12 @@ SELECT id, member_id, status, total_cents, created_at
 FROM "order".orders
 ORDER BY id;
 
+-- name: ListOrdersByMember :many
+SELECT id, member_id, status, total_cents, created_at
+FROM "order".orders
+WHERE member_id = $1
+ORDER BY id;
+
 -- name: GetOrder :one
 SELECT id, member_id, status, total_cents, created_at
 FROM "order".orders

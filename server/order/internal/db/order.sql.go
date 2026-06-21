@@ -155,6 +155,39 @@ func (q *Queries) ListOrders(ctx context.Context) ([]OrderOrder, error) {
 	return items, nil
 }
 
+const listOrdersByMember = `-- name: ListOrdersByMember :many
+SELECT id, member_id, status, total_cents, created_at
+FROM "order".orders
+WHERE member_id = $1
+ORDER BY id
+`
+
+func (q *Queries) ListOrdersByMember(ctx context.Context, memberID int64) ([]OrderOrder, error) {
+	rows, err := q.db.Query(ctx, listOrdersByMember, memberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderOrder{}
+	for rows.Next() {
+		var i OrderOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.MemberID,
+			&i.Status,
+			&i.TotalCents,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateOrder = `-- name: UpdateOrder :one
 UPDATE "order".orders
 SET status = $2

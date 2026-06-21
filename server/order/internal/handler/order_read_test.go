@@ -47,6 +47,52 @@ func TestListOrders(t *testing.T) {
 	assert.DeepEqualSlice(t, []api.Order{{MemberId: 10, Status: "paid", TotalCents: 5000}}, got, "Id", "CreatedAt")
 }
 
+func TestListOrdersFilter(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO "order".orders (member_id, status, total_cents) VALUES (10,'paid',5000),(20,'paid',3000),(10,'pending',1980)`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	server := newReadServer(rdb.NewOrderQuery(pool))
+
+	listOrders := func(t *testing.T, header string) []api.Order {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/orders", nil)
+		if header != "" {
+			req.Header.Set("X-Member-Id", header)
+		}
+		rec := httptest.NewRecorder()
+		server.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+		}
+		var got []api.Order
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		return got
+	}
+
+	t.Run("正常系 X-Member-Id 付きは本人分だけ返す", func(t *testing.T) {
+		assert.DeepEqualSlice(t, []api.Order{
+			{MemberId: 10, Status: "paid", TotalCents: 5000},
+			{MemberId: 10, Status: "pending", TotalCents: 1980},
+		}, listOrders(t, "10"), "Id", "CreatedAt")
+	})
+	t.Run("準正常系 ヘッダ無しは全件返す", func(t *testing.T) {
+		assert.DeepEqualSlice(t, []api.Order{
+			{MemberId: 10, Status: "paid", TotalCents: 5000},
+			{MemberId: 20, Status: "paid", TotalCents: 3000},
+			{MemberId: 10, Status: "pending", TotalCents: 1980},
+		}, listOrders(t, ""), "Id", "CreatedAt")
+	})
+}
+
 func TestListOrdersError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	newReadServer(stub.OrderStub{Err: errors.New("db failure")}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))

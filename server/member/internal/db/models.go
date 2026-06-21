@@ -9,8 +9,16 @@ import (
 )
 
 type MemberMember struct {
-	ID          int64              `json:"id"`
-	Email       string             `json:"email"`
-	DisplayName string             `json:"displayName"`
-	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	DisplayName  string             `json:"displayName"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	PasswordHash string             `json:"passwordHash"`
+}
+
+type MemberSession struct {
+	ID        string             `json:"id"`
+	MemberID  int64              `json:"memberId"`
+	ExpiresAt pgtype.Timestamptz `json:"expiresAt"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
 }

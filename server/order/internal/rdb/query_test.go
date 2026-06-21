@@ -31,6 +31,45 @@ func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	}
 }
 
+func TestListOrdersByMember(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewOrderQuery(pool)
+	seedOrders(t, pool,
+		db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000},
+		db.OrderOrder{MemberID: 20, Status: "paid", TotalCents: 3000},
+		db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980},
+	)
+
+	t.Run("正常系 指定会員の注文だけを id 昇順で返す", func(t *testing.T) {
+		got, err := r.ListOrdersByMember(t.Context(), 10)
+		if err != nil {
+			t.Fatalf("ListOrdersByMember: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2", len(got))
+		}
+		for _, o := range got {
+			if o.MemberID != 10 {
+				t.Fatalf("memberID = %d, want 10", o.MemberID)
+			}
+		}
+	})
+
+	t.Run("準正常系 注文の無い会員は空スライス (nil でない)", func(t *testing.T) {
+		got, err := r.ListOrdersByMember(t.Context(), 999)
+		if err != nil {
+			t.Fatalf("ListOrdersByMember: %v", err)
+		}
+		if got == nil {
+			t.Fatal("want non-nil slice (emit_empty_slices)")
+		}
+		if len(got) != 0 {
+			t.Fatalf("len = %d, want 0", len(got))
+		}
+	})
+}
+
 func TestListOrders(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {

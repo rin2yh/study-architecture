@@ -1,7 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { createRoutesStub } from "react-router";
 
-import Home, { ErrorBoundary, HydrateFallback } from "./home";
+import Home, { ErrorBoundary, HydrateFallback, loader } from "./home";
+import { currentMemberId } from "../session";
+import { listOrders } from "api/order";
+
+vi.mock("../session", () => ({ currentMemberId: vi.fn() }));
+vi.mock("api/order", async (importActual) => {
+  const actual = await importActual<typeof import("api/order")>();
+  return { ...actual, listOrders: vi.fn() };
+});
 
 type Order = {
   id: number;
@@ -11,14 +20,60 @@ type Order = {
   createdAt: string;
 };
 
-function renderHome(orders: Order[]) {
-  const Comp = Home as unknown as (props: { loaderData: Order[] }) => React.ReactElement;
-  render(<Comp loaderData={orders} />);
+function renderHome(memberId: number, orders: Order[]) {
+  const Comp = Home as unknown as (props: {
+    loaderData: { memberId: number; orders: Order[] };
+  }) => React.ReactElement;
+  // Form が router context を要求するため stub でラップする。
+  const Stub = createRoutesStub([
+    { path: "/", Component: () => <Comp loaderData={{ memberId, orders }} /> },
+  ]);
+  render(<Stub initialEntries={["/"]} />);
 }
 
+function loaderArgs(request: Request) {
+  return { request } as unknown as Parameters<typeof loader>[0];
+}
+
+describe("mypage Home loader", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("正常系 ログイン済みなら X-Member-Id を付けて注文を返す", async () => {
+    vi.mocked(currentMemberId).mockResolvedValue(7);
+    vi.mocked(listOrders).mockResolvedValue({
+      data: [
+        { id: 1, memberId: 7, status: "paid", totalCents: 1000, createdAt: "2026-01-01T00:00:00Z" },
+      ],
+      status: 200,
+      headers: new Headers(),
+    } as Awaited<ReturnType<typeof listOrders>>);
+
+    const result = await loader(loaderArgs(new Request("http://mypage.test/")));
+
+    expect(vi.mocked(listOrders).mock.calls[0][0]).toEqual({ headers: { "X-Member-Id": "7" } });
+    expect(result).toEqual({
+      memberId: 7,
+      orders: [
+        { id: 1, memberId: 7, status: "paid", totalCents: 1000, createdAt: "2026-01-01T00:00:00Z" },
+      ],
+    });
+  });
+
+  it("準正常系 未ログインなら /login へリダイレクトする", async () => {
+    vi.mocked(currentMemberId).mockResolvedValue(null);
+
+    const thrown = await loader(loaderArgs(new Request("http://mypage.test/"))).catch((e) => e);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).status).toBe(302);
+    expect((thrown as Response).headers.get("Location")).toBe("/login");
+    expect(vi.mocked(listOrders)).not.toHaveBeenCalled();
+  });
+});
+
 describe("mypage Home", () => {
-  it("注文履歴の行を描画する", () => {
-    renderHome([
+  it("正常系 注文履歴の行と会員ID/ログアウトを描画する", () => {
+    renderHome(7, [
       {
         id: 101,
         memberId: 7,
@@ -36,14 +91,16 @@ describe("mypage Home", () => {
     ]);
 
     expect(screen.getByText("注文履歴")).toBeDefined();
+    expect(screen.getByText("会員ID: 7")).toBeDefined();
+    expect(screen.getByRole("button", { name: "ログアウト" })).toBeDefined();
     expect(screen.getByText("101")).toBeDefined();
     expect(screen.getByText("paid")).toBeDefined();
     expect(screen.getByText("¥300")).toBeDefined();
     expect(screen.queryByText("注文履歴がありません。")).toBeNull();
   });
 
-  it("空のとき空メッセージを描画する", () => {
-    renderHome([]);
+  it("準正常系 空のとき空メッセージを描画する", () => {
+    renderHome(7, []);
     expect(screen.getByText("注文履歴")).toBeDefined();
     expect(screen.getByText("注文履歴がありません。")).toBeDefined();
   });

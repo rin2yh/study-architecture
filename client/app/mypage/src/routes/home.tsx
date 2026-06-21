@@ -1,16 +1,34 @@
 import { listOrders, ListOrdersResponse } from "api/order";
+import { Form, redirect } from "react-router";
 import type { Route } from "./+types/home";
+import { currentMemberId } from "../session";
 
-export async function loader() {
-  const { data } = await listOrders();
-  return ListOrdersResponse.parse(data);
+export async function loader({ request }: Route.LoaderArgs) {
+  const memberId = await currentMemberId(request);
+  if (memberId === null) throw redirect("/login");
+
+  const { data } = await listOrders({ headers: { "X-Member-Id": String(memberId) } });
+  return { memberId, orders: ListOrdersResponse.parse(data) };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const orders = loaderData;
+  const { memberId, orders } = loaderData;
   return (
     <div className="mx-auto max-w-3xl p-8">
-      <h1 className="text-3xl font-bold">注文履歴</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">注文履歴</h1>
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          <span>会員ID: {memberId}</span>
+          <Form method="post" action="/logout">
+            <button
+              type="submit"
+              className="rounded border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-50"
+            >
+              ログアウト
+            </button>
+          </Form>
+        </div>
+      </div>
       <table className="mt-6 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-300 text-left text-gray-500">
