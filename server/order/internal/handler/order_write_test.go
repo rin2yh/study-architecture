@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
@@ -34,9 +34,39 @@ func newCheckoutServer(command handler.Command, product gateway.ProductPort, pay
 	return engine
 }
 
+func postCheckout(command handler.Command, product gateway.ProductPort, payment gateway.PaymentPort, body string) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/checkout", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	newCheckoutServer(command, product, payment).ServeHTTP(rec, req)
+	return rec
+}
+
 func TestCreateOrder(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	created := db.OrderOrder{ID: 10, MemberID: 20, Status: "pending", TotalCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	if _, err := pool.Exec(t.Context(), `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader([]byte(`{"memberId":20,"status":"pending","totalCents":1980}`)))
+	req.Header.Set("Content-Type", "application/json")
+	newWriteServer(rdb.NewOrderCommand(pool)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Order
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id == 0 || got.MemberId != 20 || got.Status != "pending" || got.TotalCents != 1980 {
+		t.Fatalf("unexpected order: %+v", got)
+	}
+}
+
+func TestCreateOrderError(t *testing.T) {
 	type args struct {
 		fake stub.OrderStub
 		body string
@@ -50,7 +80,6 @@ func TestCreateOrder(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 注文を作成し 201", args{stub.OrderStub{Order: created}, `{"memberId":20,"status":"pending","totalCents":1980}`}, want{http.StatusCreated, ""}},
 		{"異常系 status 欠落は 400 bad_request", args{stub.OrderStub{}, `{"memberId":20,"totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, `{"status":"pending","totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 totalCents 負値は 422 unprocessable_entity", args{stub.OrderStub{}, `{"memberId":20,"status":"pending","totalCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
@@ -65,24 +94,42 @@ func TestCreateOrder(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Order
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 10 || got.MemberId != 20 {
-				t.Fatalf("unexpected order: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
 
 func TestUpdateOrder(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	updated := db.OrderOrder{ID: 1, MemberID: 20, Status: "paid", TotalCents: 4980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO "order".orders (member_id, status, total_cents) VALUES ($1, $2, $3)`,
+		int64(10), "pending", int64(1980)); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/orders/1", bytes.NewReader([]byte(`{"status":"paid"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	newWriteServer(rdb.NewOrderCommand(pool)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Order
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id != 1 || got.Status != "paid" || got.MemberId != 10 || got.TotalCents != 1980 {
+		t.Fatalf("unexpected order: %+v", got)
+	}
+}
+
+func TestUpdateOrderError(t *testing.T) {
 	type args struct {
 		fake stub.OrderStub
 		path string
@@ -97,7 +144,6 @@ func TestUpdateOrder(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 注文を更新し 200", args{stub.OrderStub{Order: updated}, "/orders/1", `{"status":"paid"}`}, want{http.StatusOK, ""}},
 		{"異常系 status 欠落は 400 bad_request", args{stub.OrderStub{}, "/orders/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 未存在は 404 not_found", args{stub.OrderStub{Err: dberr.ErrNotFound}, "/orders/99", `{"status":"paid"}`}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, "/orders/1", `{"status":"paid"}`}, want{http.StatusInternalServerError, "internal"}},
@@ -111,43 +157,41 @@ func TestUpdateOrder(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Order
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.Status != "paid" {
-				t.Fatalf("unexpected order: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
 
-func twoProducts() stub.Product {
-	return stub.Product{Snapshots: map[int64]gateway.ProductSnapshot{
-		100: {ID: 100, Name: "Widget", UnitPriceCents: 500},
-		200: {ID: 200, Name: "Gadget", UnitPriceCents: 1500},
-	}}
-}
-
-func postCheckout(command handler.Command, product gateway.ProductPort, payment gateway.PaymentPort, body string) *httptest.ResponseRecorder {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/checkout", bytes.NewReader([]byte(body)))
-	req.Header.Set("Content-Type", "application/json")
-	newCheckoutServer(command, product, payment).ServeHTTP(rec, req)
-	return rec
-}
-
 func TestCheckout(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	if _, err := pool.Exec(t.Context(), `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+
+	rec := postCheckout(rdb.NewOrderCommand(pool), stub.TwoProducts(), stub.Payment{ID: 1},
+		`{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Order
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	// 500*2 + 1500*1 を商品スナップショットから合算した結果が永続化される
+	if got.TotalCents != 2500 || got.Status != "confirmed" || got.Items == nil || len(*got.Items) != 2 {
+		t.Fatalf("unexpected order: %+v", got)
+	}
+}
+
+func TestCheckoutError(t *testing.T) {
 	const valid = `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2}]}`
 	type args struct {
-		checkoutErr error
-		product     gateway.ProductPort
-		payment     gateway.PaymentPort
-		body        string
+		command handler.Command
+		product gateway.ProductPort
+		payment gateway.PaymentPort
+		body    string
 	}
 	type want struct {
 		status int
@@ -158,62 +202,23 @@ func TestCheckout(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 確定し 201", args{nil, twoProducts(), stub.Payment{ID: 1}, valid}, want{http.StatusCreated, ""}},
-		{"準正常系 明細が空配列は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 items 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 quantity 0 は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 memberId 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 paymentMethod 欠落は 400 bad_request", args{nil, twoProducts(), stub.Payment{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在 product は 422 unprocessable_entity", args{nil, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 product 呼び出し失敗は 502 bad_gateway", args{nil, stub.Product{Err: errors.New("boom")}, stub.Payment{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
-		{"異常系 注文書き込み失敗は 500 internal", args{errors.New("db failure"), twoProducts(), stub.Payment{}, valid}, want{http.StatusInternalServerError, "internal"}},
-		{"異常系 payment 失敗は 502 bad_gateway", args{nil, twoProducts(), stub.Payment{Err: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
+		{"異常系 明細が空配列は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 items 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 quantity 0 は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 paymentMethod 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"異常系 未存在 product は 422 unprocessable_entity", args{stub.OrderStub{}, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"異常系 product 呼び出し失敗は 502 bad_gateway", args{stub.OrderStub{}, stub.Product{Err: errors.New("boom")}, stub.Payment{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
+		{"異常系 注文書き込み失敗は 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, stub.TwoProducts(), stub.Payment{}, valid}, want{http.StatusInternalServerError, "internal"}},
+		{"異常系 payment 失敗は 502 bad_gateway", args{stub.OrderStub{Order: db.OrderOrder{ID: 7}}, stub.TwoProducts(), stub.Payment{Err: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			command := &stub.CheckoutRecorder{Err: tt.args.checkoutErr}
-			rec := postCheckout(command, tt.args.product, tt.args.payment, tt.args.body)
+			rec := postCheckout(tt.args.command, tt.args.product, tt.args.payment, tt.args.body)
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
-	}
-}
-
-func TestCheckoutSnapshotAndTotal(t *testing.T) {
-	command := &stub.CheckoutRecorder{}
-	body := `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`
-	rec := postCheckout(command, twoProducts(), stub.Payment{ID: 1}, body)
-
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())
-	}
-
-	// 500*2 + 1500*1
-	if command.GotTotal != 2500 {
-		t.Fatalf("total = %d, want 2500", command.GotTotal)
-	}
-	want := []rdb.CheckoutLine{
-		{ProductID: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
-		{ProductID: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
-	}
-	if len(command.GotLines) != len(want) {
-		t.Fatalf("lines = %+v, want %+v", command.GotLines, want)
-	}
-	for i := range want {
-		if command.GotLines[i] != want[i] {
-			t.Fatalf("line[%d] = %+v, want %+v", i, command.GotLines[i], want[i])
-		}
-	}
-
-	var got api.Order
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if got.TotalCents != 2500 || got.Status != "confirmed" || got.Items == nil || len(*got.Items) != 2 {
-		t.Fatalf("unexpected order: %+v", got)
 	}
 }

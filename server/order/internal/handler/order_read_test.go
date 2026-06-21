@@ -6,18 +6,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/order/internal/stub"
@@ -57,10 +54,8 @@ func TestListOrders(t *testing.T) {
 }
 
 func TestListOrdersError(t *testing.T) {
-	fake := stub.OrderStub{Err: errors.New("db failure")}
-
 	rec := httptest.NewRecorder()
-	newReadServer(fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
+	newReadServer(stub.OrderStub{Err: errors.New("db failure")}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -81,8 +76,39 @@ func TestListOrdersError(t *testing.T) {
 }
 
 func TestGetOrder(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	order := db.OrderOrder{ID: 1, MemberID: 10, Status: "paid", TotalCents: 5000, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO "order".orders (member_id, status, total_cents) VALUES ($1, $2, $3)`,
+		int64(10), "paid", int64(2500)); err != nil {
+		t.Fatalf("insert order: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO "order".order_items (order_id, product_id, product_name, unit_price_cents, quantity)
+		 VALUES (1, 100, 'Widget', 500, 2), (1, 200, 'Gadget', 1500, 1)`); err != nil {
+		t.Fatalf("insert items: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newReadServer(rdb.NewOrderQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/orders/1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Order
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id != 1 || got.MemberId != 10 || got.Items == nil || len(*got.Items) != 2 {
+		t.Fatalf("unexpected order: %+v", got)
+	}
+}
+
+func TestGetOrderError(t *testing.T) {
 	type args struct {
 		fake stub.OrderStub
 		path string
@@ -96,7 +122,6 @@ func TestGetOrder(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 注文を返す", args{stub.OrderStub{Order: order}, "/orders/1"}, want{http.StatusOK, ""}},
 		{"異常系 未存在は 404 not_found", args{stub.OrderStub{Err: dberr.ErrNotFound}, "/orders/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, "/orders/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
@@ -107,17 +132,7 @@ func TestGetOrder(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Order
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.MemberId != 10 {
-				t.Fatalf("unexpected order: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

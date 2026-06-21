@@ -6,18 +6,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
 	"github.com/rin2yh/study-architecture/server/member/internal/handler"
 	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/member/internal/stub"
@@ -81,8 +78,34 @@ func TestListMembersError(t *testing.T) {
 }
 
 func TestGetMember(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	member := db.MemberMember{ID: 1, Email: "user@example.com", DisplayName: "サンプル会員", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO member.members (email, display_name) VALUES ($1, $2)`,
+		"user@example.com", "サンプル会員"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newReadServer(rdb.NewMemberQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members/1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Member
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id != 1 || got.Email != "user@example.com" || got.DisplayName != "サンプル会員" {
+		t.Fatalf("unexpected member: %+v", got)
+	}
+}
+
+func TestGetMemberError(t *testing.T) {
 	type args struct {
 		fake stub.MemberStub
 		path string
@@ -96,7 +119,6 @@ func TestGetMember(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 会員を返す", args{stub.MemberStub{Member: member}, "/members/1"}, want{http.StatusOK, ""}},
 		{"異常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, "/members/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
@@ -107,17 +129,7 @@ func TestGetMember(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Member
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.Email != "user@example.com" {
-				t.Fatalf("unexpected member: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

@@ -7,15 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/stub"
 )
 
@@ -24,8 +23,30 @@ func newWriteServer(command handler.Command) http.Handler {
 }
 
 func TestCreateShipment(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	created := db.ShippingShipment{ID: 10, OrderID: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	if _, err := pool.Exec(t.Context(), `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/shipments", bytes.NewReader([]byte(`{"orderId":200,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	newWriteServer(rdb.NewShipmentCommand(pool)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Shipment
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id == 0 || got.OrderId != 200 || got.Carrier != "佐川急便" || got.TrackingNo != "TRK-10" || got.Status != "pending" {
+		t.Fatalf("unexpected shipment: %+v", got)
+	}
+}
+
+func TestCreateShipmentError(t *testing.T) {
 	type args struct {
 		fake stub.ShipmentStub
 		body string
@@ -39,7 +60,6 @@ func TestCreateShipment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 配送を作成し 201", args{stub.ShipmentStub{Shipment: created}, `{"orderId":200,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusCreated, ""}},
 		{"異常系 carrier 欠落は 400 bad_request", args{stub.ShipmentStub{}, `{"orderId":200,"trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 orderId 不正は 400 bad_request", args{stub.ShipmentStub{}, `{"orderId":0,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ShipmentStub{Err: errors.New("db failure")}, `{"orderId":200,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusInternalServerError, "internal"}},
@@ -53,24 +73,42 @@ func TestCreateShipment(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Shipment
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 10 || got.TrackingNo != "TRK-10" {
-				t.Fatalf("unexpected shipment: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
 
 func TestUpdateShipment(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	updated := db.ShippingShipment{ID: 1, OrderID: 200, Carrier: "ヤマト運輸", TrackingNo: "TRK-99", Status: "delivered", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status) VALUES ($1, $2, $3, $4)`,
+		int64(100), "ヤマト運輸", "TRK-1", "shipped"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/shipments/1", bytes.NewReader([]byte(`{"status":"delivered"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	newWriteServer(rdb.NewShipmentCommand(pool)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Shipment
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id != 1 || got.Status != "delivered" {
+		t.Fatalf("unexpected shipment: %+v", got)
+	}
+}
+
+func TestUpdateShipmentError(t *testing.T) {
 	type args struct {
 		fake stub.ShipmentStub
 		path string
@@ -85,7 +123,6 @@ func TestUpdateShipment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 配送を更新し 200", args{stub.ShipmentStub{Shipment: updated}, "/shipments/1", `{"status":"delivered"}`}, want{http.StatusOK, ""}},
 		{"異常系 status 欠落は 400 bad_request", args{stub.ShipmentStub{}, "/shipments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 未存在は 404 not_found", args{stub.ShipmentStub{Err: dberr.ErrNotFound}, "/shipments/99", `{"status":"delivered"}`}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ShipmentStub{Err: errors.New("db failure")}, "/shipments/1", `{"status":"delivered"}`}, want{http.StatusInternalServerError, "internal"}},
@@ -99,17 +136,7 @@ func TestUpdateShipment(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Shipment
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.Status != "delivered" {
-				t.Fatalf("unexpected shipment: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

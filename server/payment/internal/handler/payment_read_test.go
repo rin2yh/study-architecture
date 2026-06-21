@@ -6,18 +6,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
-	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
@@ -81,8 +78,34 @@ func TestListPaymentsError(t *testing.T) {
 }
 
 func TestGetPayment(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	payment := db.PaymentPayment{ID: 1, OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO payment.payments (order_id, amount_cents, method, status) VALUES ($1, $2, $3, $4)`,
+		int64(10), int64(1980), "card", "paid"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newReadServer(rdb.NewPaymentQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/payments/1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Payment
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Id != 1 || got.OrderId != 10 || got.AmountCents != 1980 || got.Method != "card" || got.Status != "paid" {
+		t.Fatalf("unexpected payment: %+v", got)
+	}
+}
+
+func TestGetPaymentError(t *testing.T) {
 	type args struct {
 		fake stub.PaymentStub
 		path string
@@ -96,7 +119,6 @@ func TestGetPayment(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 決済を返す", args{stub.PaymentStub{Payment: payment}, "/payments/1"}, want{http.StatusOK, ""}},
 		{"異常系 未存在は 404 not_found", args{stub.PaymentStub{Err: dberr.ErrNotFound}, "/payments/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, "/payments/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
@@ -107,17 +129,7 @@ func TestGetPayment(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Payment
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.OrderId != 10 {
-				t.Fatalf("unexpected payment: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
