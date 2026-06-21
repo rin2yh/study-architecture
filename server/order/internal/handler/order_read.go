@@ -11,8 +11,8 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/api"
 )
 
-func (h *Handler) ListOrders(c *gin.Context) {
-	rows, err := h.repo.ListOrders(c.Request.Context())
+func (h *readHandler) ListOrders(c *gin.Context) {
+	rows, err := h.query.ListOrders(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -24,9 +24,8 @@ func (h *Handler) ListOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
-	ctx := c.Request.Context()
-	row, err := h.repo.GetOrder(ctx, id)
+func (h *readHandler) GetOrder(c *gin.Context, id api.IdPath) {
+	row, err := h.query.GetOrder(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("order not found"))
@@ -35,7 +34,7 @@ func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err)
 		return
 	}
-	items, err := h.repo.GetOrderItems(ctx, id)
+	items, err := h.query.GetOrderItems(c.Request.Context(), id)
 	if err != nil {
 		_ = c.Error(err)
 		return

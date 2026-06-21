@@ -5,41 +5,40 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
-	"github.com/rin2yh/study-architecture/server/order/internal/repository"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
-type Repo struct {
+type OrderStub struct {
 	Orders []db.OrderOrder
 	Order  db.OrderOrder
 	Items  []db.OrderOrderItem
 	Err    error
 }
 
-func (s Repo) ListOrders(context.Context) ([]db.OrderOrder, error) {
+func (s OrderStub) ListOrders(context.Context) ([]db.OrderOrder, error) {
 	return s.Orders, s.Err
 }
 
-func (s Repo) GetOrder(context.Context, int64) (db.OrderOrder, error) {
+func (s OrderStub) GetOrder(context.Context, int64) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) GetOrderItems(context.Context, int64) ([]db.OrderOrderItem, error) {
+func (s OrderStub) GetOrderItems(context.Context, int64) ([]db.OrderOrderItem, error) {
 	return s.Items, s.Err
 }
 
-func (s Repo) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
+func (s OrderStub) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
+func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) Checkout(context.Context, int64, string, int64, []repository.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
 	return s.Order, s.Items, s.Err
 }
 
-// Product は ProductPort のテスト用スタブ。
 type Product struct {
 	Snapshots map[int64]gateway.ProductSnapshot
 	Snapshot  gateway.ProductSnapshot
@@ -56,7 +55,13 @@ func (s Product) FetchProduct(_ context.Context, id int64) (gateway.ProductSnaps
 	return s.Snapshot, nil
 }
 
-// Payment は PaymentPort のテスト用スタブ。
+func TwoProducts() Product {
+	return Product{Snapshots: map[int64]gateway.ProductSnapshot{
+		100: {ID: 100, Name: "Widget", UnitPriceCents: 500},
+		200: {ID: 200, Name: "Gadget", UnitPriceCents: 1500},
+	}}
+}
+
 type Payment struct {
 	ID  int64
 	Err error

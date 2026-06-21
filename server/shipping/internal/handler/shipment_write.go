@@ -12,13 +12,13 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
-func (h *Handler) CreateShipment(c *gin.Context) {
+func (h *writeHandler) CreateShipment(c *gin.Context) {
 	var req api.CreateShipmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.CreateShipment(c.Request.Context(), db.CreateShipmentParams{
+	row, err := h.command.CreateShipment(c.Request.Context(), db.CreateShipmentParams{
 		OrderID:    req.OrderId,
 		Carrier:    req.Carrier,
 		TrackingNo: req.TrackingNo,
@@ -31,13 +31,13 @@ func (h *Handler) CreateShipment(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIShipment(row))
 }
 
-func (h *Handler) UpdateShipment(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdateShipment(c *gin.Context, id api.IdPath) {
 	var req api.UpdateShipmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.UpdateShipment(c.Request.Context(), db.UpdateShipmentParams{
+	row, err := h.command.UpdateShipment(c.Request.Context(), db.UpdateShipmentParams{
 		ID:     id,
 		Status: req.Status,
 	})

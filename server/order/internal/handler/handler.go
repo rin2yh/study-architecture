@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,19 +9,43 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
-	"github.com/rin2yh/study-architecture/server/order/internal/repository"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
-type Handler struct {
-	repo    repository.OrderRepository
+type Query interface {
+	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
+	GetOrder(ctx context.Context, id int64) (db.OrderOrder, error)
+	GetOrderItems(ctx context.Context, orderID int64) ([]db.OrderOrderItem, error)
+}
+
+type Command interface {
+	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
+	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
+	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error)
+}
+
+type readHandler struct {
+	query Query
+}
+
+type writeHandler struct {
+	command Command
 	product gateway.ProductPort
 	payment gateway.PaymentPort
 }
 
+type Handler struct {
+	*readHandler
+	*writeHandler
+}
+
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(repo repository.OrderRepository, product gateway.ProductPort, payment gateway.PaymentPort) *Handler {
-	return &Handler{repo: repo, product: product, payment: payment}
+func New(query Query, command Command, product gateway.ProductPort, payment gateway.PaymentPort) *Handler {
+	return &Handler{
+		readHandler:  &readHandler{query: query},
+		writeHandler: &writeHandler{command: command, product: product, payment: payment},
+	}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {

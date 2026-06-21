@@ -6,24 +6,24 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-type Repo struct {
+type ProductStub struct {
 	Products []db.ProductProduct
 	Product  db.ProductProduct
 	Err      error
 }
 
-func (s Repo) ListProducts(context.Context) ([]db.ProductProduct, error) {
+func (s ProductStub) ListProducts(context.Context) ([]db.ProductProduct, error) {
 	return s.Products, s.Err
 }
 
-func (s Repo) GetProduct(context.Context, int64) (db.ProductProduct, error) {
+func (s ProductStub) GetProduct(context.Context, int64) (db.ProductProduct, error) {
 	return s.Product, s.Err
 }
 
-func (s Repo) CreateProduct(context.Context, db.CreateProductParams) (db.ProductProduct, error) {
+func (s ProductStub) CreateProduct(context.Context, db.CreateProductParams) (db.ProductProduct, error) {
 	return s.Product, s.Err
 }
 
-func (s Repo) UpdateProduct(context.Context, db.UpdateProductParams) (db.ProductProduct, error) {
+func (s ProductStub) UpdateProduct(context.Context, db.UpdateProductParams) (db.ProductProduct, error) {
 	return s.Product, s.Err
 }
