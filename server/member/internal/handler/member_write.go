@@ -13,7 +13,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-func (h *Handler) CreateMember(c *gin.Context) {
+func (h *writeHandler) CreateMember(c *gin.Context) {
 	var req api.CreateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -24,7 +24,7 @@ func (h *Handler) CreateMember(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	row, err := h.repo.CreateMember(c.Request.Context(), db.CreateMemberParams{
+	row, err := h.command.CreateMember(c.Request.Context(), db.CreateMemberParams{
 		Email:        string(req.Email),
 		DisplayName:  req.DisplayName,
 		PasswordHash: hash,
@@ -40,13 +40,13 @@ func (h *Handler) CreateMember(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIMember(row))
 }
 
-func (h *Handler) UpdateMember(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdateMember(c *gin.Context, id api.IdPath) {
 	var req api.UpdateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.repo.UpdateMember(c.Request.Context(), db.UpdateMemberParams{
+	row, err := h.command.UpdateMember(c.Request.Context(), db.UpdateMemberParams{
 		ID:          id,
 		Email:       string(req.Email),
 		DisplayName: req.DisplayName,

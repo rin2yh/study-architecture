@@ -6,21 +6,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
-	"github.com/rin2yh/study-architecture/server/member/internal/repository"
+	"github.com/rin2yh/study-architecture/server/member/internal/handler"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/member/internal/stub"
 )
+
+func newReadServer(query handler.Query) http.Handler {
+	return newServer(handler.New(query, nil))
+}
 
 func TestListMembers(t *testing.T) {
 	skip.Short(t)
@@ -36,7 +36,7 @@ func TestListMembers(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
+	newReadServer(rdb.NewMemberQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -45,17 +45,14 @@ func TestListMembers(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	want := []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}
-	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Member{}, "Id", "CreatedAt")); diff != "" {
-		t.Fatalf("members mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}, got, "Id", "CreatedAt")
 }
 
 func TestListMembersError(t *testing.T) {
-	repo := stub.Repo{Err: errors.New("db failure")}
+	fake := stub.MemberStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
+	newReadServer(fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -76,10 +73,35 @@ func TestListMembersError(t *testing.T) {
 }
 
 func TestGetMember(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	member := db.MemberMember{ID: 1, Email: "user@example.com", DisplayName: "サンプル会員", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO member.members (email, display_name) VALUES ($1, $2)`,
+		"user@example.com", "サンプル会員"); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newReadServer(rdb.NewMemberQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/members/1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Member
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := api.Member{Email: "user@example.com", DisplayName: "サンプル会員"}
+	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+}
+
+func TestGetMemberError(t *testing.T) {
 	type args struct {
-		repo stub.Repo
+		fake stub.MemberStub
 		path string
 	}
 	type want struct {
@@ -91,28 +113,17 @@ func TestGetMember(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 会員を返す", args{stub.Repo{Member: member}, "/members/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/members/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"異常系 未存在は 404 not_found", args{stub.MemberStub{Err: dberr.ErrNotFound}, "/members/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{Err: errors.New("db failure")}, "/members/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newReadServer(tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Member
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.Email != "user@example.com" {
-				t.Fatalf("unexpected member: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

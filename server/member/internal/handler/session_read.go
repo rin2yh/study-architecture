@@ -12,8 +12,8 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/auth"
 )
 
-func (h *Handler) GetSession(c *gin.Context, id api.SessionIdPath) {
-	row, err := h.repo.GetSession(c.Request.Context(), auth.HashToken(id))
+func (h *readHandler) GetSession(c *gin.Context, id api.SessionIdPath) {
+	row, err := h.query.GetSession(c.Request.Context(), auth.HashToken(id))
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("session not found"))

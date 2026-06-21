@@ -1,15 +1,14 @@
-package repository
+package rdb
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
@@ -20,7 +19,7 @@ const dbEnv = "DATABASE_URL_CUSTOMER"
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	for _, r := range rows {
@@ -32,10 +31,10 @@ func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	}
 }
 
-func TestRepositoryListOrdersByMember(t *testing.T) {
+func TestListOrdersByMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderQuery(pool)
 	seedOrders(t, pool,
 		db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000},
 		db.OrderOrder{MemberID: 20, Status: "paid", TotalCents: 3000},
@@ -71,7 +70,7 @@ func TestRepositoryListOrdersByMember(t *testing.T) {
 	})
 }
 
-func TestRepositoryListOrders(t *testing.T) {
+func TestListOrders(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -91,7 +90,7 @@ func TestRepositoryListOrders(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedOrders(t, pool, tt.seed...)
@@ -103,18 +102,14 @@ func TestRepositoryListOrders(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListOrders: want non-nil slice (emit_empty_slices)")
 			}
-			if diff := cmp.Diff(tt.seed, got,
-				cmpopts.IgnoreFields(db.OrderOrder{}, "ID", "CreatedAt"),
-				cmpopts.EquateEmpty()); diff != "" {
-				t.Fatalf("ListOrders mismatch (-want +got):\n%s", diff)
-			}
+			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }
 
-func TestRepositoryListOrdersError(t *testing.T) {
+func TestListOrdersError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewOrderQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListOrders(ctx); err == nil {
@@ -122,10 +117,10 @@ func TestRepositoryListOrdersError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetOrder(t *testing.T) {
+func TestGetOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewOrderQuery(pool)
 	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -144,39 +139,38 @@ func TestRepositoryGetOrder(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateOrder(t *testing.T) {
+func TestGetOrderItems(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedOrders(t, pool)
+	r := NewOrderQuery(pool)
 
-	got, err := r.CreateOrder(t.Context(), db.CreateOrderParams{MemberID: 20, Status: "pending", TotalCents: 1980})
-	if err != nil {
-		t.Fatalf("CreateOrder: %v", err)
-	}
-	if got.ID == 0 || got.MemberID != 20 {
-		t.Fatalf("unexpected row: %+v", got)
-	}
-}
-
-func TestRepositoryUpdateOrder(t *testing.T) {
-	skip.Short(t)
-	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
-
-	t.Run("正常系 status のみ更新し member_id/total_cents は不変", func(t *testing.T) {
-		got, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 1, Status: "paid"})
-		if err != nil {
-			t.Fatalf("UpdateOrder: %v", err)
+	t.Run("正常系 明細を id 昇順で返す", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 2500})
+		ctx := t.Context()
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO "order".order_items (order_id, product_id, product_name, unit_price_cents, quantity)
+			 VALUES (1, 100, 'Widget', 500, 2), (1, 200, 'Gadget', 1500, 1)`); err != nil {
+			t.Fatalf("seed items: %v", err)
 		}
-		if got.ID != 1 || got.Status != "paid" || got.MemberID != 10 || got.TotalCents != 1980 {
-			t.Fatalf("unexpected row: %+v", got)
+
+		got, err := r.GetOrderItems(ctx, 1)
+		if err != nil {
+			t.Fatalf("GetOrderItems: %v", err)
+		}
+		if len(got) != 2 || got[0].ProductName != "Widget" || got[1].ProductName != "Gadget" {
+			t.Fatalf("unexpected items: %+v", got)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 9999, Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
-			t.Fatalf("err = %v, want ErrNotFound", err)
+
+	t.Run("準正常系 明細が無ければ空スライス", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+
+		got, err := r.GetOrderItems(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetOrderItems: %v", err)
+		}
+		if len(got) != 0 {
+			t.Fatalf("want no items, got %+v", got)
 		}
 	})
 }

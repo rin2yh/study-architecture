@@ -21,14 +21,14 @@ const sessionTTL = 7 * 24 * time.Hour
 // ADR 0009
 const invalidCredentials = "invalid email or password"
 
-func (h *Handler) CreateSession(c *gin.Context) {
+func (h *writeHandler) CreateSession(c *gin.Context) {
 	var req api.CreateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
 
-	member, err := h.repo.GetMemberByEmail(c.Request.Context(), string(req.Email))
+	member, err := h.query.GetMemberByEmail(c.Request.Context(), string(req.Email))
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.Unauthorized(invalidCredentials))
@@ -47,7 +47,7 @@ func (h *Handler) CreateSession(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	row, err := h.repo.CreateSession(c.Request.Context(), db.CreateSessionParams{
+	row, err := h.command.CreateSession(c.Request.Context(), db.CreateSessionParams{
 		ID:        id,
 		MemberID:  member.ID,
 		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(sessionTTL), Valid: true},
@@ -59,8 +59,8 @@ func (h *Handler) CreateSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPISession(token, row))
 }
 
-func (h *Handler) DeleteSession(c *gin.Context, id api.SessionIdPath) {
-	if err := h.repo.DeleteSession(c.Request.Context(), auth.HashToken(id)); err != nil {
+func (h *writeHandler) DeleteSession(c *gin.Context, id api.SessionIdPath) {
+	if err := h.command.DeleteSession(c.Request.Context(), auth.HashToken(id)); err != nil {
 		_ = c.Error(err)
 		return
 	}

@@ -12,15 +12,15 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-func (h *Handler) ListOrders(c *gin.Context, params api.ListOrdersParams) {
+func (h *readHandler) ListOrders(c *gin.Context, params api.ListOrdersParams) {
 	var (
 		rows []db.OrderOrder
 		err  error
 	)
 	if params.XMemberId != nil {
-		rows, err = h.repo.ListOrdersByMember(c.Request.Context(), *params.XMemberId)
+		rows, err = h.query.ListOrdersByMember(c.Request.Context(), *params.XMemberId)
 	} else {
-		rows, err = h.repo.ListOrders(c.Request.Context())
+		rows, err = h.query.ListOrders(c.Request.Context())
 	}
 	if err != nil {
 		_ = c.Error(err)
@@ -33,8 +33,8 @@ func (h *Handler) ListOrders(c *gin.Context, params api.ListOrdersParams) {
 	c.JSON(http.StatusOK, out)
 }
 
-func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
-	row, err := h.repo.GetOrder(c.Request.Context(), id)
+func (h *readHandler) GetOrder(c *gin.Context, id api.IdPath) {
+	row, err := h.query.GetOrder(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("order not found"))
@@ -43,5 +43,10 @@ func (h *Handler) GetOrder(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, toAPIOrder(row))
+	items, err := h.query.GetOrderItems(c.Request.Context(), id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIOrderWithItems(row, items))
 }

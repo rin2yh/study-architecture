@@ -6,21 +6,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/product/api"
-	"github.com/rin2yh/study-architecture/server/product/internal/db"
-	"github.com/rin2yh/study-architecture/server/product/internal/repository"
+	"github.com/rin2yh/study-architecture/server/product/internal/handler"
+	"github.com/rin2yh/study-architecture/server/product/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/product/internal/stub"
 )
+
+func newReadServer(query handler.Query) http.Handler {
+	return newServer(handler.New(query, nil))
+}
 
 func TestListProducts(t *testing.T) {
 	skip.Short(t)
@@ -36,7 +36,7 @@ func TestListProducts(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newServer(repository.NewRepository(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
+	newReadServer(rdb.NewProductQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -45,17 +45,14 @@ func TestListProducts(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	want := []api.Product{{Sku: "SKU-DB-1", Name: "DB 商品", PriceCents: 500}}
-	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(api.Product{}, "Id", "CreatedAt")); diff != "" {
-		t.Fatalf("products mismatch (-want +got):\n%s", diff)
-	}
+	cmptest.EqualSlice(t, []api.Product{{Sku: "SKU-DB-1", Name: "DB 商品", PriceCents: 500}}, got, "Id", "CreatedAt")
 }
 
 func TestListProductsError(t *testing.T) {
-	repo := stub.Repo{Err: errors.New("db failure")}
+	fake := stub.ProductStub{Err: errors.New("db failure")}
 
 	rec := httptest.NewRecorder()
-	newServer(repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
+	newReadServer(fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
@@ -79,10 +76,34 @@ func TestListProductsError(t *testing.T) {
 }
 
 func TestGetProduct(t *testing.T) {
-	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	product := db.ProductProduct{ID: 1, Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980, CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}}
+	skip.Short(t)
+	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE product.products RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO product.products (sku, name, price_cents) VALUES ($1, $2, $3)`,
+		"SKU-1", "サンプル商品", 1980); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newReadServer(rdb.NewProductQuery(pool)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/products/1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got api.Product
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	cmptest.Equal(t, api.Product{Sku: "SKU-1", Name: "サンプル商品", PriceCents: 1980}, got, "Id", "CreatedAt")
+}
+
+func TestGetProductError(t *testing.T) {
 	type args struct {
-		repo stub.Repo
+		fake stub.ProductStub
 		path string
 	}
 	type want struct {
@@ -94,28 +115,17 @@ func TestGetProduct(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 商品を返す", args{stub.Repo{Product: product}, "/products/1"}, want{http.StatusOK, ""}},
-		{"異常系 未存在は 404 not_found", args{stub.Repo{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
-		{"異常系 DB エラーは 500 internal", args{stub.Repo{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
+		{"異常系 未存在は 404 not_found", args{stub.ProductStub{Err: dberr.ErrNotFound}, "/products/99"}, want{http.StatusNotFound, "not_found"}},
+		{"異常系 DB エラーは 500 internal", args{stub.ProductStub{Err: errors.New("db failure")}, "/products/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			newServer(tt.args.repo).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
+			newReadServer(tt.args.fake).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.args.path, nil))
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			if tt.want.code != "" {
-				apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
-				return
-			}
-			var got api.Product
-			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			if got.Id != 1 || got.Sku != "SKU-1" {
-				t.Fatalf("unexpected product: %+v", got)
-			}
+			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

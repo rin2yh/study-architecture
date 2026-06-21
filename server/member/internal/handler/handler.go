@@ -1,23 +1,52 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
-	"github.com/rin2yh/study-architecture/server/member/internal/repository"
 )
 
+type Query interface {
+	ListMembers(ctx context.Context) ([]db.MemberMember, error)
+	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
+	GetMemberByEmail(ctx context.Context, email string) (db.MemberMember, error)
+	GetSession(ctx context.Context, id string) (db.MemberSession, error)
+}
+
+type Command interface {
+	CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error)
+	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error)
+	CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.MemberSession, error)
+	DeleteSession(ctx context.Context, id string) error
+}
+
+type readHandler struct {
+	query Query
+}
+
+// ログイン (CreateSession) は会員照合 (query) とセッション発行 (command) の双方を要するため
+// writeHandler は query も持つ。
+type writeHandler struct {
+	query   Query
+	command Command
+}
+
 type Handler struct {
-	repo repository.MemberRepository
+	*readHandler
+	*writeHandler
 }
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(repo repository.MemberRepository) *Handler {
-	return &Handler{repo: repo}
+func New(query Query, command Command) *Handler {
+	return &Handler{
+		readHandler:  &readHandler{query: query},
+		writeHandler: &writeHandler{query: query, command: command},
+	}
 }
 
 func (h *Handler) GetHealthz(c *gin.Context) {

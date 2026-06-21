@@ -4,31 +4,74 @@ import (
 	"context"
 
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
+	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
-type Repo struct {
+type OrderStub struct {
 	Orders   []db.OrderOrder
 	ByMember []db.OrderOrder
 	Order    db.OrderOrder
+	Items    []db.OrderOrderItem
 	Err      error
 }
 
-func (s Repo) ListOrders(context.Context) ([]db.OrderOrder, error) {
+func (s OrderStub) ListOrders(context.Context) ([]db.OrderOrder, error) {
 	return s.Orders, s.Err
 }
 
-func (s Repo) ListOrdersByMember(context.Context, int64) ([]db.OrderOrder, error) {
+func (s OrderStub) ListOrdersByMember(context.Context, int64) ([]db.OrderOrder, error) {
 	return s.ByMember, s.Err
 }
 
-func (s Repo) GetOrder(context.Context, int64) (db.OrderOrder, error) {
+func (s OrderStub) GetOrder(context.Context, int64) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
+func (s OrderStub) GetOrderItems(context.Context, int64) ([]db.OrderOrderItem, error) {
+	return s.Items, s.Err
+}
+
+func (s OrderStub) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
-func (s Repo) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
+func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
+}
+
+func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+	return s.Order, s.Items, s.Err
+}
+
+type Product struct {
+	Snapshots map[int64]gateway.ProductSnapshot
+	Snapshot  gateway.ProductSnapshot
+	Err       error
+}
+
+func (s Product) FetchProduct(_ context.Context, id int64) (gateway.ProductSnapshot, error) {
+	if s.Err != nil {
+		return gateway.ProductSnapshot{}, s.Err
+	}
+	if snap, ok := s.Snapshots[id]; ok {
+		return snap, nil
+	}
+	return s.Snapshot, nil
+}
+
+func TwoProducts() Product {
+	return Product{Snapshots: map[int64]gateway.ProductSnapshot{
+		100: {ID: 100, Name: "Widget", UnitPriceCents: 500},
+		200: {ID: 200, Name: "Gadget", UnitPriceCents: 1500},
+	}}
+}
+
+type Payment struct {
+	ID  int64
+	Err error
+}
+
+func (s Payment) CreatePayment(context.Context, int64, int64, string) (int64, error) {
+	return s.ID, s.Err
 }

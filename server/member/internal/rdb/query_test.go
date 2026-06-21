@@ -1,15 +1,14 @@
-package repository
+package rdb
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
@@ -32,7 +31,22 @@ func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	}
 }
 
-func TestRepositoryListMembers(t *testing.T) {
+func seedOneMember(t *testing.T, pool *pgxpool.Pool, email, hash string) int64 {
+	t.Helper()
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	var id int64
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO member.members (email, display_name, password_hash) VALUES ($1, $2, $3) RETURNING id`,
+		email, "会員", hash).Scan(&id); err != nil {
+		t.Fatalf("insert member: %v", err)
+	}
+	return id
+}
+
+func TestListMembers(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -52,7 +66,7 @@ func TestRepositoryListMembers(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewMemberQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedMembers(t, pool, tt.seed...)
@@ -64,18 +78,14 @@ func TestRepositoryListMembers(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListMembers: want non-nil slice (emit_empty_slices)")
 			}
-			if diff := cmp.Diff(tt.seed, got,
-				cmpopts.IgnoreFields(db.MemberMember{}, "ID", "CreatedAt"),
-				cmpopts.EquateEmpty()); diff != "" {
-				t.Fatalf("ListMembers mismatch (-want +got):\n%s", diff)
-			}
+			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }
 
-func TestRepositoryListMembersError(t *testing.T) {
+func TestListMembersError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewMemberQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListMembers(ctx); err == nil {
@@ -83,10 +93,10 @@ func TestRepositoryListMembersError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetMember(t *testing.T) {
+func TestGetMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewMemberQuery(pool)
 	seedMembers(t, pool, db.MemberMember{Email: "user@example.com", DisplayName: "会員A"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -105,53 +115,58 @@ func TestRepositoryGetMember(t *testing.T) {
 	})
 }
 
-func TestRepositoryCreateMember(t *testing.T) {
+func TestGetMemberByEmail(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedMembers(t, pool, db.MemberMember{Email: "exist@example.com", DisplayName: "既存"})
+	r := NewMemberQuery(pool)
+	seedOneMember(t, pool, "user@example.com", "stored-hash")
 
-	t.Run("正常系 作成行を返す", func(t *testing.T) {
-		got, err := r.CreateMember(t.Context(), db.CreateMemberParams{Email: "new@example.com", DisplayName: "新規会員"})
+	t.Run("正常系 email で会員を引け password_hash も載る", func(t *testing.T) {
+		got, err := r.GetMemberByEmail(t.Context(), "user@example.com")
 		if err != nil {
-			t.Fatalf("CreateMember: %v", err)
+			t.Fatalf("GetMemberByEmail: %v", err)
 		}
-		if got.ID == 0 || got.Email != "new@example.com" {
-			t.Fatalf("unexpected row: %+v", got)
+		if got.Email != "user@example.com" || got.PasswordHash != "stored-hash" {
+			t.Fatalf("unexpected member: %+v", got)
 		}
 	})
-	t.Run("異常系 email 重複は ErrConflict", func(t *testing.T) {
-		if _, err := r.CreateMember(t.Context(), db.CreateMemberParams{Email: "exist@example.com", DisplayName: "重複"}); !errors.Is(err, dberr.ErrConflict) {
-			t.Fatalf("err = %v, want ErrConflict", err)
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetMemberByEmail(t.Context(), "none@example.com"); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
 }
 
-func TestRepositoryUpdateMember(t *testing.T) {
+func TestGetSession(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedMembers(t, pool,
-		db.MemberMember{Email: "a@example.com", DisplayName: "会員A"},
-		db.MemberMember{Email: "b@example.com", DisplayName: "会員B"})
+	r := NewMemberQuery(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "stored-hash")
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO member.sessions (id, member_id, expires_at) VALUES
+		 ('live', $1, now() + interval '1 hour'),
+		 ('expired', $1, now() - interval '1 hour')`, memberID); err != nil {
+		t.Fatalf("insert sessions: %v", err)
+	}
 
-	t.Run("正常系 既存行を更新して返す", func(t *testing.T) {
-		got, err := r.UpdateMember(t.Context(), db.UpdateMemberParams{ID: 1, Email: "a2@example.com", DisplayName: "会員A更新"})
+	t.Run("正常系 有効なセッションを返す", func(t *testing.T) {
+		got, err := r.GetSession(t.Context(), "live")
 		if err != nil {
-			t.Fatalf("UpdateMember: %v", err)
+			t.Fatalf("GetSession: %v", err)
 		}
-		if got.ID != 1 || got.Email != "a2@example.com" || got.DisplayName != "会員A更新" {
-			t.Fatalf("unexpected row: %+v", got)
+		if got.MemberID != memberID {
+			t.Fatalf("memberID = %d, want %d", got.MemberID, memberID)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.UpdateMember(t.Context(), db.UpdateMemberParams{ID: 9999, Email: "x@example.com", DisplayName: "x"}); !errors.Is(err, dberr.ErrNotFound) {
+	t.Run("準正常系 期限切れは ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetSession(t.Context(), "expired"); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
-	t.Run("異常系 email 重複は ErrConflict", func(t *testing.T) {
-		if _, err := r.UpdateMember(t.Context(), db.UpdateMemberParams{ID: 1, Email: "b@example.com", DisplayName: "衝突"}); !errors.Is(err, dberr.ErrConflict) {
-			t.Fatalf("err = %v, want ErrConflict", err)
+	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetSession(t.Context(), "missing"); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
 }

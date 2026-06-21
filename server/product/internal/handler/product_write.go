@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
-func (h *Handler) CreateProduct(c *gin.Context) {
+func (h *writeHandler) CreateProduct(c *gin.Context) {
 	var req api.CreateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -22,7 +22,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("priceCents must not be negative"))
 		return
 	}
-	row, err := h.repo.CreateProduct(c.Request.Context(), db.CreateProductParams{
+	row, err := h.command.CreateProduct(c.Request.Context(), db.CreateProductParams{
 		Sku:        req.Sku,
 		Name:       req.Name,
 		PriceCents: req.PriceCents,
@@ -38,7 +38,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIProduct(row))
 }
 
-func (h *Handler) UpdateProduct(c *gin.Context, id api.IdPath) {
+func (h *writeHandler) UpdateProduct(c *gin.Context, id api.IdPath) {
 	var req api.UpdateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
@@ -48,7 +48,7 @@ func (h *Handler) UpdateProduct(c *gin.Context, id api.IdPath) {
 		_ = c.Error(middleware.Unprocessable("priceCents must not be negative"))
 		return
 	}
-	row, err := h.repo.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
+	row, err := h.command.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
 		ID:         id,
 		Name:       req.Name,
 		PriceCents: req.PriceCents,

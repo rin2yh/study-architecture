@@ -6,17 +6,18 @@ import (
 	"context"
 	"github.com/mazrean/kessoku"
 	"github.com/rin2yh/study-architecture/server/product/internal/handler"
-	"github.com/rin2yh/study-architecture/server/product/internal/repository"
+	"github.com/rin2yh/study-architecture/server/product/internal/rdb"
 )
 
 func InitHandler(ctx context.Context) (*handler.Handler, error) {
 	var err error
-	pool, err := kessoku.Async(kessoku.Provide(repository.NewPool)).Fn()(ctx)
+	pool, err := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
 	if err != nil {
 		var zero *handler.Handler
 		return zero, err
 	}
-	repository0 := kessoku.Bind[repository.ProductRepository](kessoku.Provide(repository.NewRepository)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(repository0)
+	productQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewProductQuery)).Fn()(pool)
+	productCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewProductCommand)).Fn()(pool)
+	handler0 := kessoku.Provide(handler.New).Fn()(productQuery, productCommand)
 	return handler0, nil
 }

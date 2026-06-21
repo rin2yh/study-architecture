@@ -1,15 +1,14 @@
-package repository
+package rdb
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
@@ -32,7 +31,7 @@ func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
 	}
 }
 
-func TestRepositoryListPayments(t *testing.T) {
+func TestListPayments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
@@ -52,7 +51,7 @@ func TestRepositoryListPayments(t *testing.T) {
 	}
 
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewPaymentQuery(pool)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seedPayments(t, pool, tt.seed...)
@@ -64,18 +63,14 @@ func TestRepositoryListPayments(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListPayments: want non-nil slice (emit_empty_slices)")
 			}
-			if diff := cmp.Diff(tt.seed, got,
-				cmpopts.IgnoreFields(db.PaymentPayment{}, "ID", "CreatedAt"),
-				cmpopts.EquateEmpty()); diff != "" {
-				t.Fatalf("ListPayments mismatch (-want +got):\n%s", diff)
-			}
+			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }
 
-func TestRepositoryListPaymentsError(t *testing.T) {
+func TestListPaymentsError(t *testing.T) {
 	skip.Short(t)
-	r := NewRepository(testdb.Open(t, dbEnv))
+	r := NewPaymentQuery(testdb.Open(t, dbEnv))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := r.ListPayments(ctx); err == nil {
@@ -83,10 +78,10 @@ func TestRepositoryListPaymentsError(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetPayment(t *testing.T) {
+func TestGetPayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
+	r := NewPaymentQuery(pool)
 	seedPayments(t, pool, db.PaymentPayment{OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
@@ -100,43 +95,6 @@ func TestRepositoryGetPayment(t *testing.T) {
 	})
 	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetPayment(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
-			t.Fatalf("err = %v, want ErrNotFound", err)
-		}
-	})
-}
-
-func TestRepositoryCreatePayment(t *testing.T) {
-	skip.Short(t)
-	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedPayments(t, pool)
-
-	got, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid"})
-	if err != nil {
-		t.Fatalf("CreatePayment: %v", err)
-	}
-	if got.ID == 0 || got.OrderID != 20 {
-		t.Fatalf("unexpected row: %+v", got)
-	}
-}
-
-func TestRepositoryUpdatePayment(t *testing.T) {
-	skip.Short(t)
-	pool := testdb.Open(t, dbEnv)
-	r := NewRepository(pool)
-	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
-
-	t.Run("正常系 status のみ更新し order_id/amount_cents/method は不変", func(t *testing.T) {
-		got, err := r.UpdatePayment(t.Context(), db.UpdatePaymentParams{ID: 1, Status: "refunded"})
-		if err != nil {
-			t.Fatalf("UpdatePayment: %v", err)
-		}
-		if got.ID != 1 || got.Status != "refunded" || got.OrderID != 20 || got.AmountCents != 2980 || got.Method != "card" {
-			t.Fatalf("unexpected row: %+v", got)
-		}
-	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.UpdatePayment(t.Context(), db.UpdatePaymentParams{ID: 9999, Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
