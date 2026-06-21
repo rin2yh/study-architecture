@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
@@ -63,7 +63,7 @@ func TestListPayments(t *testing.T) {
 			if got == nil {
 				t.Fatal("ListPayments: want non-nil slice (emit_empty_slices)")
 			}
-			cmptest.EqualSlice(t, tt.seed, got, "ID", "CreatedAt")
+			assert.DeepEqualSlice(t, tt.seed, got, "ID", "CreatedAt")
 		})
 	}
 }
