@@ -19,11 +19,10 @@ func (h *Handler) Checkout(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
 	lines := make([]repository.CheckoutLine, 0, len(req.Items))
 	var totalCents int64
 	for _, item := range req.Items {
-		snap, err := h.product.FetchProduct(ctx, item.ProductId)
+		snap, err := h.product.FetchProduct(c.Request.Context(), item.ProductId)
 		if err != nil {
 			if errors.Is(err, gateway.ErrProductNotFound) {
 				_ = c.Error(middleware.Unprocessable(err.Error()))
@@ -41,14 +40,14 @@ func (h *Handler) Checkout(c *gin.Context) {
 		totalCents += snap.UnitPriceCents * int64(item.Quantity)
 	}
 
-	order, items, err := h.repo.Checkout(ctx, req.MemberId, "confirmed", totalCents, lines)
+	order, items, err := h.repo.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	// 配送は同期 checkout に含めない ([[0008]])。
-	if _, err := h.payment.CreatePayment(ctx, order.ID, totalCents, req.PaymentMethod); err != nil {
+	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod); err != nil {
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
 	}
