@@ -1,8 +1,8 @@
-# ADR 0014: API エラーモデルを共通 Error スキーマ + ErrorJSON ミドルウェアに集約する
+# ADR-202606180901: API エラーモデルを共通 Error スキーマ + ErrorJSON ミドルウェアに集約する
 
 - Status: Proposed
 - Date: 2026-06-18
-- Related: [[0002]] (codegen-first), [[0010]] (Gin)
+- Related: ADR-[[202606170901]] (codegen-first), ADR-[[202606170907]] (Gin)
 
 ## Context
 
@@ -43,12 +43,12 @@ components:
 
 - `code` / `message` は `ErrorJSON` が返す JSON と shape を一致させる。これにより
   oapi-codegen は Go の `api.Error` 型を、orval は TS の `Error` / `ErrorResponse` 型を
-  生成し、サーバ/クライアント双方で同じ契約を共有する ([[0002]])。
+  生成し、サーバ/クライアント双方で同じ契約を共有する (ADR-[[202606170901]])。
 
 ### 2. ステータスのマッピングは ErrorJSON 1 箇所に集約
 
 HTTP ステータスと `code` の対応づけは引き続き共通ミドルウェア `ErrorJSON` に集約する
-([[0010]])。handler は `c.Error(err)` でエラーを積むだけで、整形・隠蔽・ログレベルの
+(ADR-[[202606170907]])。handler は `c.Error(err)` でエラーを積むだけで、整形・隠蔽・ログレベルの
 判断はミドルウェアが行う。マッピング規則:
 
 | 入力 (handler が積むエラー)          | status | code                   | message       |
