@@ -4,6 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
@@ -45,4 +48,34 @@ func TestUpdateOrder(t *testing.T) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
+}
+
+func TestCheckout(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	c := NewOrderCommand(pool)
+	seedOrders(t, pool)
+
+	lines := []CheckoutLine{
+		{ProductID: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
+		{ProductID: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
+	}
+	order, items, err := c.Checkout(t.Context(), 20, "confirmed", 2500, lines)
+	if err != nil {
+		t.Fatalf("Checkout: %v", err)
+	}
+	if order.ID == 0 || order.MemberID != 20 || order.Status != "confirmed" || order.TotalCents != 2500 {
+		t.Fatalf("unexpected order: %+v", order)
+	}
+	if len(items) != 2 || items[0].OrderID != order.ID || items[0].ProductName != "Widget" {
+		t.Fatalf("unexpected items: %+v", items)
+	}
+
+	got, err := NewOrderQuery(pool).GetOrderItems(t.Context(), order.ID)
+	if err != nil {
+		t.Fatalf("GetOrderItems: %v", err)
+	}
+	if diff := cmp.Diff(items, got, cmpopts.EquateEmpty()); diff != "" {
+		t.Fatalf("GetOrderItems mismatch (-want +got):\n%s", diff)
+	}
 }

@@ -20,7 +20,7 @@ import (
 )
 
 func newWriteServer(command handler.Command) http.Handler {
-	return newServer(handler.New(nil, command))
+	return newServer(handler.New(nil, command, nil, nil))
 }
 
 func TestCreateOrder(t *testing.T) {

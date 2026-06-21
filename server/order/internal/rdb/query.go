@@ -28,3 +28,7 @@ func (r *OrderQuery) GetOrder(ctx context.Context, id int64) (db.OrderOrder, err
 	}
 	return row, nil
 }
+
+func (r *OrderQuery) GetOrderItems(ctx context.Context, orderID int64) ([]db.OrderOrderItem, error) {
+	return r.q.ListOrderItems(ctx, orderID)
+}

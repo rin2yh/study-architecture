@@ -4,11 +4,14 @@ import (
 	"context"
 
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
+	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
 type OrderStub struct {
 	Orders []db.OrderOrder
 	Order  db.OrderOrder
+	Items  []db.OrderOrderItem
 	Err    error
 }
 
@@ -20,10 +23,43 @@ func (s OrderStub) GetOrder(context.Context, int64) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
+func (s OrderStub) GetOrderItems(context.Context, int64) ([]db.OrderOrderItem, error) {
+	return s.Items, s.Err
+}
+
 func (s OrderStub) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
 }
 
 func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
 	return s.Order, s.Err
+}
+
+func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+	return s.Order, s.Items, s.Err
+}
+
+type Product struct {
+	Snapshots map[int64]gateway.ProductSnapshot
+	Snapshot  gateway.ProductSnapshot
+	Err       error
+}
+
+func (s Product) FetchProduct(_ context.Context, id int64) (gateway.ProductSnapshot, error) {
+	if s.Err != nil {
+		return gateway.ProductSnapshot{}, s.Err
+	}
+	if snap, ok := s.Snapshots[id]; ok {
+		return snap, nil
+	}
+	return s.Snapshot, nil
+}
+
+type Payment struct {
+	ID  int64
+	Err error
+}
+
+func (s Payment) CreatePayment(context.Context, int64, int64, string) (int64, error) {
+	return s.ID, s.Err
 }

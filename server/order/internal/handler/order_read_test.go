@@ -24,14 +24,14 @@ import (
 )
 
 func newReadServer(query handler.Query) http.Handler {
-	return newServer(handler.New(query, nil))
+	return newServer(handler.New(query, nil, nil, nil))
 }
 
 func TestListOrders(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	if _, err := pool.Exec(ctx,

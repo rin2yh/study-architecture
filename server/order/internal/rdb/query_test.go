@@ -20,7 +20,7 @@ const dbEnv = "DATABASE_URL_CUSTOMER"
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()
 	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE "order".orders RESTART IDENTITY`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	for _, r := range rows {
@@ -101,6 +101,42 @@ func TestGetOrder(t *testing.T) {
 	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetOrder(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}
+
+func TestGetOrderItems(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewOrderQuery(pool)
+
+	t.Run("正常系 明細を id 昇順で返す", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 2500})
+		ctx := t.Context()
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO "order".order_items (order_id, product_id, product_name, unit_price_cents, quantity)
+			 VALUES (1, 100, 'Widget', 500, 2), (1, 200, 'Gadget', 1500, 1)`); err != nil {
+			t.Fatalf("seed items: %v", err)
+		}
+
+		got, err := r.GetOrderItems(ctx, 1)
+		if err != nil {
+			t.Fatalf("GetOrderItems: %v", err)
+		}
+		if len(got) != 2 || got[0].ProductName != "Widget" || got[1].ProductName != "Gadget" {
+			t.Fatalf("unexpected items: %+v", got)
+		}
+	})
+
+	t.Run("準正常系 明細が無ければ空スライス", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+
+		got, err := r.GetOrderItems(t.Context(), 1)
+		if err != nil {
+			t.Fatalf("GetOrderItems: %v", err)
+		}
+		if len(got) != 0 {
+			t.Fatalf("want no items, got %+v", got)
 		}
 	})
 }

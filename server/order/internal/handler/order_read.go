@@ -34,5 +34,10 @@ func (h *readHandler) GetOrder(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, toAPIOrder(row))
+	items, err := h.query.GetOrderItems(c.Request.Context(), id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIOrderWithItems(row, items))
 }
