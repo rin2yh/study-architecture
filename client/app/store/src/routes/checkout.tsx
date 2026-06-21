@@ -22,7 +22,7 @@ function parseItems(raw: FormDataEntryValue | null): CheckoutItemInput[] {
   }
 }
 
-// カートはクライアント状態なので明細は hidden field で action に渡す ([[0006]])。
+// [[0006]]
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const items = parseItems(form.get("items"));
