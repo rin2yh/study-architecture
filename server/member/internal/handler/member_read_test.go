@@ -8,8 +8,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
@@ -45,7 +44,7 @@ func TestListMembers(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	cmptest.EqualSlice(t, []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}, got, "Id", "CreatedAt")
+	assert.EqualSlice(t, []api.Member{{Email: "user@example.com", DisplayName: "サンプル会員"}}, got, "Id", "CreatedAt")
 }
 
 func TestListMembersError(t *testing.T) {
@@ -96,7 +95,7 @@ func TestGetMember(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Member{Email: "user@example.com", DisplayName: "サンプル会員"}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestGetMemberError(t *testing.T) {
@@ -123,7 +122,7 @@ func TestGetMemberError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.want.status)
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

@@ -9,8 +9,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/apitest"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
@@ -43,7 +42,7 @@ func TestCreateShipment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Shipment{OrderId: 200, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "pending"}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestCreateShipmentError(t *testing.T) {
@@ -73,7 +72,7 @@ func TestCreateShipmentError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }
@@ -104,7 +103,7 @@ func TestUpdateShipment(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	want := api.Shipment{OrderId: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "delivered"}
-	cmptest.Equal(t, want, got, "Id", "CreatedAt")
+	assert.Equal(t, want, got, "Id", "CreatedAt")
 }
 
 func TestUpdateShipmentError(t *testing.T) {
@@ -135,7 +134,7 @@ func TestUpdateShipmentError(t *testing.T) {
 			if rec.Code != tt.want.status {
 				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
 			}
-			apitest.AssertErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
 		})
 	}
 }

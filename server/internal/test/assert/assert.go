@@ -1,6 +1,8 @@
-package cmptest
+// Package assert はテスト用の共通アサーションヘルパー。
+package assert
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -18,6 +20,20 @@ func EqualSlice[E any](t *testing.T, want, got []E, ignoreFields ...string) {
 	t.Helper()
 	if d := cmp.Diff(want, got, opts[E](ignoreFields)...); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
+	}
+}
+
+func ErrorCode(t *testing.T, body []byte, wantCode string) {
+	t.Helper()
+	var e struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &e); err != nil {
+		t.Fatalf("unmarshal error body: %v", err)
+	}
+	if e.Code != wantCode {
+		t.Fatalf("code = %q, want %q", e.Code, wantCode)
 	}
 }
 

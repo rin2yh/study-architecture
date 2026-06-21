@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/test/cmptest"
+	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
@@ -73,5 +73,5 @@ func TestCheckout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOrderItems: %v", err)
 	}
-	cmptest.EqualSlice(t, items, got)
+	assert.EqualSlice(t, items, got)
 }
