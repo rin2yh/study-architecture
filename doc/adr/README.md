@@ -22,5 +22,6 @@
 | [202606190900](202606190900-cross-domain-snapshot.md) | Accepted | 横断データは注文確定時に order 側へスナップショット保存する |
 | [202606190901](202606190901-client-generated-code-layout.md) | Accepted | orval 生成物を gen/ ディレクトリに集約する |
 | [202606190902](202606190902-parallel-integration-test-template-db.md) | Proposed | 結合テストはテンプレート DB クローンで分離し並列実行する |
+| [202606190903](202606190903-repository-cqrs-query-command.md) | Accepted | repository を CQRS で Query / Command に分割する |
 | [202606210900](202606210900-what-comment-lint-via-claude-hook.md) | Proposed | what コメント検出を Claude Code hook + LLM 判定で行う |
 | [202606211000](202606211000-adr-timestamp-naming.md) | Accepted | ADR の識別子を連番からタイムスタンプ (YYYYMMDDHHmm) に変える |
