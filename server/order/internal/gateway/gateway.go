@@ -13,13 +13,10 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
 )
 
-// ErrProductNotFound は指定された product が存在しないことを表す。
 var ErrProductNotFound = errors.New("product not found")
 
-// ErrUpstream は下流サービスの呼び出しが失敗したことを表す。
 var ErrUpstream = errors.New("upstream service error")
 
-// ProductSnapshot は product 属性のスナップショット ([[0008]])。
 type ProductSnapshot struct {
 	ID             int64
 	Name           string
