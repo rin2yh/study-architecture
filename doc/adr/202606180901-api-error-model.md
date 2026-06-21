@@ -1,6 +1,6 @@
 # ADR-202606180901: API エラーモデルを共通 Error スキーマ + ErrorJSON ミドルウェアに集約する
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-18
 - Related: ADR-[[202606170901]] (codegen-first), ADR-[[202606170907]] (Gin)
 
