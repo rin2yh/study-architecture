@@ -1,4 +1,5 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import type { Route } from "./+types/root";
 import "./styles.css";
 
@@ -28,11 +29,13 @@ export default function App() {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const message = error instanceof Error ? error.message : "unknown error";
   return (
-    <div className="mx-auto max-w-4xl p-8" role="alert">
-      <h1 className="text-3xl font-bold">エラーが発生しました</h1>
-      <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700">
-        {message}
-      </pre>
+    <div className="mx-auto max-w-4xl p-8">
+      <Alert variant="destructive">
+        <AlertTitle>エラーが発生しました</AlertTitle>
+        <AlertDescription>
+          <pre className="overflow-x-auto text-xs">{message}</pre>
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import { Button } from "@/shared/ui/button";
+import { Button } from "ui/button";
 
 export function EmptyCart() {
   return (

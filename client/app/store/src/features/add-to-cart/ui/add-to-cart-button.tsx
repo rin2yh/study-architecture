@@ -1,6 +1,6 @@
 import type { Product } from "api/product";
 
-import { Button } from "@/shared/ui/button";
+import { Button } from "ui/button";
 import { useCart } from "@/entities/cart";
 
 interface AddToCartButtonProps {

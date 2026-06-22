@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card";
-import { Separator } from "@/shared/ui/separator";
+import { Button } from "ui/button";
+import { Card, CardContent } from "ui/card";
+import { Separator } from "ui/separator";
 import { type CartItem, cartTotalCents, useCart } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 import { CartRow } from "./cart-row";

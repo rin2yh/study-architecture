@@ -19,7 +19,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "catalog:",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "ui": "workspace:*"
   },
   "devDependencies": {
     "@react-router/dev": "catalog:",

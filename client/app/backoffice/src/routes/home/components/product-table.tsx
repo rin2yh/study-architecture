@@ -1,4 +1,5 @@
 import type { Product } from "api/product";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "ui/table";
 
 interface ProductTableProps {
   products: Product[];
@@ -6,31 +7,31 @@ interface ProductTableProps {
 
 export function ProductTable({ products }: ProductTableProps) {
   return (
-    <table className="mt-6 w-full border-collapse text-left text-sm">
-      <thead>
-        <tr className="border-b border-gray-300 text-gray-500">
-          <th className="py-2 pr-4 font-medium">ID</th>
-          <th className="py-2 pr-4 font-medium">SKU</th>
-          <th className="py-2 pr-4 font-medium">商品名</th>
-          <th className="py-2 pr-4 text-right font-medium">価格</th>
-          <th className="py-2 font-medium">登録日時</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
+    <Table className="mt-6">
+      <TableHeader>
+        <TableRow>
+          <TableHead>ID</TableHead>
+          <TableHead>SKU</TableHead>
+          <TableHead>商品名</TableHead>
+          <TableHead className="text-right">価格</TableHead>
+          <TableHead>登録日時</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {products.map((p) => (
-          <tr key={p.id}>
-            <td className="py-3 pr-4 tabular-nums text-gray-500">{p.id}</td>
-            <td className="py-3 pr-4 text-gray-500">{p.sku}</td>
-            <td className="py-3 pr-4 font-medium">{p.name}</td>
-            <td className="py-3 pr-4 text-right tabular-nums">
+          <TableRow key={p.id}>
+            <TableCell className="tabular-nums text-muted-foreground">{p.id}</TableCell>
+            <TableCell className="text-muted-foreground">{p.sku}</TableCell>
+            <TableCell className="font-medium">{p.name}</TableCell>
+            <TableCell className="text-right tabular-nums">
               ¥{(p.priceCents / 100).toLocaleString()}
-            </td>
-            <td className="py-3 tabular-nums text-gray-500">
+            </TableCell>
+            <TableCell className="tabular-nums text-muted-foreground">
               {new Date(p.createdAt).toLocaleString("ja-JP")}
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }

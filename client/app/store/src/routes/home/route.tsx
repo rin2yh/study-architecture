@@ -2,9 +2,9 @@ import { Link } from "react-router";
 import { ShoppingCart } from "lucide-react";
 
 import { listProducts, ListProductsResponse } from "api/product";
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
-import { Button } from "@/shared/ui/button";
-import { PageLoading } from "@/shared/ui/page-loading";
+import { Alert, AlertDescription, AlertTitle } from "ui/alert";
+import { Button } from "ui/button";
+import { PageLoading } from "ui/page-loading";
 import { useCart } from "@/entities/cart";
 import type { Route } from "./+types/route";
 import { ProductRow } from "./components/product-row";
