@@ -7,6 +7,7 @@
     "react-router.config.ts",
     ".react-router/types/**/*"
   ],
+  "exclude": ["node_modules", "storybook-static", ".storybook/test-runner.ts"],
   "compilerOptions": {
     "rootDirs": [".", "./.react-router/types"],
     "types": ["node", "vite/client"],

@@ -151,3 +151,7 @@ dist-ssr
 *.local
 __unconfig*
 todos.json
+
+# ── Storybook / VRT ──
+storybook-static
+__diff_output__

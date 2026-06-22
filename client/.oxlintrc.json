@@ -5,6 +5,7 @@
     "**/dist/**",
     "**/build/**",
     "**/.react-router/**",
+    "**/storybook-static/**",
     "app/api/src/gen/**"
   ],
   "categories": {

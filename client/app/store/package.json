@@ -8,7 +8,11 @@
     "typecheck": "react-router typegen && tsc --noEmit",
     "start": "react-router-serve ./build/server/index.js",
     "test": "vitest run",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build-storybook": "storybook build",
+    "vrt:ci": "concurrently -k -s first -n SB,VRT \"http-server storybook-static -p 6006 --silent\" \"wait-on tcp:127.0.0.1:6006 && test-storybook --ci --url http://127.0.0.1:6006\"",
+    "vrt:update": "concurrently -k -s first -n SB,VRT \"http-server storybook-static -p 6006 --silent\" \"wait-on tcp:127.0.0.1:6006 && test-storybook -u --url http://127.0.0.1:6006\""
   },
   "dependencies": {
     "@react-router/node": "catalog:",
@@ -25,18 +29,27 @@
   },
   "devDependencies": {
     "@react-router/dev": "catalog:",
+    "@storybook/react-vite": "10.4.4",
+    "@storybook/test-runner": "0.24.4",
     "@testing-library/dom": "catalog:",
     "@testing-library/react": "catalog:",
+    "@types/jest-image-snapshot": "6.4.1",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "concurrently": "10.0.3",
+    "http-server": "14.1.1",
+    "jest-image-snapshot": "6.5.2",
     "jsdom": "catalog:",
+    "playwright": "1.60.0",
+    "storybook": "10.4.4",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-tsconfig-paths": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "wait-on": "9.0.10"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
