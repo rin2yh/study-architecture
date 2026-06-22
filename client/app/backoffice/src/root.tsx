@@ -1,7 +1,7 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import type { Route } from "./+types/root";
-import "./styles.css";
+import "ui/styles.css";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

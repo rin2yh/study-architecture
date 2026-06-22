@@ -1,6 +1,6 @@
 # ADR-202606220300: フロントエンドのコンポーネントを Feature-Sliced Design で層分けする
 
-- Status: Accepted (shadcn UI キットの置き場は各 app の `shared/ui` から共有 `ui` パッケージへ ADR-[[202606221200]] で更新)
+- Status: Accepted
 - Date: 2026-06-22
 - Relates to: ADR-[[202606170905]] / ADR-[[202606170908]] / ADR-[[202606190901]] / ADR-[[202606170906]]
 

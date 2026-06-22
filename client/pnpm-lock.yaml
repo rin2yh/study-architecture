@@ -6,18 +6,6 @@ settings:
 
 catalogs:
   default:
-    '@radix-ui/react-label':
-      specifier: 2.1.9
-      version: 2.1.9
-    '@radix-ui/react-select':
-      specifier: 2.3.0
-      version: 2.3.0
-    '@radix-ui/react-separator':
-      specifier: 1.1.9
-      version: 1.1.9
-    '@radix-ui/react-slot':
-      specifier: 1.2.5
-      version: 1.2.5
     '@react-router/dev':
       specifier: 7.17.0
       version: 7.17.0
@@ -51,12 +39,6 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: 4.1.8
       version: 4.1.8
-    class-variance-authority:
-      specifier: 0.7.1
-      version: 0.7.1
-    clsx:
-      specifier: 2.1.1
-      version: 2.1.1
     isbot:
       specifier: 5.1.41
       version: 5.1.41
@@ -78,15 +60,9 @@ catalogs:
     react-router:
       specifier: 7.17.0
       version: 7.17.0
-    tailwind-merge:
-      specifier: 3.6.0
-      version: 3.6.0
     tailwindcss:
       specifier: 4.3.0
       version: 4.3.0
-    tw-animate-css:
-      specifier: 1.4.0
-      version: 1.4.0
     typescript:
       specifier: 6.0.3
       version: 6.0.3
@@ -361,34 +337,34 @@ importers:
   app/ui:
     dependencies:
       '@radix-ui/react-label':
-        specifier: 'catalog:'
+        specifier: ^2.1.9
         version: 2.1.9(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-select':
-        specifier: 'catalog:'
+        specifier: ^2.3.0
         version: 2.3.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-separator':
-        specifier: 'catalog:'
+        specifier: ^1.1.9
         version: 1.1.9(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-slot':
-        specifier: 'catalog:'
+        specifier: ^1.2.5
         version: 1.2.5(@types/react@19.2.17)(react@19.2.7)
       class-variance-authority:
-        specifier: 'catalog:'
+        specifier: ^0.7.1
         version: 0.7.1
       clsx:
-        specifier: 'catalog:'
+        specifier: ^2.1.1
         version: 2.1.1
       lucide-react:
         specifier: 'catalog:'
         version: 0.545.0(react@19.2.7)
       tailwind-merge:
-        specifier: 'catalog:'
+        specifier: ^3.6.0
         version: 3.6.0
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.0
       tw-animate-css:
-        specifier: 'catalog:'
+        specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
       '@types/react':

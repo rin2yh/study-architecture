@@ -1,15 +1,15 @@
 # ui
 
 全サービス UI 共通の shadcn デザインシステム。`store` / `mypage` / `backoffice` から
-ワークスペースパッケージとして参照する単一情報源 (ADR-202606221200)。
+ワークスペースパッケージとして参照する単一情報源。
 
 ## 使い方
 
 各 app の `package.json` に `"ui": "workspace:*"` を追加し、CSS とコンポーネントを読み込む。
+CSS は各 app のエントリ (`src/root.tsx`) で直接 import する。
 
-```css
-/* app/<service>/src/styles.css */
-@import "ui/styles.css";
+```tsx
+import "ui/styles.css";
 ```
 
 ```tsx
