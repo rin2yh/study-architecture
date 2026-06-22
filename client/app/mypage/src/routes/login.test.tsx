@@ -15,11 +15,11 @@ vi.mock("api/member", async (importActual) => {
   return { ...actual, createSession: vi.fn() };
 });
 
-function loaderArgs(request: Request) {
-  return { request } as unknown as Parameters<typeof loader>[0];
+function loaderArgs(request: Request): Parameters<typeof loader>[0] {
+  return { request, url: new URL(request.url), params: {}, pattern: "/login", context: {} };
 }
-function actionArgs(request: Request) {
-  return { request } as unknown as Parameters<typeof action>[0];
+function actionArgs(request: Request): Parameters<typeof action>[0] {
+  return { request, url: new URL(request.url), params: {}, pattern: "/login", context: {} };
 }
 function postForm(fields: Record<string, string>): Request {
   return new Request("http://mypage.test/login", {
@@ -41,11 +41,12 @@ describe("login loader", () => {
   describe("準正常系", () => {
     it("既ログインなら / へリダイレクト", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(7);
-      const thrown = await loader(loaderArgs(new Request("http://mypage.test/login"))).catch(
-        (e) => e,
-      );
+      const thrown: unknown = await loader(
+        loaderArgs(new Request("http://mypage.test/login")),
+      ).catch((e: unknown) => e);
       expect(thrown).toBeInstanceOf(Response);
-      expect((thrown as Response).headers.get("Location")).toBe("/");
+      if (!(thrown instanceof Response)) throw thrown;
+      expect(thrown.headers.get("Location")).toBe("/");
     });
   });
 });
@@ -59,16 +60,16 @@ describe("login action", () => {
         data: { id: "tok123", memberId: 7, expiresAt: "2026-07-01T00:00:00Z" },
         status: 201,
         headers: new Headers(),
-      } as Awaited<ReturnType<typeof createSession>>);
+      });
 
       const res = await action(
         actionArgs(postForm({ email: "user@example.com", password: "password123" })),
       );
 
       expect(res).toBeInstanceOf(Response);
-      const response = res as Response;
-      expect(response.headers.get("Location")).toBe("/");
-      expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=tok123`);
+      if (!(res instanceof Response)) throw res;
+      expect(res.headers.get("Location")).toBe("/");
+      expect(res.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=tok123`);
     });
   });
 
@@ -87,14 +88,13 @@ describe("login action", () => {
 
 describe("Login component", () => {
   function renderLogin(actionData?: { error: string }) {
-    const Comp = Login as unknown as (props: {
-      actionData?: { error: string };
-    }) => React.ReactElement;
-    // Form が router context を要求するため stub でラップする。
-    const Stub = createRoutesStub([
-      { path: "/login", Component: () => <Comp actionData={actionData} /> },
-    ]);
-    render(<Stub initialEntries={["/login"]} />);
+    const Stub = createRoutesStub([{ id: "login", path: "/login", Component: Login }]);
+    render(
+      <Stub
+        initialEntries={["/login"]}
+        hydrationData={{ actionData: actionData ? { login: actionData } : null }}
+      />,
+    );
   }
 
   describe("正常系", () => {

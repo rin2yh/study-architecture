@@ -37,9 +37,8 @@ describe("mutator productFetch", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe("https://product.example.test/products");
-    // content-type ヘッダが付与される
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect((init.headers as Record<string, string>)["content-type"]).toBe("application/json");
+    const sentHeaders = new Headers(fetchMock.mock.calls[0][1]?.headers);
+    expect(sentHeaders.get("content-type")).toBe("application/json");
     expect(result.status).toBe(200);
     expect(result.headers).toBe(headers);
     expect(result.data).toEqual([
