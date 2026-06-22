@@ -3,8 +3,8 @@ profile: cover.out
 threshold:
   total: 60
 
-# 生成物・DI wiring・サービス起動点・テストヘルパは業務ロジックでないので分母から外す。
-# go test -coverpkg にはスコープ全体を渡し、計測対象の絞り込みはここに集約する。
+# api/db/di/client はいずれも生成コード (// Code generated)。go-test-coverage は生成物を
+# 自動判定できないため path で除外する。internal/test はテストヘルパ。
 exclude:
   paths:
     - server/[^/]+/api/
@@ -12,4 +12,3 @@ exclude:
     - /internal/di/
     - /internal/client/
     - /internal/test/
-    - server/[^/]+/main\.go$
