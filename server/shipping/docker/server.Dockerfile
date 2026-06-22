@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # 単一ルート go.mod 構成。ビルドコンテキストはリポジトリルート:
-#   docker build -f services/shipping/Dockerfile -t ec-shipping .
+#   docker build -f server/shipping/docker/server.Dockerfile -t ec-shipping .
 # 生成コードはコミット済み前提。未生成なら先に `mise gen` を実行する。
 FROM golang:1.26-alpine AS build
 WORKDIR /src

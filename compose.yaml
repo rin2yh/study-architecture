@@ -123,7 +123,7 @@ services:
   shipping:
     build:
       context: .
-      dockerfile: server/shipping/Dockerfile
+      dockerfile: server/shipping/docker/server.Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
     ports: ["8005:80"]
@@ -136,7 +136,7 @@ services:
   shipping-worker:
     build:
       context: .
-      dockerfile: server/shipping/Dockerfile.worker
+      dockerfile: server/shipping/docker/worker.Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
       REDIS_URL: redis://broker:6379
