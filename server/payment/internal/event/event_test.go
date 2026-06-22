@@ -6,10 +6,11 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 )
 
-func TestSettled(t *testing.T) {
+func TestIsSettled(t *testing.T) {
 	type want struct{ settled bool }
 	tests := []struct {
 		name   string
@@ -25,8 +26,8 @@ func TestSettled(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := event.Settled(tt.status); got != tt.want.settled {
-				t.Fatalf("Settled(%q) = %v, want %v", tt.status, got, tt.want.settled)
+			if got := event.IsSettled(tt.status); got != tt.want.settled {
+				t.Fatalf("IsSettled(%q) = %v, want %v", tt.status, got, tt.want.settled)
 			}
 		})
 	}
@@ -66,7 +67,7 @@ func TestRedisPublisherPublishPaymentSettled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRedisPublisher: %v", err)
 	}
-	if err := p.PublishPaymentSettled(t.Context(), event.PaymentSettled{PaymentID: 1, OrderID: 20, AmountCents: 2980}); err != nil {
+	if err := p.PublishPaymentSettled(t.Context(), paymentevent.Settled{PaymentID: 1, OrderID: 20, AmountCents: 2980}); err != nil {
 		t.Fatalf("PublishPaymentSettled: %v", err)
 	}
 

@@ -28,7 +28,6 @@ func run() error {
 	}
 
 	slog.Info("shipping worker started")
-	// silent death させず再起動に委ねる
 	if err := cons.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}

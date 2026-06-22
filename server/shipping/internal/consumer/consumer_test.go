@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
@@ -94,7 +95,7 @@ func TestReadAndProcess(t *testing.T) {
 			if err := c.ensureGroup(ctx); err != nil {
 				t.Fatalf("ensureGroup: %v", err)
 			}
-			if err := rc.XAdd(ctx, &redis.XAddArgs{Stream: streamPaymentEvents, Values: tt.args.values}).Err(); err != nil {
+			if err := rc.XAdd(ctx, &redis.XAddArgs{Stream: paymentevent.Stream, Values: tt.args.values}).Err(); err != nil {
 				t.Fatalf("XAdd: %v", err)
 			}
 
@@ -110,7 +111,7 @@ func TestReadAndProcess(t *testing.T) {
 					t.Fatalf("creator called with %v, want %v", creator.got, tt.want.gotOrderIDs)
 				}
 			}
-			p, err := rc.XPending(ctx, streamPaymentEvents, consumerGroup).Result()
+			p, err := rc.XPending(ctx, paymentevent.Stream, consumerGroup).Result()
 			if err != nil {
 				t.Fatalf("XPending: %v", err)
 			}

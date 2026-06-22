@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
-	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/payment/internal/stub"
@@ -88,7 +88,7 @@ func TestUpdatePayment(t *testing.T) {
 	type args struct{ body string }
 	type want struct {
 		status string
-		calls  []event.PaymentSettled
+		calls  []paymentevent.Settled
 	}
 	tests := []struct {
 		name string
@@ -98,7 +98,7 @@ func TestUpdatePayment(t *testing.T) {
 		{
 			"正常系 確定 status へ更新すると payment.settled を publish する",
 			args{`{"status":"paid"}`},
-			want{"paid", []event.PaymentSettled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
+			want{"paid", []paymentevent.Settled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
 		},
 		{
 			"準正常系 非確定 status への更新では publish しない",

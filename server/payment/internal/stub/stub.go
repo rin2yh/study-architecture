@@ -3,8 +3,8 @@ package stub
 import (
 	"context"
 
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
-	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 )
 
 type PaymentStub struct {
@@ -30,11 +30,11 @@ func (s PaymentStub) UpdatePayment(context.Context, db.UpdatePaymentParams) (db.
 }
 
 type PublisherStub struct {
-	Calls []event.PaymentSettled
+	Calls []paymentevent.Settled
 	Err   error
 }
 
-func (s *PublisherStub) PublishPaymentSettled(_ context.Context, e event.PaymentSettled) error {
+func (s *PublisherStub) PublishPaymentSettled(_ context.Context, e paymentevent.Settled) error {
 	s.Calls = append(s.Calls, e)
 	return s.Err
 }

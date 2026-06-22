@@ -6,27 +6,17 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
-const (
-	streamPaymentEvents = "payment.events"
-	typePaymentSettled  = "payment.settled"
-)
-
-type PaymentSettled struct {
-	PaymentID   int64
-	OrderID     int64
-	AmountCents int64
-}
-
 type Publisher interface {
-	PublishPaymentSettled(ctx context.Context, e PaymentSettled) error
+	PublishPaymentSettled(ctx context.Context, e paymentevent.Settled) error
 }
 
-// Settled は status が「決済確定」を表すかを判定する。確定の語彙はサービス間で揺れるため
+// IsSettled は status が「決済確定」を表すかを判定する。確定の語彙はサービス間で揺れるため
 // (capture/settle/paid 相当)、配送手配のトリガとなる確定状態をここで一元的に定義する。
-func Settled(status string) bool {
+func IsSettled(status string) bool {
 	switch status {
 	case "paid", "settled", "captured":
 		return true
@@ -49,14 +39,9 @@ func NewRedisPublisher() (*RedisPublisher, error) {
 	return &RedisPublisher{rdb: rc}, nil
 }
 
-func (p *RedisPublisher) PublishPaymentSettled(ctx context.Context, e PaymentSettled) error {
+func (p *RedisPublisher) PublishPaymentSettled(ctx context.Context, e paymentevent.Settled) error {
 	return p.rdb.XAdd(ctx, &redis.XAddArgs{
-		Stream: streamPaymentEvents,
-		Values: map[string]any{
-			"event":       typePaymentSettled,
-			"paymentId":   e.PaymentID,
-			"orderId":     e.OrderID,
-			"amountCents": e.AmountCents,
-		},
+		Stream: paymentevent.Stream,
+		Values: e.Values(),
 	}).Err()
 }

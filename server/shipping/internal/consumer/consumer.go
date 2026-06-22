@@ -13,13 +13,13 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
 const (
-	streamPaymentEvents = "payment.events"
-	consumerGroup       = "shipping"
-	typePaymentSettled  = "payment.settled"
+	consumerGroup = "shipping"
+	backoff       = time.Second
 )
 
 type ShipmentCreator interface {
@@ -31,7 +31,6 @@ type Consumer struct {
 	creator ShipmentCreator
 	name    string
 	block   time.Duration
-	backoff time.Duration
 }
 
 func New(rc *redis.Client, creator ShipmentCreator) *Consumer {
@@ -41,14 +40,14 @@ func New(rc *redis.Client, creator ShipmentCreator) *Consumer {
 	if name == "" {
 		name = consumerGroup
 	}
-	return &Consumer{rdb: rc, creator: creator, name: name, block: 5 * time.Second, backoff: time.Second}
+	return &Consumer{rdb: rc, creator: creator, name: name, block: 5 * time.Second}
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
 	if err := c.ensureGroup(ctx); err != nil {
 		return err
 	}
-	slog.Info("shipping consumer started", "stream", streamPaymentEvents, "group", consumerGroup, "consumer", c.name)
+	slog.Info("shipping consumer started", "stream", paymentevent.Stream, "group", consumerGroup, "consumer", c.name)
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -61,14 +60,14 @@ func (c *Consumer) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(c.backoff):
+			case <-time.After(backoff):
 			}
 		}
 	}
 }
 
 func (c *Consumer) ensureGroup(ctx context.Context) error {
-	err := c.rdb.XGroupCreateMkStream(ctx, streamPaymentEvents, consumerGroup, "$").Err()
+	err := c.rdb.XGroupCreateMkStream(ctx, paymentevent.Stream, consumerGroup, "$").Err()
 	// 2 回目以降の起動では group が既にあり BUSYGROUP になるが、これは正常。
 	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
 		return err
@@ -80,7 +79,7 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 	res, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 		Group:    consumerGroup,
 		Consumer: c.name,
-		Streams:  []string{streamPaymentEvents, ">"},
+		Streams:  []string{paymentevent.Stream, ">"},
 		Count:    16,
 		Block:    c.block,
 	}).Result()
@@ -97,7 +96,7 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 				slog.Error("shipping consumer: handle failed", "id", m.ID, "error", err)
 				continue
 			}
-			if err := c.rdb.XAck(ctx, streamPaymentEvents, consumerGroup, m.ID).Err(); err != nil {
+			if err := c.rdb.XAck(ctx, paymentevent.Stream, consumerGroup, m.ID).Err(); err != nil {
 				slog.Warn("shipping consumer: xack failed", "id", m.ID, "error", err)
 			}
 		}
@@ -106,10 +105,10 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 }
 
 func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
-	if t, _ := values["event"].(string); t != typePaymentSettled {
+	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	raw, _ := values["orderId"].(string)
+	raw, _ := values[paymentevent.FieldOrderID].(string)
 	orderID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
 		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。

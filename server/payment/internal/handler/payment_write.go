@@ -9,6 +9,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/event"
@@ -56,8 +57,8 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		return
 	}
 
-	if event.Settled(row.Status) {
-		if err := h.publisher.PublishPaymentSettled(c.Request.Context(), event.PaymentSettled{
+	if event.IsSettled(row.Status) {
+		if err := h.publisher.PublishPaymentSettled(c.Request.Context(), paymentevent.Settled{
 			PaymentID:   row.ID,
 			OrderID:     row.OrderID,
 			AmountCents: row.AmountCents,
