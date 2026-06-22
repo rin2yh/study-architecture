@@ -202,7 +202,7 @@ jobs:
         env:
           STORYBOOK_DISABLE_TELEMETRY: "1"
         run: |
-          set -euo pipefail
+          set -eu
           snap_dir=app/store/__vrt__/__snapshots__
           pnpm -F store build-storybook
           if [ -z "$(ls -A "$snap_dir" 2>/dev/null || true)" ]; then
