@@ -6,7 +6,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/rin2yh/study-architecture/server/internal/broker"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
 const (
@@ -42,7 +42,7 @@ type RedisPublisher struct {
 var _ Publisher = (*RedisPublisher)(nil)
 
 func NewRedisPublisher() (*RedisPublisher, error) {
-	rc, err := broker.NewClient()
+	rc, err := redisx.NewClient()
 	if err != nil {
 		return nil, err
 	}

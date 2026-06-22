@@ -1,5 +1,5 @@
-// Package broker はドメインイベントを運ぶ Redis 接続を組み立てる。
-package broker
+// Package redisx は go-redis 周りの共有ヘルパーをまとめる。
+package redisx
 
 import (
 	"errors"

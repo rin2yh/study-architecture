@@ -1,9 +1,9 @@
-package broker_test
+package redisx_test
 
 import (
 	"testing"
 
-	"github.com/rin2yh/study-architecture/server/internal/broker"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
 func TestNewClient(t *testing.T) {
@@ -21,7 +21,7 @@ func TestNewClient(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("REDIS_URL", tt.args.url)
-			_, err := broker.NewClient()
+			_, err := redisx.NewClient()
 			if tt.want.err && err == nil {
 				t.Fatal("NewClient(): want error")
 			}
