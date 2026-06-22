@@ -10,12 +10,9 @@ import { LoginPage } from "../pages/login-page";
 const seeded = SEED_PRODUCTS[0];
 
 test("ログインから商品購入までのフロー", async ({ page }) => {
-  const login = new LoginPage(page);
-  const home = new HomePage(page);
-  const cart = new CartPage(page);
-  const checkout = new CheckoutPage(page);
-
   await test.step("/login からログインして商品一覧へ", async () => {
+    const login = new LoginPage(page);
+    const home = new HomePage(page);
     await login.goto();
     await login.login(MEMBER.email, MEMBER.password);
 
@@ -24,6 +21,8 @@ test("ログインから商品購入までのフロー", async ({ page }) => {
   });
 
   await test.step("カートに入れてカート画面で確認する", async () => {
+    const home = new HomePage(page);
+    const cart = new CartPage(page);
     await home.addFirstToCart();
     await home.openCart();
     await expect(page).toHaveURL(/\/cart$/);
@@ -33,6 +32,8 @@ test("ログインから商品購入までのフロー", async ({ page }) => {
   });
 
   await test.step("注文を確定する", async () => {
+    const cart = new CartPage(page);
+    const checkout = new CheckoutPage(page);
     await cart.openCheckout();
     await expect(page).toHaveURL(/\/checkout$/);
     await expect(checkout.heading).toBeVisible();

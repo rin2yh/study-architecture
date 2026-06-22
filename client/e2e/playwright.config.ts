@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// ブラウザ側 route mock は SSR loader のサーバ fetch を差し替えられないため、実スタックに対して E2E する。
+// SSR loader のサーバ fetch はブラウザ側 route mock で差し替えられない。
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
 
 export default defineConfig({

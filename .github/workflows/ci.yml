@@ -206,7 +206,6 @@ jobs:
           awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
-  # store は SSR loader が実バックエンドを叩くため、ブラウザ側 mock では E2E できない。
   client-e2e:
     name: client-e2e
     runs-on: ubuntu-24.04
