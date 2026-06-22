@@ -15,7 +15,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 )
 
-// NewEngine は全サービス共通の Gin エンジン (Recovery + ErrorJSON) を構築する。
 func NewEngine() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
@@ -24,7 +23,6 @@ func NewEngine() *gin.Engine {
 	return engine
 }
 
-// Serve は handler を addr で起動し、ctx のキャンセルでグレースフルに停止する。
 func Serve(ctx context.Context, addr string, handler http.Handler) error {
 	srv := &http.Server{
 		Addr:              addr,
