@@ -1,0 +1,35 @@
+# buildx (docker-container driver) と ACTIONS_* 環境変数が前提で、gha backend の無いローカルでは
+# 使えない。そのため base には入れず、scripts/e2e-up.sh が CI のときだけ -f で重ねる CI 専用 override。
+services:
+  product:
+    build:
+      cache_from: ["type=gha,scope=product"]
+      cache_to: ["type=gha,scope=product,mode=max"]
+  order:
+    build:
+      cache_from: ["type=gha,scope=order"]
+      cache_to: ["type=gha,scope=order,mode=max"]
+  payment:
+    build:
+      cache_from: ["type=gha,scope=payment"]
+      cache_to: ["type=gha,scope=payment,mode=max"]
+  member:
+    build:
+      cache_from: ["type=gha,scope=member"]
+      cache_to: ["type=gha,scope=member,mode=max"]
+  shipping:
+    build:
+      cache_from: ["type=gha,scope=shipping"]
+      cache_to: ["type=gha,scope=shipping,mode=max"]
+  shipping-worker:
+    build:
+      cache_from: ["type=gha,scope=shipping-worker"]
+      cache_to: ["type=gha,scope=shipping-worker,mode=max"]
+  store:
+    build:
+      cache_from: ["type=gha,scope=store"]
+      cache_to: ["type=gha,scope=store,mode=max"]
+  backoffice:
+    build:
+      cache_from: ["type=gha,scope=backoffice"]
+      cache_to: ["type=gha,scope=backoffice,mode=max"]

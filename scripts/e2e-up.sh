@@ -14,13 +14,20 @@ case "$target" in
     ;;
 esac
 
-docker compose up -d --wait db-customer db-ops
+compose=(docker compose)
+if [ -n "${CI:-}" ]; then
+  # CI では docker layer を GitHub Actions cache に出し入れして build を短縮する (compose.ci.yaml)。
+  compose=(docker compose -f compose.yaml -f compose.ci.yaml)
+  export COMPOSE_BAKE=true
+fi
+
+"${compose[@]}" up -d --wait db-customer db-ops
 ./scripts/migrate.sh
 
 # 並列 build で docker daemon の I/O が詰まるのを避けるため 1 つずつ build する (.claude/rules/docker.md)。
 for svc in product order payment member shipping shipping-worker; do
-  docker compose build "$svc"
+  "${compose[@]}" build "$svc"
 done
-docker compose --profile "$profile" build "$target"
+"${compose[@]}" --profile "$profile" build "$target"
 
-exec docker compose --profile "$profile" up --no-build
+exec "${compose[@]}" --profile "$profile" up --no-build
