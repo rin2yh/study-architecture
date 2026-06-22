@@ -39,6 +39,17 @@ depends = ["up:db", "migrate"]
 env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
 run = "go test ./server/... -race -count=1"
 
+# store の E2E は SSR loader が実バックエンドを叩くため、社外スタックを起動してから回す。
+[tasks."test:e2e"]
+description = "社外スタックを起動して store の E2E を実行"
+depends = ["up:db", "migrate"]
+run = """
+docker compose --profile external up -d --build --wait
+pnpm -C client install --frozen-lockfile
+pnpm -C client -F e2e exec playwright install --with-deps chromium
+pnpm -C client -F e2e test
+"""
+
 [tasks.down]
 description = "全サービスを停止"
 run = "docker compose --profile external --profile internal down"
