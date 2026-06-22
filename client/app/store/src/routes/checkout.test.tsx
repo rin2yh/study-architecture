@@ -64,25 +64,16 @@ describe("action", () => {
   });
 
   describe("準正常系", () => {
-    it("カートが空なら呼ばずにエラーを返す", async () => {
-      const result = await callAction({ items: "[]", paymentMethod: "card" });
-      expect(checkout).not.toHaveBeenCalled();
-      expect(result).toEqual({ ok: false, error: "カートが空です。" });
-    });
-
-    it("支払い方法が無ければエラーを返す", async () => {
-      const result = await callAction({ items: JSON.stringify([{ productId: 1, quantity: 1 }]) });
-      expect(result).toEqual({ ok: false, error: "支払い方法を選択してください。" });
-    });
-
-    it("未ログインなら checkout を呼ばずエラーを返す", async () => {
+    const oneItem = JSON.stringify([{ productId: 1, quantity: 1 }]);
+    it.each([
+      ["カートが空", { items: "[]", paymentMethod: "card" }, "カートが空です。"],
+      ["支払い方法が未指定", { items: oneItem }, "支払い方法を選択してください。"],
+      ["未ログイン", { items: oneItem, paymentMethod: "card" }, "ログインが必要です。"],
+    ])("%s なら checkout を呼ばずエラーを返す", async (_name, fields, error) => {
       vi.mocked(currentMemberId).mockResolvedValue(null);
-      const result = await callAction({
-        items: JSON.stringify([{ productId: 1, quantity: 1 }]),
-        paymentMethod: "card",
-      });
+      const result = await callAction(fields);
       expect(checkout).not.toHaveBeenCalled();
-      expect(result).toEqual({ ok: false, error: "ログインが必要です。" });
+      expect(result).toEqual({ ok: false, error });
     });
   });
 

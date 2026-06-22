@@ -16,24 +16,24 @@ function reqWithCookie(cookie: string | null): Request {
 
 describe("readSessionToken", () => {
   describe("正常系", () => {
-    it("該当 Cookie のトークンを返す (前後の他 Cookie も無視)", () => {
-      expect(readSessionToken(reqWithCookie(`foo=bar; ${SESSION_COOKIE}=tok123; baz=qux`))).toBe(
+    it.each([
+      [
+        "該当 Cookie のトークンを返す (前後の他 Cookie も無視)",
+        `foo=bar; ${SESSION_COOKIE}=tok123; baz=qux`,
         "tok123",
-      );
-    });
-
-    it("URL エンコードされた値をデコードする", () => {
-      expect(readSessionToken(reqWithCookie(`${SESSION_COOKIE}=a%2Fb%3Dc`))).toBe("a/b=c");
+      ],
+      ["URL エンコードされた値をデコードする", `${SESSION_COOKIE}=a%2Fb%3Dc`, "a/b=c"],
+    ])("%s", (_name, cookie, expected) => {
+      expect(readSessionToken(reqWithCookie(cookie))).toBe(expected);
     });
   });
 
   describe("準正常系", () => {
-    it("Cookie ヘッダ無しは null", () => {
-      expect(readSessionToken(reqWithCookie(null))).toBeNull();
-    });
-
-    it("該当 Cookie が無ければ null", () => {
-      expect(readSessionToken(reqWithCookie("other=1"))).toBeNull();
+    it.each([
+      ["Cookie ヘッダ無しは null", null],
+      ["該当 Cookie が無ければ null", "other=1"],
+    ])("%s", (_name, cookie) => {
+      expect(readSessionToken(reqWithCookie(cookie))).toBeNull();
     });
   });
 });

@@ -72,13 +72,11 @@ describe("cart transforms", () => {
   });
 
   describe("異常系", () => {
-    it("readCart は壊れた JSON を空配列にフォールバックする", () => {
-      localStorage.setItem("store.cart.v1", "{not json");
-      expect(readCart()).toEqual([]);
-    });
-
-    it("readCart は配列でない JSON を空配列にする", () => {
-      localStorage.setItem("store.cart.v1", '{"a":1}');
+    it.each([
+      ["壊れた JSON", "{not json"],
+      ["配列でない JSON", '{"a":1}'],
+    ])("readCart は%sを空配列にフォールバックする", (_name, stored) => {
+      localStorage.setItem("store.cart.v1", stored);
       expect(readCart()).toEqual([]);
     });
   });
