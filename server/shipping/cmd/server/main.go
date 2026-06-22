@@ -13,12 +13,17 @@ import (
 )
 
 func main() {
+	os.Exit(start())
+}
+
+func start() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := run(ctx, ":80"); err != nil {
 		slog.Error("shipping service terminated", "error", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func run(ctx context.Context, addr string) error {

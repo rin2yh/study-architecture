@@ -24,3 +24,12 @@ func TestRun(t *testing.T) {
 		}
 	})
 }
+
+func TestStart(t *testing.T) {
+	t.Run("異常系 REDIS_URL 未指定で run が失敗し exit code 1", func(t *testing.T) {
+		t.Setenv("REDIS_URL", "")
+		if code := start(); code != 1 {
+			t.Fatalf("start() = %d, want 1", code)
+		}
+	})
+}
