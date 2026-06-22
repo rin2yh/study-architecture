@@ -7,7 +7,11 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { yen } from "@/shared/lib/money";
 
-export function OrderConfirmed({ order }: { order: Order }) {
+interface OrderConfirmedProps {
+  order: Order;
+}
+
+export function OrderConfirmed({ order }: OrderConfirmedProps) {
   return (
     <div className="mx-auto max-w-2xl p-8">
       <div className="flex items-center gap-2 text-green-600">

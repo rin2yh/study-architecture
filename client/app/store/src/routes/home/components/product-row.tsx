@@ -6,13 +6,12 @@ import { AddToCartButton } from "@/features/add-to-cart";
 import { useCart } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 
-export function ProductRow({
-  product,
-  cart,
-}: {
+interface ProductRowProps {
   product: Product;
   cart: ReturnType<typeof useCart>;
-}) {
+}
+
+export function ProductRow({ product, cart }: ProductRowProps) {
   return (
     <Card>
       <CardContent className="flex items-center justify-between">

@@ -1,6 +1,10 @@
 import type { Product } from "api/product";
 
-export function ProductTable({ products }: { products: Product[] }) {
+interface ProductTableProps {
+  products: Product[];
+}
+
+export function ProductTable({ products }: ProductTableProps) {
   return (
     <table className="mt-6 w-full border-collapse text-left text-sm">
       <thead>

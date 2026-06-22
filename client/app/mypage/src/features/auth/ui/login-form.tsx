@@ -1,6 +1,10 @@
 import { Form } from "react-router";
 
-export function LoginForm({ error }: { error?: string }) {
+interface LoginFormProps {
+  error?: string;
+}
+
+export function LoginForm({ error }: LoginFormProps) {
   return (
     <div className="mx-auto max-w-sm p-8">
       <h1 className="text-3xl font-bold">ログイン</h1>

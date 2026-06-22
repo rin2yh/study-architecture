@@ -4,15 +4,13 @@ import { Button } from "@/shared/ui/button";
 import type { CartItem } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 
-export function CartRow({
-  item,
-  onSetQty,
-  onRemove,
-}: {
+interface CartRowProps {
   item: CartItem;
   onSetQty: (productId: number, quantity: number) => void;
   onRemove: (productId: number) => void;
-}) {
+}
+
+export function CartRow({ item, onSetQty, onRemove }: CartRowProps) {
   return (
     <div className="flex items-center justify-between">
       <div>

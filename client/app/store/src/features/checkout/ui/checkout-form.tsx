@@ -9,15 +9,13 @@ import { Separator } from "@/shared/ui/separator";
 import { type CartItem, cartTotalCents, toCheckoutItems } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 
-export function CheckoutForm({
-  items,
-  error,
-  submitting,
-}: {
+interface CheckoutFormProps {
   items: CartItem[];
   error?: string;
   submitting: boolean;
-}) {
+}
+
+export function CheckoutForm({ items, error, submitting }: CheckoutFormProps) {
   return (
     <div className="mx-auto max-w-2xl p-8">
       <h1 className="text-3xl font-bold">チェックアウト</h1>

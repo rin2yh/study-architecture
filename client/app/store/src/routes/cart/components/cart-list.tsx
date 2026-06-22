@@ -9,15 +9,13 @@ import { CartRow } from "./cart-row";
 
 type Cart = ReturnType<typeof useCart>;
 
-export function CartList({
-  items,
-  onSetQty,
-  onRemove,
-}: {
+interface CartListProps {
   items: CartItem[];
   onSetQty: Cart["setQty"];
   onRemove: Cart["remove"];
-}) {
+}
+
+export function CartList({ items, onSetQty, onRemove }: CartListProps) {
   return (
     <div className="mx-auto max-w-2xl p-8">
       <h1 className="text-3xl font-bold">カート</h1>

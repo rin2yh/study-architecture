@@ -1,6 +1,10 @@
 import type { Order } from "api/order";
 
-export function OrderHistoryTable({ orders }: { orders: Order[] }) {
+interface OrderHistoryTableProps {
+  orders: Order[];
+}
+
+export function OrderHistoryTable({ orders }: OrderHistoryTableProps) {
   return (
     <table className="mt-6 w-full border-collapse text-sm">
       <thead>
