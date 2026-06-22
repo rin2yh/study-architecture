@@ -21,18 +21,14 @@ type Order = {
 };
 
 function renderHome(memberId: number, orders: Order[]) {
-  const Comp = Home as unknown as (props: {
-    loaderData: { memberId: number; orders: Order[] };
-  }) => React.ReactElement;
-  // Form が router context を要求するため stub でラップする。
   const Stub = createRoutesStub([
-    { path: "/", Component: () => <Comp loaderData={{ memberId, orders }} /> },
+    { path: "/", Component: Home, loader: () => ({ memberId, orders }) },
   ]);
   render(<Stub initialEntries={["/"]} />);
 }
 
-function loaderArgs(request: Request) {
-  return { request } as unknown as Parameters<typeof loader>[0];
+function loaderArgs(request: Request): Parameters<typeof loader>[0] {
+  return { request, url: new URL(request.url), params: {}, pattern: "/", context: {} };
 }
 
 describe("mypage Home loader", () => {
@@ -53,7 +49,7 @@ describe("mypage Home loader", () => {
         ],
         status: 200,
         headers: new Headers(),
-      } as Awaited<ReturnType<typeof listOrders>>);
+      });
 
       const result = await loader(loaderArgs(new Request("http://mypage.test/")));
 
@@ -77,11 +73,14 @@ describe("mypage Home loader", () => {
     it("未ログインなら /login へリダイレクトする", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(null);
 
-      const thrown = await loader(loaderArgs(new Request("http://mypage.test/"))).catch((e) => e);
+      const thrown: unknown = await loader(loaderArgs(new Request("http://mypage.test/"))).catch(
+        (e: unknown) => e,
+      );
 
       expect(thrown).toBeInstanceOf(Response);
-      expect((thrown as Response).status).toBe(302);
-      expect((thrown as Response).headers.get("Location")).toBe("/login");
+      if (!(thrown instanceof Response)) throw thrown;
+      expect(thrown.status).toBe(302);
+      expect(thrown.headers.get("Location")).toBe("/login");
       expect(vi.mocked(listOrders)).not.toHaveBeenCalled();
     });
   });
@@ -89,7 +88,7 @@ describe("mypage Home loader", () => {
 
 describe("mypage Home", () => {
   describe("正常系", () => {
-    it("注文履歴の行と会員ID/ログアウトを描画する", () => {
+    it("注文履歴の行と会員ID/ログアウトを描画する", async () => {
       renderHome(7, [
         {
           id: 101,
@@ -107,7 +106,7 @@ describe("mypage Home", () => {
         },
       ]);
 
-      expect(screen.getByText("注文履歴")).toBeDefined();
+      expect(await screen.findByText("注文履歴")).toBeDefined();
       expect(screen.getByText("会員ID: 7")).toBeDefined();
       expect(screen.getByRole("button", { name: "ログアウト" })).toBeDefined();
       expect(screen.getByText("101")).toBeDefined();
@@ -118,9 +117,9 @@ describe("mypage Home", () => {
   });
 
   describe("準正常系", () => {
-    it("空のとき空メッセージを描画する", () => {
+    it("空のとき空メッセージを描画する", async () => {
       renderHome(7, []);
-      expect(screen.getByText("注文履歴")).toBeDefined();
+      expect(await screen.findByText("注文履歴")).toBeDefined();
       expect(screen.getByText("注文履歴がありません。")).toBeDefined();
     });
   });
@@ -135,12 +134,19 @@ describe("mypage route fallbacks", () => {
   });
 
   describe("異常系", () => {
-    it("ErrorBoundary はエラーメッセージを描画する", () => {
-      const Boundary = ErrorBoundary as unknown as (props: {
-        error: unknown;
-      }) => React.ReactElement;
-      render(<Boundary error={new Error("order 取得失敗")} />);
-      expect(screen.getByRole("alert").textContent).toContain("エラー");
+    it("ErrorBoundary はエラーメッセージを描画する", async () => {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => null,
+          ErrorBoundary,
+          loader: () => {
+            throw new Error("order 取得失敗");
+          },
+        },
+      ]);
+      render(<Stub initialEntries={["/"]} />);
+      expect((await screen.findByRole("alert")).textContent).toContain("エラー");
       expect(screen.getByText("order 取得失敗")).toBeDefined();
     });
   });

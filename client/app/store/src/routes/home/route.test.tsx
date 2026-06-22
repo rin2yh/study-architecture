@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { createRoutesStub } from "react-router";
 
 import { readCart } from "@/entities/cart";
 import Home, { ErrorBoundary, HydrateFallback } from "./route";
@@ -13,28 +13,22 @@ type Product = {
   createdAt: string;
 };
 
-// React Router の Route.ComponentProps は loader 型と routes 構造から推論される型で
-// matches の tuple 型がテスト目的では検証コスト過剰。React の props として cast し直す。
 function renderHome(products: Product[]) {
-  const Comp = Home as unknown as (props: { loaderData: Product[] }) => React.ReactElement;
-  render(
-    <MemoryRouter>
-      <Comp loaderData={products} />
-    </MemoryRouter>,
-  );
+  const Stub = createRoutesStub([{ path: "/", Component: Home, loader: () => products }]);
+  render(<Stub initialEntries={["/"]} />);
 }
 
 afterEach(() => localStorage.clear());
 
 describe("Home", () => {
   describe("正常系", () => {
-    it("商品一覧の行を描画する", () => {
+    it("商品一覧の行を描画する", async () => {
       renderHome([
         { id: 1, sku: "SKU-1", name: "りんご", priceCents: 12300, createdAt: "2026-01-01" },
         { id: 2, sku: "SKU-2", name: "みかん", priceCents: 45600, createdAt: "2026-01-02" },
       ]);
 
-      expect(screen.getByText("商品一覧")).toBeDefined();
+      expect(await screen.findByText("商品一覧")).toBeDefined();
       expect(screen.getByText("りんご")).toBeDefined();
       expect(screen.getByText("SKU-1")).toBeDefined();
       expect(screen.getByText("¥123")).toBeDefined();
@@ -47,7 +41,9 @@ describe("Home", () => {
         { id: 1, sku: "SKU-1", name: "りんご", priceCents: 12300, createdAt: "2026-01-01" },
       ]);
 
-      const button = screen.getByRole("button", { name: "カートに入れる" }) as HTMLButtonElement;
+      const button = await screen.findByRole<HTMLButtonElement>("button", {
+        name: "カートに入れる",
+      });
       await waitFor(() => expect(button.disabled).toBe(false));
       fireEvent.click(button);
 
@@ -58,9 +54,9 @@ describe("Home", () => {
   });
 
   describe("準正常系", () => {
-    it("空のとき空メッセージを描画する", () => {
+    it("空のとき空メッセージを描画する", async () => {
       renderHome([]);
-      expect(screen.getByText("商品一覧")).toBeDefined();
+      expect(await screen.findByText("商品一覧")).toBeDefined();
       expect(screen.getByText("商品がありません。")).toBeDefined();
     });
   });
@@ -75,12 +71,19 @@ describe("route fallbacks", () => {
   });
 
   describe("異常系", () => {
-    it("ErrorBoundary はエラーメッセージを描画する", () => {
-      const Boundary = ErrorBoundary as unknown as (props: {
-        error: unknown;
-      }) => React.ReactElement;
-      render(<Boundary error={new Error("ネットワーク不通")} />);
-      expect(screen.getByRole("alert").textContent).toContain("エラー");
+    it("ErrorBoundary はエラーメッセージを描画する", async () => {
+      const Stub = createRoutesStub([
+        {
+          path: "/",
+          Component: () => null,
+          ErrorBoundary,
+          loader: () => {
+            throw new Error("ネットワーク不通");
+          },
+        },
+      ]);
+      render(<Stub initialEntries={["/"]} />);
+      expect((await screen.findByRole("alert")).textContent).toContain("エラー");
       expect(screen.getByText("ネットワーク不通")).toBeDefined();
     });
   });

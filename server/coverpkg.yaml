@@ -1,0 +1,10 @@
+# api/db/di/client は生成コードなので分母から外す。internal/test はテストヘルパ、
+# tools はビルド補助。main は計測対象に含める (ここに書かない)。
+# 各要素は import path にかける正規表現。
+exclude:
+  - /api$
+  - /internal/db$
+  - /internal/di$
+  - /internal/client/
+  - /internal/test/
+  - /tools/
