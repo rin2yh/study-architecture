@@ -25,7 +25,7 @@ func main() {
 }
 
 func run(args []string) error {
-	configPath := "scripts/coverpkg/config.yaml"
+	configPath := "server/coverpkg.yaml"
 	if len(args) >= 2 && args[0] == "-config" {
 		configPath, args = args[1], args[2:]
 	}
