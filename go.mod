@@ -3,12 +3,14 @@ module github.com/rin2yh/study-architecture
 go 1.26.2
 
 require (
+	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/mazrean/kessoku v1.1.0
 	github.com/oapi-codegen/runtime v1.4.1
+	github.com/redis/go-redis/v9 v9.20.1
 	golang.org/x/crypto v0.50.0
 )
 
@@ -113,6 +115,7 @@ require (
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	github.com/ydb-platform/ydb-go-genproto v0.0.0-20260311095541-ebbf792c1180 // indirect
 	github.com/ydb-platform/ydb-go-sdk/v3 v3.135.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect

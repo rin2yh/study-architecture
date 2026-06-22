@@ -44,3 +44,12 @@ func FromUpdate(err error) error {
 	}
 	return FromWrite(err)
 }
+
+// FromInsertSkipped は INSERT ... ON CONFLICT DO NOTHING の :one が行を返さない (既存と衝突して
+// 挿入がスキップされた) を ErrConflict に正規化する。read の no rows (ErrNotFound) とは逆の意味。
+func FromInsertSkipped(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrConflict
+	}
+	return err
+}

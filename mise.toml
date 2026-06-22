@@ -1,7 +1,7 @@
 [tasks.build]
 description = "全 image を 1 つずつ build (並列 build で daemon が詰まるのを避ける)"
 run = """
-for svc in product order payment member shipping; do
+for svc in product order payment member shipping shipping-worker; do
   docker compose build "$svc"
 done
 docker compose --profile external build store mypage

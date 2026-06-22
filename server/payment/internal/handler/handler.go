@@ -8,6 +8,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
+	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 )
 
 type Query interface {
@@ -25,7 +26,8 @@ type readHandler struct {
 }
 
 type writeHandler struct {
-	command Command
+	command   Command
+	publisher event.Publisher
 }
 
 type Handler struct {
@@ -35,10 +37,10 @@ type Handler struct {
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(query Query, command Command) *Handler {
+func New(query Query, command Command, publisher event.Publisher) *Handler {
 	return &Handler{
 		readHandler:  &readHandler{query: query},
-		writeHandler: &writeHandler{command: command},
+		writeHandler: &writeHandler{command: command, publisher: publisher},
 	}
 }
 
