@@ -1,3 +1,5 @@
+import { MEMBER_API_URL, ensureMember } from "./auth";
+
 // product のマイグレーションはテーブル作成だけでシードを持たないため、E2E が前提とする商品を
 // ここで用意する。store の loader は edge-proxy 経由で読むが、シード投入は product サービスへ
 // 直接 (host 公開ポート) POST する。
@@ -10,16 +12,16 @@ interface SeedProduct {
 }
 
 export const SEED_PRODUCTS: readonly SeedProduct[] = [
-  { sku: "E2E-SMOKE-001", name: "E2Eスモーク商品", priceCents: 12300 },
-  { sku: "E2E-SMOKE-002", name: "E2Eスモーク商品(2)", priceCents: 4560 },
+  { sku: "E2E-001", name: "E2E テスト商品", priceCents: 12300 },
+  { sku: "E2E-002", name: "E2E テスト商品(2)", priceCents: 4560 },
 ];
 
-async function waitForHealthy(timeoutMs = 60_000): Promise<void> {
+async function waitForHealthy(baseUrl: string, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${PRODUCT_API_URL}/healthz`);
+      const res = await fetch(`${baseUrl}/healthz`);
       if (res.ok) return;
       lastError = new Error(`healthz returned ${res.status}`);
     } catch (e) {
@@ -27,18 +29,16 @@ async function waitForHealthy(timeoutMs = 60_000): Promise<void> {
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
-  throw new Error(`product API not healthy at ${PRODUCT_API_URL}: ${String(lastError)}`);
+  throw new Error(`service not healthy at ${baseUrl}: ${String(lastError)}`);
 }
 
-export default async function globalSetup(): Promise<void> {
-  await waitForHealthy();
-
+async function seedProducts(): Promise<void> {
   const res = await fetch(`${PRODUCT_API_URL}/products`);
   if (!res.ok) throw new Error(`list products failed: ${res.status}`);
   const existing: SeedProduct[] = await res.json();
   const existingSkus = new Set(existing.map((p) => p.sku));
 
-  // sku は UNIQUE 制約。再実行で衝突しないよう未投入分だけ作る (冪等)。
+  // 複数回実行でも冪等にするため。
   for (const product of SEED_PRODUCTS) {
     if (existingSkus.has(product.sku)) continue;
     const created = await fetch(`${PRODUCT_API_URL}/products`, {
@@ -50,4 +50,10 @@ export default async function globalSetup(): Promise<void> {
       throw new Error(`seed product ${product.sku} failed: ${created.status}`);
     }
   }
+}
+
+export default async function globalSetup(): Promise<void> {
+  await Promise.all([waitForHealthy(PRODUCT_API_URL), waitForHealthy(MEMBER_API_URL)]);
+  await seedProducts();
+  await ensureMember();
 }

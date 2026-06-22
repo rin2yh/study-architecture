@@ -1,13 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 import { SEED_PRODUCTS } from "../setup/seed";
+import { SESSION_COOKIE, loginToken } from "../setup/auth";
 import { CartPage } from "../pages/cart-page";
 import { CheckoutPage } from "../pages/checkout-page";
 import { HomePage } from "../pages/home-page";
 
 const seeded = SEED_PRODUCTS[0];
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
 
-test("商品一覧からチェックアウトまでの購入フロー", async ({ page }) => {
+test("商品一覧からチェックアウトまでの購入フロー", async ({ page, context }) => {
   const home = new HomePage(page);
   const cart = new CartPage(page);
   const checkout = new CheckoutPage(page);
@@ -27,16 +29,17 @@ test("商品一覧からチェックアウトまでの購入フロー", async ({
     await expect(cart.total).toBeVisible();
   });
 
-  await test.step("チェックアウトへ進みフォームが出る", async () => {
+  await test.step("ログイン済みで注文を確定する", async () => {
+    // store にログイン UI が無いため (認証画面は mypage 側)。
+    const token = await loginToken();
+    await context.addCookies([{ name: SESSION_COOKIE, value: token, url: baseURL }]);
+
     await cart.openCheckout();
     await expect(page).toHaveURL(/\/checkout$/);
     await expect(checkout.heading).toBeVisible();
     await expect(checkout.paymentMethodLabel).toBeVisible();
-  });
 
-  await test.step("未ログインの確定はログイン要求になる", async () => {
-    // 認証 (#6) は未導入。action 経路を通し、ログイン要求になることだけ固定する。
     await checkout.submit();
-    await expect(checkout.error("ログインが必要です。")).toBeVisible();
+    await expect(checkout.confirmedHeading).toBeVisible();
   });
 });

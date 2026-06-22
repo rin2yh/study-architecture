@@ -207,7 +207,6 @@ jobs:
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
   # store は SSR loader が実バックエンドを叩くため、ブラウザ側 mock では E2E できない。
-  # フルスタックの build/up を伴い高コストなので、軽量な単体・型・結合が通ってから回す。
   client-e2e:
     name: client-e2e
     runs-on: ubuntu-24.04
@@ -217,7 +216,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # migration は host から goose で流す (scripts/migrate.sh が go tool goose を使う)。
+      # スタック起動は Playwright の webServer が担う。その中の migrate が goose を使うため Go が要る。
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
@@ -241,30 +240,8 @@ jobs:
         working-directory: client
         run: pnpm -F e2e exec playwright install --with-deps chromium
 
-      - name: start db
-        run: docker compose up -d --wait db-customer db-ops
-
-      - name: migrate
-        run: ./scripts/migrate.sh
-
-      - name: start external stack
-        run: docker compose --profile external up -d --build --wait
-
-      # store は healthcheck 未定義のため --wait では listen 完了まで保証されない。
-      - name: wait for store
-        run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:5173/ >/dev/null; then exit 0; fi
-            sleep 2
-          done
-          echo "store did not become ready" >&2
-          exit 1
-
       - name: e2e
         working-directory: client
-        env:
-          E2E_BASE_URL: http://localhost:5173
-          E2E_PRODUCT_API_URL: http://localhost:8001
         run: pnpm -F e2e test
 
       - name: compose logs
