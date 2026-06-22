@@ -1,7 +1,7 @@
 import type { Product } from "api/product";
 
-import { Badge } from "@/shared/ui/badge";
-import { Card, CardContent } from "@/shared/ui/card";
+import { Badge } from "ui/badge";
+import { Card, CardContent } from "ui/card";
 import { AddToCartButton } from "@/features/add-to-cart";
 import { useCart } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";

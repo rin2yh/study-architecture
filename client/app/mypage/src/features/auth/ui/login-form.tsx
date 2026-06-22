@@ -1,4 +1,8 @@
 import { Form } from "react-router";
+import { Alert, AlertDescription } from "ui/alert";
+import { Button } from "ui/button";
+import { Input } from "ui/input";
+import { Label } from "ui/label";
 
 interface LoginFormProps {
   error?: string;
@@ -9,37 +13,26 @@ export function LoginForm({ error }: LoginFormProps) {
     <div className="mx-auto max-w-sm p-8">
       <h1 className="text-3xl font-bold">ログイン</h1>
       <Form method="post" className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          メールアドレス
-          <input
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-            className="rounded border border-gray-300 px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          パスワード
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email">メールアドレス</Label>
+          <Input id="email" type="email" name="email" required autoComplete="email" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password">パスワード</Label>
+          <Input
+            id="password"
             type="password"
             name="password"
             required
             autoComplete="current-password"
-            className="rounded border border-gray-300 px-3 py-2"
           />
-        </label>
+        </div>
         {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-        <button
-          type="submit"
-          className="rounded bg-gray-900 px-3 py-2 text-white hover:bg-gray-700"
-        >
-          ログイン
-        </button>
+        <Button type="submit">ログイン</Button>
       </Form>
     </div>
   );

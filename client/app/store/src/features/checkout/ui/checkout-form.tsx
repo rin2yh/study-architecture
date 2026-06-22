@@ -1,11 +1,11 @@
 import { Form } from "react-router";
 
-import { Alert, AlertDescription } from "@/shared/ui/alert";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card";
-import { Label } from "@/shared/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Separator } from "@/shared/ui/separator";
+import { Alert, AlertDescription } from "ui/alert";
+import { Button } from "ui/button";
+import { Card, CardContent } from "ui/card";
+import { Label } from "ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "ui/select";
+import { Separator } from "ui/separator";
 import { type CartItem, cartTotalCents, toCheckoutItems } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 

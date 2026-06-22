@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* ui パッケージのコンポーネントは各 app の node_modules 経由 (workspace symlink) で読まれ、
+   Tailwind の自動コンテンツ検出が node_modules を辿らないため、明示 source 登録で class を残す。 */
+@source "../components";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

@@ -1,4 +1,5 @@
 import type { Order } from "api/order";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "ui/table";
 
 interface OrderHistoryTableProps {
   orders: Order[];
@@ -6,29 +7,29 @@ interface OrderHistoryTableProps {
 
 export function OrderHistoryTable({ orders }: OrderHistoryTableProps) {
   return (
-    <table className="mt-6 w-full border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-gray-300 text-left text-gray-500">
-          <th className="py-2 pr-4 font-medium">注文ID</th>
-          <th className="py-2 pr-4 font-medium">会員ID</th>
-          <th className="py-2 pr-4 font-medium">ステータス</th>
-          <th className="py-2 pr-4 text-right font-medium">合計</th>
-          <th className="py-2 font-medium">注文日時</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
+    <Table className="mt-6">
+      <TableHeader>
+        <TableRow>
+          <TableHead>注文ID</TableHead>
+          <TableHead>会員ID</TableHead>
+          <TableHead>ステータス</TableHead>
+          <TableHead className="text-right">合計</TableHead>
+          <TableHead>注文日時</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {orders.map((o) => (
-          <tr key={o.id}>
-            <td className="py-3 pr-4 tabular-nums">{o.id}</td>
-            <td className="py-3 pr-4 tabular-nums">{o.memberId}</td>
-            <td className="py-3 pr-4">{o.status}</td>
-            <td className="py-3 pr-4 text-right tabular-nums">
+          <TableRow key={o.id}>
+            <TableCell className="tabular-nums">{o.id}</TableCell>
+            <TableCell className="tabular-nums">{o.memberId}</TableCell>
+            <TableCell>{o.status}</TableCell>
+            <TableCell className="text-right tabular-nums">
               ¥{(o.totalCents / 100).toLocaleString()}
-            </td>
-            <td className="py-3">{new Date(o.createdAt).toLocaleString("ja-JP")}</td>
-          </tr>
+            </TableCell>
+            <TableCell>{new Date(o.createdAt).toLocaleString("ja-JP")}</TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }

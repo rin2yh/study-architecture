@@ -1,6 +1,6 @@
 import { Minus, Plus, Trash2 } from "lucide-react";
 
-import { Button } from "@/shared/ui/button";
+import { Button } from "ui/button";
 import type { CartItem } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 

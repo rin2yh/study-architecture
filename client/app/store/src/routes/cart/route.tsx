@@ -1,5 +1,5 @@
 import { useCart } from "@/entities/cart";
-import { PageLoading } from "@/shared/ui/page-loading";
+import { PageLoading } from "ui/page-loading";
 import { CartList } from "./components/cart-list";
 import { EmptyCart } from "./components/empty-cart";
 
