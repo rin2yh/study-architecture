@@ -30,8 +30,6 @@ env:
   COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
-  # ui は vendored shadcn の共有パッケージでテストを持たないため、型崩れ検出の typecheck だけ回す
-  # (coverage gate は課さない)。
   client-ui:
     name: client-ui
     runs-on: ubuntu-24.04
@@ -59,8 +57,6 @@ jobs:
       - name: typecheck
         run: pnpm -F ui typecheck
 
-  # @ec/api は orval 生成の共有クライアント (+zod) で全 app が参照する。テストを持つので
-  # typecheck + coverage を回す。
   client-api:
     name: client-api
     runs-on: ubuntu-24.04
