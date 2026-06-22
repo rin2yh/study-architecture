@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: client
+        working-directory: client/app/store
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -39,20 +39,21 @@ jobs:
           cache-dependency-path: client/pnpm-lock.yaml
 
       - name: install
+        working-directory: client
         run: pnpm install --frozen-lockfile
 
       - name: install chromium
-        run: pnpm -F store exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: regenerate baselines
         env:
           STORYBOOK_DISABLE_TELEMETRY: "1"
         run: |
           set -eu
-          pnpm -F store build-storybook
-          pnpm -F store exec http-server storybook-static -p 6006 --silent &
-          pnpm -F store exec wait-on tcp:127.0.0.1:6006
-          pnpm -F store exec test-storybook -u --url http://127.0.0.1:6006
+          pnpm build-storybook
+          pnpm exec http-server storybook-static -p 6006 --silent &
+          pnpm exec wait-on tcp:127.0.0.1:6006
+          pnpm exec test-storybook -u --url http://127.0.0.1:6006
 
       - name: commit baselines
         env:
