@@ -22,6 +22,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# PR では GITHUB_SHA が merge commit になるため、coverage コメントのフッタには head sha を渡す。
+env:
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   server-unit:
     name: server-unit-${{ matrix.service }}
@@ -57,18 +61,24 @@ jobs:
         continue-on-error: true
         with:
           config: ./.testcoverage.yml
+          breakdown-file-name: coverage-breakdown.txt
+
+      # coverage-report.sh は渡した profile を丸ごと集計するので、gate と同じ除外後集合 (breakdown)
+      # で絞らないとコメントの数値が gate とずれる。
+      - name: build coverage report
+        run: |
+          cut -d';' -f1 coverage-breakdown.txt | sed 's#^#/#; s#$#:#' > allow.txt
+          head -1 cover.out > cover.filtered.out
+          grep -Ff allow.txt cover.out >> cover.filtered.out
+          bash scripts/coverage-report.sh "server-unit-${{ matrix.service }}" cover.filtered.out > coverage.md
 
       # 単一マーカーだと 6 ジョブ (per-service 5 + integration) が同じコメントを奪い合うため。
       - name: comment coverage
-        if: github.event_name == 'pull_request' && steps.cov.outputs.report != ''
+        if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: coverage-server-unit-${{ matrix.service }}
-          message: |
-            ## Coverage Report for server-unit-${{ matrix.service }}
-            ```
-            ${{ fromJSON(steps.cov.outputs.report) }}
-            ```
+          path: coverage.md
 
       - name: coverage gate
         if: steps.cov.outcome == 'failure'
@@ -161,17 +171,23 @@ jobs:
         continue-on-error: true
         with:
           config: ./.testcoverage.yml
+          breakdown-file-name: coverage-breakdown.txt
+
+      # coverage-report.sh は渡した profile を丸ごと集計するので、gate と同じ除外後集合 (breakdown)
+      # で絞らないとコメントの数値が gate とずれる。
+      - name: build coverage report
+        run: |
+          cut -d';' -f1 coverage-breakdown.txt | sed 's#^#/#; s#$#:#' > allow.txt
+          head -1 cover.out > cover.filtered.out
+          grep -Ff allow.txt cover.out >> cover.filtered.out
+          bash scripts/coverage-report.sh "server-integration" cover.filtered.out > coverage.md
 
       - name: comment coverage
-        if: github.event_name == 'pull_request' && steps.cov.outputs.report != ''
+        if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: coverage-server-integration
-          message: |
-            ## Coverage Report for server-integration
-            ```
-            ${{ fromJSON(steps.cov.outputs.report) }}
-            ```
+          path: coverage.md
 
       - name: coverage gate
         if: steps.cov.outcome == 'failure'
