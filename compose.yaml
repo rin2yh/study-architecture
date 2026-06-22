@@ -23,7 +23,6 @@ services:
     networks: [external-public, external-private, internal-private]
     depends_on: [product, order, payment, member, shipping]
 
-  # multi-home が許される例外 (ADR-[[202606211200]])
   broker:
     image: redis:7-alpine
     healthcheck:
