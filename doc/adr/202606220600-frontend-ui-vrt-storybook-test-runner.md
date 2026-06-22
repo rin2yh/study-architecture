@@ -34,12 +34,11 @@ shadcn でユニットテストを持たない方針のため、CI では covera
   (`--ci`) で、差分か欠落が出たら fail し diff 画像を artifact に上げる (ベースラインは書き換えない)。
   ベースライン更新は専用の `vrt-baseline.yml` が同じイメージで撮り直してコミットする。
   - 理由: 「差分が出たら自動更新」は意図しない退行も受け入れてしまいゲートが無意味になる。更新は必ず
-    **人間の承認シグナル**を起点にする。シグナルは PR への `vrt:update` ラベル (PR 中の更新) または
-    手動 `workflow_dispatch` (任意ブランチ)。
-  - 更新コミットの push が比較ゲートを再発火して HEAD を green にできるよう、push には PAT (`VRT_PAT`)
-    を使う。未設定時は `GITHUB_TOKEN` にフォールバックし、その場合は CI を手動再実行する。
-  - CI が PR ブランチへ自動 push する初期案は、部分更新不可・ローカルとリモートの乖離・`GITHUB_TOKEN`
-    push が CI を再発火せず HEAD が未検証になる、の 3 点で運用が脆く、これを避けるため分離した。
+    **人間の承認シグナル** (PR への `vrt:update` ラベル) を起点にする。
+  - push は `GITHUB_TOKEN` で行う。これは比較ゲートを再発火しないため、更新後に HEAD を green にするには
+    何か push する (次のコミットで比較が回る) 運用とする。PAT 等は持ち込まない。
+  - CI が比較も更新も兼ねて PR ブランチへ自動 push する初期案は、部分更新不可・ローカルとリモートの
+    乖離・HEAD が未検証、の 3 点で運用が脆く、これを避けるため比較と更新を分離した。
 - **依存は `store` の devDeps に直接ピンする** (catalog に入れない)。VRT 専用ツール
   (storybook / @storybook/react-vite / @storybook/test-runner / playwright / jest-image-snapshot /
   http-server / wait-on) は他パッケージで共有しないため。serve + 実行はワークフローの shell で
@@ -55,8 +54,8 @@ shadcn でユニットテストを持たない方針のため、CI では covera
   構成は単純、という割り切り)。
 - 手元では Storybook の確認 (`pnpm -F store storybook`) はできるが、ベースライン撮影は CI runner に
   委ねる。ブラウザバイナリ取得とフォント差でローカル撮影は環境依存になりやすい、という割り切り。
-- 更新は承認 (ラベル / dispatch) を起点にする半自動で、`GITHUB_TOKEN` 自動 push の脆さを避けられる。
-  代償として最良の体験 (更新後に HEAD が自動 green) には `VRT_PAT` secret の登録が要る。
+- 更新は `vrt:update` ラベル承認を起点にする。secret (PAT) を持ち込まないぶん単純だが、更新後に HEAD を
+  green にするには何か push する一手間が要る (`GITHUB_TOKEN` push は CI を再発火しないため)。
 - `store` に VRT ツールチェーンが乗るぶん install が重くなるが、`client` matrix とは別ジョブのため
   既存の coverage パイプラインには影響しない。
 

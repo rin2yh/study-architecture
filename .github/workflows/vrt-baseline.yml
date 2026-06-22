@@ -1,14 +1,9 @@
-name: VRT baseline
+name: Visual Regression Test (baseline)
 
-# 「差分が出たら自動更新」は意図しない退行も受け入れるため、更新は人間の承認 (ラベル/dispatch) 起点
+# 「差分が出たら自動更新」は意図しない退行も受け入れるため、更新は人間の承認 (vrt:update ラベル) 起点
 # に限定する。比較ゲート (vrt.yml) と同じ ubuntu-24.04 + Playwright で撮るので差分が出ない。
 # 方針は ADR-202606220600。
 on:
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: 撮り直す対象ブランチ
-        required: true
   pull_request:
     types: [labeled]
 
@@ -16,13 +11,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: vrt-baseline-${{ github.event.pull_request.head.ref || inputs.ref }}
+  group: vrt-baseline-${{ github.event.pull_request.head.ref }}
   cancel-in-progress: true
 
 jobs:
   update:
     name: vrt-baseline
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'vrt:update'
+    if: github.event.label.name == 'vrt:update'
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -30,10 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          # VRT_PAT があれば push が比較ゲートを再発火し HEAD が green になる。無ければ
-          # GITHUB_TOKEN にフォールバックし、再発火しないぶん CI の手動再実行が要る。
-          token: ${{ secrets.VRT_PAT || github.token }}
-          ref: ${{ github.event.pull_request.head.ref || inputs.ref }}
+          ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: true
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -64,7 +56,7 @@ jobs:
 
       - name: commit baselines
         env:
-          HEAD_BRANCH: ${{ github.event.pull_request.head.ref || inputs.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"

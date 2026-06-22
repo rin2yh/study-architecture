@@ -1,7 +1,6 @@
-name: VRT
+name: Visual Regression Test
 
-# store のページの見た目を Storybook + test-runner で固定する比較専用ゲート (ADR-202606220600)。
-# ベースライン更新は vrt-baseline.yml に分離。ページ/ui に関係ない変更では走らせないよう paths で絞る。
+# ベースライン更新は vrt-baseline.yml に分離 (ADR-202606220600)。
 on:
   push:
     branches: [main]
