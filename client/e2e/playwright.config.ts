@@ -1,18 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const storeBaseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
-const backofficeBaseURL = process.env.E2E_BACKOFFICE_BASE_URL ?? "http://localhost:5175";
+const appNames = ["store", "backoffice"] as const;
+type App = (typeof appNames)[number];
 
-// store (社外) と backoffice (社内) は別量子で、毎回両方を動かすわけではないため (PR #43 review)。
-const target = process.env.E2E_PROJECT;
-const runStore = !target || target === "store";
-const runBackoffice = !target || target === "backoffice";
-
-const webServerBase = {
-  cwd: "../..",
-  reuseExistingServer: !process.env.CI,
-  timeout: 600_000,
+const baseURLs: Record<App, string> = {
+  store: process.env.E2E_BASE_URL ?? "http://localhost:5173",
+  backoffice: process.env.E2E_BACKOFFICE_BASE_URL ?? "http://localhost:5175",
 };
+
+const selected = appNames.filter(
+  (app) => !process.env.E2E_PROJECT || process.env.E2E_PROJECT === app,
+);
 
 export default defineConfig({
   testDir: "./tests",
@@ -25,24 +23,16 @@ export default defineConfig({
   use: {
     trace: "on-first-retry",
   },
-  webServer: [
-    ...(runStore
-      ? [{ ...webServerBase, command: "bash scripts/e2e-up.sh store", url: storeBaseURL }]
-      : []),
-    ...(runBackoffice
-      ? [{ ...webServerBase, command: "bash scripts/e2e-up.sh backoffice", url: backofficeBaseURL }]
-      : []),
-  ],
-  projects: [
-    {
-      name: "store",
-      testDir: "./tests/store",
-      use: { ...devices["Desktop Chrome"], baseURL: storeBaseURL },
-    },
-    {
-      name: "backoffice",
-      testDir: "./tests/backoffice",
-      use: { ...devices["Desktop Chrome"], baseURL: backofficeBaseURL },
-    },
-  ],
+  webServer: selected.map((app) => ({
+    command: `bash scripts/e2e-up.sh ${app}`,
+    cwd: "../..",
+    url: baseURLs[app],
+    reuseExistingServer: !process.env.CI,
+    timeout: 600_000,
+  })),
+  projects: selected.map((app) => ({
+    name: app,
+    testDir: `./tests/${app}`,
+    use: { ...devices["Desktop Chrome"], baseURL: baseURLs[app] },
+  })),
 });
