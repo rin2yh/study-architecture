@@ -28,4 +28,3 @@
 | [202606211100](202606211100-member-auth-httponly-cookie-session.md) | Accepted | 認証は HttpOnly Cookie + member 所有のサーバ側セッション |
 | [202606211200](202606211200-event-driven-shipment-on-payment-settled.md) | Accepted | 決済確定イベントを起点に shipping が配送を手配する (Redis Streams) |
 | [202606211520](202606211520-test-case-class-4xx-quasi-normal.md) | Accepted | テストのケース分類で 4xx を準正常系・5xx を異常系に分ける |
-| [202606220900](202606220900-service-bootstrap-shared-httpx.md) | Accepted | サービスの HTTP 起動処理を共通 httpx に集約しカバレッジを通す |

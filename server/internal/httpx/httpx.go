@@ -1,6 +1,6 @@
 // Package httpx は 5 サービスの HTTP サーバ bootstrap (Gin エンジン構築と
 // グレースフルシャットダウン) を共通化する。各 main.go が同一処理を重複実装するのを
-// 1 箇所に集約する (ADR-[[202606220900]])。
+// 1 箇所に集約する。
 package httpx
 
 import (
