@@ -5,6 +5,15 @@ import (
 	"testing"
 )
 
+func TestStart(t *testing.T) {
+	t.Run("異常系 DATABASE_URL 未指定で run が失敗し exit code 1", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "")
+		if code := start(); code != 1 {
+			t.Fatalf("start() = %d, want 1", code)
+		}
+	})
+}
+
 func TestRun(t *testing.T) {
 	t.Run("正常系 ctx キャンセル済みなら起動直後にグレースフル停止し nil", func(t *testing.T) {
 		// pgxpool.New / redis.ParseURL は遅延接続なので到達不能 URL でも InitHandler は成功する。
@@ -21,15 +30,6 @@ func TestRun(t *testing.T) {
 		t.Setenv("DATABASE_URL", "")
 		if err := run(context.Background(), ":0"); err == nil {
 			t.Fatal("run(): want error")
-		}
-	})
-}
-
-func TestStart(t *testing.T) {
-	t.Run("異常系 DATABASE_URL 未指定で run が失敗し exit code 1", func(t *testing.T) {
-		t.Setenv("DATABASE_URL", "")
-		if code := start(); code != 1 {
-			t.Fatalf("start() = %d, want 1", code)
 		}
 	})
 }
