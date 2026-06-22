@@ -93,7 +93,7 @@ func TestGetShipment(t *testing.T) {
 			t.Fatalf("trackingNo = %q, want TRK-1", got.TrackingNo)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetShipment(t.Context(), 9999); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

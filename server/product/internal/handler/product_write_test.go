@@ -58,10 +58,10 @@ func TestCreateProductError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 sku 欠落は 400 bad_request", args{stub.ProductStub{}, `{"name":"x","priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 name 欠落は 400 bad_request", args{stub.ProductStub{}, `{"sku":"SKU-X","priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 priceCents 負値は 422 unprocessable_entity", args{stub.ProductStub{}, `{"sku":"SKU-X","name":"x","priceCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 sku 重複は 409 conflict", args{stub.ProductStub{Err: dberr.ErrConflict}, `{"sku":"SKU-DUP","name":"重複","priceCents":100}`}, want{http.StatusConflict, "conflict"}},
+		{"準正常系 sku 欠落は 400 bad_request", args{stub.ProductStub{}, `{"name":"x","priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 name 欠落は 400 bad_request", args{stub.ProductStub{}, `{"sku":"SKU-X","priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 priceCents 負値は 422 unprocessable_entity", args{stub.ProductStub{}, `{"sku":"SKU-X","name":"x","priceCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"準正常系 sku 重複は 409 conflict", args{stub.ProductStub{Err: dberr.ErrConflict}, `{"sku":"SKU-DUP","name":"重複","priceCents":100}`}, want{http.StatusConflict, "conflict"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ProductStub{Err: errors.New("db failure")}, `{"sku":"SKU-X","name":"x","priceCents":100}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
@@ -121,9 +121,9 @@ func TestUpdateProductError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 name 欠落は 400 bad_request", args{stub.ProductStub{}, "/products/1", `{"priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 priceCents 負値は 422 unprocessable_entity", args{stub.ProductStub{}, "/products/1", `{"name":"x","priceCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 未存在は 404 not_found", args{stub.ProductStub{Err: dberr.ErrNotFound}, "/products/99", `{"name":"x","priceCents":100}`}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 name 欠落は 400 bad_request", args{stub.ProductStub{}, "/products/1", `{"priceCents":100}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 priceCents 負値は 422 unprocessable_entity", args{stub.ProductStub{}, "/products/1", `{"name":"x","priceCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"準正常系 未存在は 404 not_found", args{stub.ProductStub{Err: dberr.ErrNotFound}, "/products/99", `{"name":"x","priceCents":100}`}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ProductStub{Err: errors.New("db failure")}, "/products/1", `{"name":"x","priceCents":100}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

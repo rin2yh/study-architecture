@@ -78,9 +78,9 @@ func TestCreateOrderError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 status 欠落は 400 bad_request", args{stub.OrderStub{}, `{"memberId":20,"totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, `{"status":"pending","totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 totalCents 負値は 422 unprocessable_entity", args{stub.OrderStub{}, `{"memberId":20,"status":"pending","totalCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"準正常系 status 欠落は 400 bad_request", args{stub.OrderStub{}, `{"memberId":20,"totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, `{"status":"pending","totalCents":1980}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 totalCents 負値は 422 unprocessable_entity", args{stub.OrderStub{}, `{"memberId":20,"status":"pending","totalCents":-1}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
 		{"異常系 DB エラーは 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, `{"memberId":20,"status":"pending","totalCents":1980}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
@@ -140,8 +140,8 @@ func TestUpdateOrderError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 status 欠落は 400 bad_request", args{stub.OrderStub{}, "/orders/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.OrderStub{Err: dberr.ErrNotFound}, "/orders/99", `{"status":"paid"}`}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 status 欠落は 400 bad_request", args{stub.OrderStub{}, "/orders/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 未存在は 404 not_found", args{stub.OrderStub{Err: dberr.ErrNotFound}, "/orders/99", `{"status":"paid"}`}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, "/orders/1", `{"status":"paid"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
@@ -200,12 +200,12 @@ func TestCheckoutError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 明細が空配列は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 items 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 quantity 0 は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 paymentMethod 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在 product は 422 unprocessable_entity", args{stub.OrderStub{}, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"準正常系 明細が空配列は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 items 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 quantity 0 は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 paymentMethod 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 未存在 product は 422 unprocessable_entity", args{stub.OrderStub{}, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
 		{"異常系 product 呼び出し失敗は 502 bad_gateway", args{stub.OrderStub{}, stub.Product{Err: errors.New("boom")}, stub.Payment{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
 		{"異常系 注文書き込み失敗は 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, stub.TwoProducts(), stub.Payment{}, valid}, want{http.StatusInternalServerError, "internal"}},
 		{"異常系 payment 失敗は 502 bad_gateway", args{stub.OrderStub{Order: db.OrderOrder{ID: 7}}, stub.TwoProducts(), stub.Payment{Err: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
