@@ -41,9 +41,11 @@ CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / int
 - **共有パッケージ ui/api 専用の `ci-shared.yml`** を置く。ui/api は複数 app が参照する量子では
   ない共有ライブラリで、それ自身の変更時だけ独立に検証する (`client/app/ui` / `client/app/api` と
   共有依存の変更で起動)。ジョブは ui と api を混ぜず `client-ui` / `client-api` に分ける。
-- **lint/format は単一 pnpm workspace 全体が対象で量子でも app でも割れない**ため、各ワークフロー
-  に `lint` ジョブを 1 つ置き、ワークフローごとに 1 回回す (client matrix の各 app では回さない)。
-  per-app の typecheck/coverage/build は各量子ワークフロー側。
+- **lint/format (code quality) は単一 pnpm workspace 全体が対象**で量子でも app でも割れないため、
+  各量子ワークフロー (customer / backoffice) に `code-quality` ジョブを 1 つ置き、ワークフローごとに
+  1 回回す (client matrix の各 app では回さない)。ci-shared は ui/api 専用なので lint は持たない
+  (ui/api の変更は量子側の `code-quality` でも lint される)。per-app の typecheck/coverage/build は
+  各量子ワークフロー側。
 - **起動制御は native `paths:`** で行い、`dorny/paths-filter` の動的 matrix も集約 gate job も
   使わない。ブランチ保護で個別 check を必須にしない運用 (下記) のため、無関係変更で workflow
   自体が起動しなくても merge はブロックされず、issue #38 の「required check 整合」課題が消える。
@@ -65,8 +67,8 @@ CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / int
   構造が一致し、量子の概念を学ぶ教材としても読みやすい。
 - 共有パスリストを 2 ファイルに複製するため、共有 lib のパス追加時は**両ファイルを揃えて直す**
   必要がある (片方忘れると fan-out が片肺になる)。
-- lint/format は各ワークフローの `lint` ジョブで 1 回ずつ走る。client matrix の app ごとに重複
-  実行していた旧構成は解消した。複数ワークフローが起動した変更では各々 1 回ずつ走る (workspace
+- lint/format は各量子ワークフローの `code-quality` ジョブで 1 回ずつ走る。client matrix の app
+  ごとに重複実行していた旧構成は解消した。両量子が起動した変更では各々 1 回ずつ走る (workspace
   全体が対象で app 単位に割れないための許容コスト)。
 - 共有パッケージ ui/api は `ci-shared.yml` の `client-ui` / `client-api` で個別に検証し、api の
   coverage コメントもここから 1 回だけ出す (旧 client-shared のコメント競合は解消)。量子側は

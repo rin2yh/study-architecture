@@ -135,10 +135,10 @@ jobs:
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
-  # lint/format は単一 pnpm workspace 全体が対象なので、client matrix の各 app では回さず
-  # ワークフローごとに 1 回だけ回す。
-  lint:
-    name: lint
+  # lint/format (code quality) は単一 pnpm workspace 全体が対象で、client matrix の各 app では
+  # 回さずワークフローごとに 1 回だけ回す。
+  code-quality:
+    name: code-quality
     runs-on: ubuntu-24.04
     defaults:
       run:
