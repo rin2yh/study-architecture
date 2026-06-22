@@ -80,7 +80,7 @@ jobs:
       fail-fast: false
       matrix:
         # api は build script を持たない (後段の build / typecheck は --if-present 前提)
-        package: [store, mypage, backoffice, api]
+        package: [store, backoffice, api]
     defaults:
       run:
         working-directory: client

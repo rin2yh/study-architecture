@@ -15,7 +15,7 @@ function actionArgs(request: Request): Parameters<typeof action>[0] {
 function reqWithCookie(cookie: string | null): Request {
   const headers = new Headers();
   if (cookie !== null) headers.set("Cookie", cookie);
-  return new Request("http://mypage.test/logout", { method: "POST", headers });
+  return new Request("http://store.test/logout", { method: "POST", headers });
 }
 
 describe("logout action", () => {
