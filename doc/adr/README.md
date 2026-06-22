@@ -26,4 +26,5 @@
 | [202606210900](202606210900-what-comment-lint-via-claude-hook.md) | Accepted | what コメント検出を Claude Code hook + LLM 判定で行う |
 | [202606211000](202606211000-adr-timestamp-naming.md) | Accepted | ADR の識別子を連番からタイムスタンプ (YYYYMMDDHHmm) に変える |
 | [202606211100](202606211100-member-auth-httponly-cookie-session.md) | Accepted | 認証は HttpOnly Cookie + member 所有のサーバ側セッション |
+| [202606211200](202606211200-event-driven-shipment-on-payment-settled.md) | Accepted | 決済確定イベントを起点に shipping が配送を手配する (Redis Streams) |
 | [202606211520](202606211520-test-case-class-4xx-quasi-normal.md) | Accepted | テストのケース分類で 4xx を準正常系・5xx を異常系に分ける |

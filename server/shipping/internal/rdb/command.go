@@ -21,6 +21,11 @@ func (r *ShipmentCommand) CreateShipment(ctx context.Context, arg db.CreateShipm
 	return r.q.CreateShipment(ctx, arg)
 }
 
+func (r *ShipmentCommand) CreateShipmentForOrder(ctx context.Context, orderID int64) (db.ShippingShipment, error) {
+	row, err := r.q.CreateShipmentForOrder(ctx, orderID)
+	return row, dberr.FromInsertSkipped(err)
+}
+
 func (r *ShipmentCommand) UpdateShipment(ctx context.Context, arg db.UpdateShipmentParams) (db.ShippingShipment, error) {
 	row, err := r.q.UpdateShipment(ctx, arg)
 	if err != nil {
