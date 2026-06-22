@@ -8,9 +8,18 @@ const baseURLs: Record<App, string> = {
   backoffice: process.env.E2E_BACKOFFICE_BASE_URL ?? "http://localhost:5175",
 };
 
-const selected = appNames.filter(
-  (app) => !process.env.E2E_PROJECT || process.env.E2E_PROJECT === app,
-);
+// webServer は --project では絞られないため、CLI の --project を自前で読んで起動スタックも
+// 同じ project に合わせる。未指定なら両方。
+function selectProjects(): readonly App[] {
+  const picked = new Set<string>();
+  process.argv.forEach((arg, i) => {
+    if (arg === "--project") picked.add(process.argv[i + 1] ?? "");
+    else if (arg.startsWith("--project=")) picked.add(arg.slice("--project=".length));
+  });
+  const valid = appNames.filter((app) => picked.has(app));
+  return valid.length > 0 ? valid : appNames;
+}
+const selected = selectProjects();
 
 export default defineConfig({
   testDir: "./tests",
