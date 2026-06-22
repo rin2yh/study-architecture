@@ -1,13 +1,19 @@
-name: CI (shared client)
+name: CI (shared packages)
 
-# client は単一 pnpm workspace で、lint/format と共有パッケージ (ui / api) は量子で割れない。
-# 量子ではない共通検査をここに集約する (根拠 ADR-[[202606220716]])。per-app の
-# typecheck/build/coverage は各量子ワークフロー側。
+# 共有パッケージ ui / api 専用の CI。複数 app が参照する「量子ではない」共有ライブラリで、
+# それ自身が変わったときだけ独立に検証する (根拠 ADR-[[202606220716]])。
 on:
   push:
     branches: [main]
     paths: &trigger-paths
-      - "client/**"
+      - "client/app/ui/**"
+      - "client/app/api/**"
+      - "client/pnpm-workspace.yaml"
+      - "client/pnpm-lock.yaml"
+      - "client/package.json"
+      - "client/tsconfig.json"
+      - "client/.oxlintrc.json"
+      - "client/.oxfmtrc.json"
       - ".github/workflows/ci-shared.yml"
   pull_request:
     paths: *trigger-paths
@@ -24,8 +30,9 @@ env:
   COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
-  client-shared:
-    name: client-shared
+  # lint/format は単一 pnpm workspace 全体が対象なので、ワークフローごとに 1 回だけ回す。
+  lint:
+    name: lint
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -54,16 +61,64 @@ jobs:
       - name: format
         run: pnpm format:check
 
-      - name: typecheck (ui)
+  client-ui:
+    name: client-ui
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: typecheck
         run: pnpm -F ui typecheck
 
-      - name: typecheck (api)
+  client-api:
+    name: client-api
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: typecheck
         run: pnpm -F api run --if-present typecheck
 
-      - name: coverage (api)
+      - name: coverage
         run: pnpm -F api test:cov
 
-      - name: report coverage (api)
+      - name: report coverage
         if: always()
         uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
         with:

@@ -38,9 +38,12 @@ CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / int
 ワークフローは量子ごとの 2 ファイル (`ci-customer.yml` / `ci-backoffice.yml`) に加え、量子では
 ない workspace 共通検査を持つ `ci-shared.yml` の計 3 ファイルにする。
 
-- **client の workspace 共通検査 (lint/format と共有パッケージ ui/api) は `ci-shared.yml` に集約**
-  する。lint/format は単一 pnpm workspace 全体が対象で量子では割れないため、量子ワークフローへ
-  複製せず 1 本に寄せる (`client/**` 変更で起動)。per-app の typecheck/coverage/build は各量子側。
+- **共有パッケージ ui/api 専用の `ci-shared.yml`** を置く。ui/api は複数 app が参照する量子では
+  ない共有ライブラリで、それ自身の変更時だけ独立に検証する (`client/app/ui` / `client/app/api` と
+  共有依存の変更で起動)。ジョブは ui と api を混ぜず `client-ui` / `client-api` に分ける。
+- **lint/format は単一 pnpm workspace 全体が対象で量子でも app でも割れない**ため、各ワークフロー
+  に `lint` ジョブを 1 つ置き、ワークフローごとに 1 回回す (client matrix の各 app では回さない)。
+  per-app の typecheck/coverage/build は各量子ワークフロー側。
 - **起動制御は native `paths:`** で行い、`dorny/paths-filter` の動的 matrix も集約 gate job も
   使わない。ブランチ保護で個別 check を必須にしない運用 (下記) のため、無関係変更で workflow
   自体が起動しなくても merge はブロックされず、issue #38 の「required check 整合」課題が消える。
@@ -62,10 +65,14 @@ CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / int
   構造が一致し、量子の概念を学ぶ教材としても読みやすい。
 - 共有パスリストを 2 ファイルに複製するため、共有 lib のパス追加時は**両ファイルを揃えて直す**
   必要がある (片方忘れると fan-out が片肺になる)。
-- workspace 全体を対象にする lint/format (oxlint/oxfmt) と共有パッケージ ui/api の検査は
-  `ci-shared.yml` で 1 回だけ走る。量子ワークフローへ複製していた旧構成の二重実行・api coverage
-  コメント競合は解消した。代わりに client 共通変更では ci-shared と両量子が起動し、量子内では
-  server/client が同一トリガを共有するため client 変更で server job も回る (broad fan-out は許容)。
+- lint/format は各ワークフローの `lint` ジョブで 1 回ずつ走る。client matrix の app ごとに重複
+  実行していた旧構成は解消した。複数ワークフローが起動した変更では各々 1 回ずつ走る (workspace
+  全体が対象で app 単位に割れないための許容コスト)。
+- 共有パッケージ ui/api は `ci-shared.yml` の `client-ui` / `client-api` で個別に検証し、api の
+  coverage コメントもここから 1 回だけ出す (旧 client-shared のコメント競合は解消)。量子側は
+  ui/api 変更で app ビルドへの影響を再検証する。
+- 量子ワークフロー内では server/client が同一トリガを共有するため、client 変更で server job も回る
+  (broad fan-out は許容。server/client のワークフロー分離は保留)。
 - **「2 量子」は厳密な量子ではなく、DB/network 境界 (ADR-[[202606170909]]) に寄せた運用上の近似**
   である。edge-proxy 越しの同期呼び出しが残るため、教科書的には単一量子に縮約される点は承知の上。
 - **required check を将来有効化する場合**、native `paths:` では無関係変更時に workflow が起動せず
