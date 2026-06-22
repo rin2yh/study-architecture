@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SESSION_COOKIE, currentMemberId, readSessionToken } from "./session";
+import {
+  SESSION_COOKIE,
+  clearSessionCookie,
+  currentMemberId,
+  readSessionToken,
+  sessionCookie,
+} from "./session";
 import { getSession } from "api/member";
 
 vi.mock("api/member", async (importActual) => {
@@ -34,6 +40,23 @@ describe("readSessionToken", () => {
       ["該当 Cookie が無ければ null", "other=1"],
     ])("%s", (_name, cookie) => {
       expect(readSessionToken(reqWithCookie(cookie))).toBeNull();
+    });
+  });
+});
+
+describe("sessionCookie / clearSessionCookie", () => {
+  describe("正常系", () => {
+    it("HttpOnly/SameSite/Path/Max-Age を含む", () => {
+      const c = sessionCookie("tok123");
+      expect(c).toContain(`${SESSION_COOKIE}=tok123`);
+      expect(c).toContain("HttpOnly");
+      expect(c).toContain("SameSite=Lax");
+      expect(c).toContain("Path=/");
+      expect(c).toMatch(/Max-Age=\d+/);
+    });
+
+    it("clear は Max-Age=0 で失効させる", () => {
+      expect(clearSessionCookie()).toContain("Max-Age=0");
     });
   });
 });

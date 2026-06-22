@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
-import Home, { ErrorBoundary, HydrateFallback, loader } from "./route";
+import Orders, { ErrorBoundary, HydrateFallback, loader } from "./route";
 import { currentMemberId } from "@/entities/session";
 import { listOrders } from "api/order";
 
@@ -22,7 +22,7 @@ type Order = {
 
 function renderHome(memberId: number, orders: Order[]) {
   const Stub = createRoutesStub([
-    { path: "/", Component: Home, loader: () => ({ memberId, orders }) },
+    { path: "/", Component: Orders, loader: () => ({ memberId, orders }) },
   ]);
   render(<Stub initialEntries={["/"]} />);
 }
@@ -31,7 +31,7 @@ function loaderArgs(request: Request): Parameters<typeof loader>[0] {
   return { request, url: new URL(request.url), params: {}, pattern: "/", context: {} };
 }
 
-describe("mypage Home loader", () => {
+describe("Orders loader", () => {
   afterEach(() => vi.clearAllMocks());
 
   describe("正常系", () => {
@@ -51,7 +51,7 @@ describe("mypage Home loader", () => {
         headers: new Headers(),
       });
 
-      const result = await loader(loaderArgs(new Request("http://mypage.test/")));
+      const result = await loader(loaderArgs(new Request("http://store.test/")));
 
       expect(vi.mocked(listOrders).mock.calls[0][0]).toEqual({ headers: { "X-Member-Id": "7" } });
       expect(result).toEqual({
@@ -73,7 +73,7 @@ describe("mypage Home loader", () => {
     it("未ログインなら /login へリダイレクトする", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(null);
 
-      const thrown: unknown = await loader(loaderArgs(new Request("http://mypage.test/"))).catch(
+      const thrown: unknown = await loader(loaderArgs(new Request("http://store.test/"))).catch(
         (e: unknown) => e,
       );
 
@@ -86,7 +86,7 @@ describe("mypage Home loader", () => {
   });
 });
 
-describe("mypage Home", () => {
+describe("Orders", () => {
   describe("正常系", () => {
     it("注文履歴の行と会員ID/ログアウトを描画する", async () => {
       renderHome(7, [
@@ -125,7 +125,7 @@ describe("mypage Home", () => {
   });
 });
 
-describe("mypage route fallbacks", () => {
+describe("orders route fallbacks", () => {
   describe("準正常系", () => {
     it("HydrateFallback はローディング表示を返す", () => {
       render(<HydrateFallback />);

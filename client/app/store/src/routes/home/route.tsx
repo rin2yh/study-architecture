@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, User } from "lucide-react";
 
 import { listProducts, ListProductsResponse } from "api/product";
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
@@ -21,12 +21,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <div className="mx-auto max-w-2xl p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">商品一覧</h1>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/cart">
-            <ShoppingCart />
-            カート
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/orders">
+              <User />
+              マイページ
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/cart">
+              <ShoppingCart />
+              カート
+            </Link>
+          </Button>
+        </div>
       </div>
       <div className="mt-6 space-y-3">
         {products.map((p) => (

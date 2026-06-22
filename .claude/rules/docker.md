@@ -13,7 +13,7 @@ paths:
 ## 全イメージを 1 ショットで build しない
 
 `docker compose --profile external --profile internal up -d --build` を一発で叩くと、
-buildkit が 8 イメージ (backend 5 + UI 3) を並列に build しはじめて、OrbStack の docker
+buildkit が 7 イメージ (backend 5 + UI 2) を並列に build しはじめて、OrbStack の docker
 daemon が捌ききれなくなる:
 
 - daemon socket が `use of closed network connection` で切断される
@@ -27,7 +27,7 @@ daemon が捌ききれなくなる:
 for svc in product order payment member shipping; do
   docker compose build "$svc"
 done
-docker compose --profile external build store mypage
+docker compose --profile external build store
 docker compose --profile internal build backoffice
 
 # 全部 build できたら image だけで起動 (--no-build で並列 build を抑止)
