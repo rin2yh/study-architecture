@@ -30,8 +30,8 @@ env:
   COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
-  client-ui:
-    name: client-ui
+  client-ui-quality:
+    name: client-ui-quality
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -57,8 +57,8 @@ jobs:
       - name: typecheck
         run: pnpm -F ui typecheck
 
-  client-api:
-    name: client-api
+  client-api-test:
+    name: client-api-test
     runs-on: ubuntu-24.04
     defaults:
       run:
