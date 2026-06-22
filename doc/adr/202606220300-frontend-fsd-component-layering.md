@@ -40,8 +40,11 @@ re-export する adapter は**置かない**:
 - `app` 層 = `root.tsx` (html shell / `Outlet` / グローバル ErrorBoundary) + `routes.ts` + `styles.css`。
 - `pages` 層 = `routes/`。**route モジュールがページそのもの**で、`loader` / `action` /
   default / `ErrorBoundary` / `HydrateFallback` を持つ (フレームワーク契約はページの責務)。
-  そのページ専用の表示コンポーネントは `routes/<page>/` に**コロケート**する
-  (例: `routes/home/product-row.tsx`、`routes/cart/{cart-list,cart-row,empty-cart}.tsx`)。
+  そのページ専用の表示コンポーネントは `routes/<page>/components/` に**コロケート**する
+  (例: `routes/home/components/product-row.tsx`、
+  `routes/cart/components/{cart-list,cart-row,empty-cart}.tsx`)。`routes/` はフレームワーク
+  都合のページ層で FSD の正式スライスではないため、セグメント名は `ui` ではなく `components`
+  とする (正式スライスの `features/*/ui`・`entities/*/ui` は FSD 規約どおり `ui` のまま)。
 
 サーバ側ローダの方針は ADR-[[202606170905]] を踏襲する。
 

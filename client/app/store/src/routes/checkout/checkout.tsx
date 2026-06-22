@@ -7,8 +7,8 @@ import { currentMemberId } from "@/entities/session";
 import { CheckoutForm, parseItems, type CheckoutResult } from "@/features/checkout";
 import { PageLoading } from "@/shared/ui/page-loading";
 import type { Route } from "./+types/checkout";
-import { OrderConfirmed } from "./order-confirmed";
-import { EmptyCheckout } from "./empty-checkout";
+import { OrderConfirmed } from "./components/order-confirmed";
+import { EmptyCheckout } from "./components/empty-checkout";
 
 // ADR-[[202606170905]]
 export async function action({ request }: Route.ActionArgs): Promise<CheckoutResult> {

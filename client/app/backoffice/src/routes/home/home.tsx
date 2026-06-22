@@ -1,6 +1,6 @@
 import { listProducts, ListProductsResponse } from "api/product";
 import type { Route } from "./+types/home";
-import { ProductTable } from "./product-table";
+import { ProductTable } from "./components/product-table";
 
 export async function loader() {
   const { data } = await listProducts();

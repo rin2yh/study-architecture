@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/button";
 import { PageLoading } from "@/shared/ui/page-loading";
 import { useCart } from "@/entities/cart";
 import type { Route } from "./+types/home";
-import { ProductRow } from "./product-row";
+import { ProductRow } from "./components/product-row";
 
 export async function loader() {
   const { data } = await listProducts();

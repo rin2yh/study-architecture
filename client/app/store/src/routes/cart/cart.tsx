@@ -1,7 +1,7 @@
 import { useCart } from "@/entities/cart";
 import { PageLoading } from "@/shared/ui/page-loading";
-import { CartList } from "./cart-list";
-import { EmptyCart } from "./empty-cart";
+import { CartList } from "./components/cart-list";
+import { EmptyCart } from "./components/empty-cart";
 
 export default function Cart() {
   const cart = useCart();
