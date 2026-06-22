@@ -10,6 +10,7 @@ on:
       - "server/payment/**"
       - "server/member/**"
       - "client/app/store/**"
+      - "client/e2e/**"
       - "server/internal/**"
       - "server/tools/**"
       - "go.mod"
@@ -210,3 +211,45 @@ jobs:
         run: |
           awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    needs: [code-quality, server-unit, client, server-integration]
+    defaults:
+      run:
+        working-directory: client/e2e
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      # スタック起動は Playwright の webServer が担う。その中の migrate が goose を使うため Go が要る。
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: install playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: e2e
+        run: pnpm test
+
+      - name: compose logs
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: docker compose --profile external logs --no-color
