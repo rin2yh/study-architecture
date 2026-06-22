@@ -1,16 +1,30 @@
-name: CI
+name: CI (customer)
 
+# 顧客系量子 (store / order / payment / member / db-customer)。分割根拠は ADR-[[202606220716]]。
 on:
   push:
     branches: [main]
+    # 共有 lib ブロックは backoffice 側と同一内容を複製する (anchor はファイルを跨げない。ADR-[[202606220716]])。
     paths: &trigger-paths
-      - "server/**"
-      - "client/**"
-      - "scripts/**"
+      - "server/order/**"
+      - "server/payment/**"
+      - "server/member/**"
+      - "client/app/store/**"
+      - "server/internal/**"
+      - "server/tools/**"
       - "go.mod"
       - "go.sum"
-      - ".github/workflows/ci.yml"
+      - "client/app/ui/**"
+      - "client/app/api/**"
+      - "client/pnpm-workspace.yaml"
+      - "client/pnpm-lock.yaml"
+      - "client/package.json"
+      - "client/tsconfig.json"
+      - "client/.oxlintrc.json"
+      - "client/.oxfmtrc.json"
+      - "scripts/**"
       - "compose.yaml"
+      - ".github/workflows/ci-customer.yml"
   pull_request:
     paths: *trigger-paths
 
@@ -19,7 +33,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-customer-${{ github.ref }}
   cancel-in-progress: true
 
 # PR では GITHUB_SHA が merge commit になるため、coverage コメントのフッタには head sha を渡す。
@@ -27,13 +41,43 @@ env:
   COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
+  code-quality:
+    name: code-quality
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        run: pnpm lint
+
+      - name: format
+        run: pnpm format:check
+
   server-unit:
     name: server-unit-${{ matrix.service }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        service: [product, order, payment, member, shipping]
+        service: [order, payment, member]
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -58,7 +102,7 @@ jobs:
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
           bash scripts/coverage-report.sh "server-unit-$svc" cover.out > coverage.md
 
-      # 単一マーカーだと 6 ジョブ (per-service 5 + integration) が同じコメントを奪い合うため。
+      # 単一マーカーだと per-service の各ジョブが同じコメントを奪い合うため。
       - name: comment coverage
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
@@ -79,8 +123,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # api は build script を持たない (後段の build / typecheck は --if-present 前提)
-        package: [store, backoffice, api]
+        package: [store]
     defaults:
       run:
         working-directory: client
@@ -101,12 +144,6 @@ jobs:
 
       - name: install
         run: pnpm install --frozen-lockfile
-
-      - name: lint
-        run: pnpm lint
-
-      - name: format
-        run: pnpm format:check
 
       - name: typecheck
         run: pnpm -F "${{ matrix.package }}" run --if-present typecheck
@@ -127,41 +164,6 @@ jobs:
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
-  # ui は vendored shadcn の共有パッケージでテストを持たないため、coverage gate 前提の
-  # client matrix には載せず、型崩れ検出用に typecheck だけ独立で回す。
-  client-ui:
-    name: client-ui
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: client
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-        with:
-          version: 11
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: client/pnpm-lock.yaml
-
-      - name: install
-        run: pnpm install --frozen-lockfile
-
-      - name: lint
-        run: pnpm lint
-
-      - name: format
-        run: pnpm format:check
-
-      - name: typecheck
-        run: pnpm -F ui typecheck
-
   server-integration:
     name: server-integration
     runs-on: ubuntu-24.04
@@ -175,28 +177,31 @@ jobs:
           cache: true
 
       - name: start db
-        run: docker compose up -d --wait db-customer db-ops
+        run: docker compose up -d --wait db-customer
 
       - name: migrate
-        run: ./scripts/migrate.sh
+        run: |
+          for svc in order payment member; do
+            ./scripts/migrate.sh "$svc"
+          done
 
       - name: test
         id: cov
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
           DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
-          DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
         run: |
-          pkgs=$(go run ./server/tools/coverpkg ./server/...)
-          go test ./server/... -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          target="./server/order/... ./server/payment/... ./server/member/... ./server/internal/..."
+          pkgs=$(go run ./server/tools/coverpkg $target)
+          go test $target -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
-          bash scripts/coverage-report.sh "server-integration" cover.out > coverage.md
+          bash scripts/coverage-report.sh "server-integration-customer" cover.out > coverage.md
 
       - name: comment coverage
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
-          header: coverage-server-integration
+          header: coverage-server-integration-customer
           path: coverage.md
 
       - name: coverage gate
