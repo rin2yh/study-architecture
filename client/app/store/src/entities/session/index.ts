@@ -1,1 +1,7 @@
-export { SESSION_COOKIE, currentMemberId, readSessionToken } from "./model/session";
+export {
+  SESSION_COOKIE,
+  clearSessionCookie,
+  currentMemberId,
+  readSessionToken,
+  sessionCookie,
+} from "./model/session";

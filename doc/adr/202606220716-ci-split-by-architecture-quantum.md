@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-06-22
-- Relates to: ADR-[[202606170900]] (サービスベースアーキテクチャ), ADR-[[202606170909]] (顧客系/運用系 DB・network 分離), ADR-[[202606211200]] (payment→shipping 非同期 seam), [[ci.md]] (CI 規約)
+- Relates to: ADR-[[202606170900]] (サービスベースアーキテクチャ), ADR-[[202606170909]] (顧客系/運用系 DB・network 分離), ADR-[[202606211200]] (payment→shipping 非同期 seam), ADR-[[202606221300]] (mypage を store に統合・退役), [[ci.md]] (CI 規約)
 
 ## Context
 
@@ -17,11 +17,12 @@ Step 0 の結合を計測した結果:
 - **共有 DB が 2 つ** (ADR-[[202606170909]]): `db-customer`={order, payment, member} /
   `db-ops`={product, shipping}。同一 DB = 静的結合 = 同一量子なので、5 サービスは DB だけで
   既に 2 つの塊に縮約され、5 量子にはならない。
-- **UI→サービスは同期直接呼び出し**: store→{product, order, payment, member}、
-  mypage→{member, order, shipping}、backoffice→{product, order, shipping}。`order` は 3 UI 全部
-  から、サービスも両 DB を跨いで同期で呼ばれる。同期呼び出しは同一量子へ引き込む。
+- **UI→サービスは同期直接呼び出し**: store→{product, order, payment, member, shipping}、
+  backoffice→{product, order, shipping}。`order` は両 UI から、サービスも両 DB を跨いで同期で
+  呼ばれる。同期呼び出しは同一量子へ引き込む (顧客向け mypage は ADR-[[202606221300]] で store に
+  統合・退役済み)。
 - **唯一の非同期 seam** は payment→shipping (Redis Streams, ADR-[[202606211200]])。ただし
-  shipping は mypage/backoffice から同期到達され product と db-ops も共有するので、この境界
+  shipping は store/backoffice から同期到達され product と db-ops も共有するので、この境界
   だけでは量子を割り切れない。
 
 厳密な教科書的読みでは Step 0 は実質 **1 量子** (共有 DB + 全面的な同期結合) で、これは
@@ -32,7 +33,7 @@ Step 0 の結合を計測した結果:
 CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / internal (運用)** 境界に寄せた
 **2 量子**を採る。境界は edge-proxy (同期中継) と Redis Streams (payment→shipping, 非同期)。
 
-- **顧客系量子**: `store` / `mypage` / `order` / `payment` / `member` / `db-customer`
+- **顧客系量子**: `store` / `order` / `payment` / `member` / `db-customer`
 - **backoffice 量子**: `backoffice` / `product` / `shipping` / `db-ops`
 
 ワークフローは量子ごとの 2 ファイル (`ci-customer.yml` / `ci-backoffice.yml`) に加え、量子では

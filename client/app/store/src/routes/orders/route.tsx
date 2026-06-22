@@ -15,7 +15,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { memberId, orders: ListOrdersResponse.parse(data) };
 }
 
-export default function Home({ loaderData }: Route.ComponentProps) {
+export default function Orders({ loaderData }: Route.ComponentProps) {
   const { memberId, orders } = loaderData;
   return (
     <div className="mx-auto max-w-3xl p-8">

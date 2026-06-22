@@ -30,3 +30,4 @@
 | [202606211520](202606211520-test-case-class-4xx-quasi-normal.md) | Accepted | テストのケース分類で 4xx を準正常系・5xx を異常系に分ける |
 | [202606220300](202606220300-frontend-fsd-component-layering.md) | Accepted | フロントエンドのコンポーネントを Feature-Sliced Design で層分けする |
 | [202606220716](202606220716-ci-split-by-architecture-quantum.md) | Accepted | CI をアーキテクチャ量子 (顧客系 / backoffice) ごとに 2 ワークフローへ分割する |
+| [202606221300](202606221300-merge-mypage-into-store.md) | Accepted | 社外フロントを store に統合し mypage を退役する |
