@@ -39,13 +39,34 @@ depends = ["up:db", "migrate"]
 env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
 run = "go test ./server/... -race -count=1"
 
-# スタックの起動は Playwright の webServer (scripts/e2e-up.sh) が担う。
-[tasks."test:e2e"]
-description = "store の E2E を実行 (Playwright が compose スタックを起動する)"
+# スタックの起動は Playwright の webServer (scripts/e2e-up.sh) が担う。E2E_PROJECT で起動する
+# スタックを片方に絞る (store=社外 / backoffice=社内)。
+[tasks."test:e2e:store"]
+description = "store の E2E を実行 (社外スタックのみ起動)"
+env = { E2E_PROJECT = "store" }
 run = """
 pnpm -C client install --frozen-lockfile
 pnpm -C client -F e2e exec playwright install --with-deps chromium
-pnpm -C client -F e2e test
+pnpm -C client -F e2e test --project=store
+"""
+
+[tasks."test:e2e:backoffice"]
+description = "backoffice の E2E を実行 (社内スタックのみ起動)"
+env = { E2E_PROJECT = "backoffice" }
+run = """
+pnpm -C client install --frozen-lockfile
+pnpm -C client -F e2e exec playwright install --with-deps chromium
+pnpm -C client -F e2e test --project=backoffice
+"""
+
+# store / backoffice はスタックが別なので 1 つずつ順に起動して実行する。
+[tasks."test:e2e"]
+description = "store / backoffice の E2E を順に実行"
+run = """
+pnpm -C client install --frozen-lockfile
+pnpm -C client -F e2e exec playwright install --with-deps chromium
+E2E_PROJECT=store pnpm -C client -F e2e test --project=store
+E2E_PROJECT=backoffice pnpm -C client -F e2e test --project=backoffice
 """
 
 [tasks.down]

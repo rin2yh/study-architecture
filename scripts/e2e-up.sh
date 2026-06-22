@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
-# Playwright の webServer から起動される。store / backoffice を listen させたままフォアグラウンドで
-# 保持し、Playwright の url ポーリングを起動完了の検知に使う (teardown 時に Playwright が停止する)。
+# Playwright の webServer から起動される。引数のフロントエンド (store / backoffice) を listen
+# させたままフォアグラウンドで保持し、Playwright の url ポーリングを起動完了の検知に使う
+# (teardown 時に Playwright が停止する)。
 set -euo pipefail
+
+target="${1:?usage: e2e-up.sh <store|backoffice>}"
+case "$target" in
+  store) profile=external ;;
+  backoffice) profile=internal ;;
+  *)
+    echo "unknown target: $target (want store|backoffice)" >&2
+    exit 1
+    ;;
+esac
 
 docker compose up -d --wait db-customer db-ops
 ./scripts/migrate.sh
@@ -10,7 +21,6 @@ docker compose up -d --wait db-customer db-ops
 for svc in product order payment member shipping shipping-worker; do
   docker compose build "$svc"
 done
-docker compose --profile external build store
-docker compose --profile internal build backoffice
+docker compose --profile "$profile" build "$target"
 
-exec docker compose --profile external --profile internal up --no-build
+exec docker compose --profile "$profile" up --no-build
