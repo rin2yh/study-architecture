@@ -12,12 +12,12 @@ import (
 )
 
 func main() {
-	os.Exit(start())
-}
-
-func start() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	os.Exit(start(ctx))
+}
+
+func start(ctx context.Context) int {
 	if err := run(ctx); err != nil {
 		slog.Error("shipping worker terminated", "error", err)
 		return 1
