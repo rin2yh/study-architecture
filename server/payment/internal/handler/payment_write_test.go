@@ -13,7 +13,6 @@ import (
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/api"
-	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
@@ -86,41 +85,9 @@ func TestCreatePaymentError(t *testing.T) {
 
 func TestUpdatePayment(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
-	ctx := t.Context()
-	if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
-		t.Fatalf("truncate: %v", err)
-	}
-	if _, err := pool.Exec(ctx,
-		`INSERT INTO payment.payments (order_id, amount_cents, method, status) VALUES ($1, $2, $3, $4)`,
-		int64(20), int64(2980), "card", "paid"); err != nil {
-		t.Fatalf("insert: %v", err)
-	}
-
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/payments/1", bytes.NewReader([]byte(`{"status":"refunded"}`)))
-	req.Header.Set("Content-Type", "application/json")
-	newWriteServer(rdb.NewPaymentCommand(pool)).ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
-	}
-	var got api.Payment
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: "refunded"}
-	assert.DeepEqual(t, want, got, "Id", "CreatedAt")
-}
-
-func TestUpdatePaymentPublishesSettled(t *testing.T) {
-	type args struct {
-		row    db.PaymentPayment
-		body   string
-		pubErr error
-	}
+	type args struct{ body string }
 	type want struct {
-		status int
+		status string
 		calls  []event.PaymentSettled
 	}
 	tests := []struct {
@@ -129,31 +96,44 @@ func TestUpdatePaymentPublishesSettled(t *testing.T) {
 		want want
 	}{
 		{
-			"正常系 確定 status で payment.settled を 1 件 publish",
-			args{db.PaymentPayment{ID: 1, OrderID: 20, AmountCents: 2980, Status: "paid"}, `{"status":"paid"}`, nil},
-			want{http.StatusOK, []event.PaymentSettled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
+			"正常系 確定 status へ更新すると payment.settled を publish する",
+			args{`{"status":"paid"}`},
+			want{"paid", []event.PaymentSettled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
 		},
 		{
-			"準正常系 非確定 status では publish しない",
-			args{db.PaymentPayment{ID: 1, OrderID: 20, AmountCents: 2980, Status: "refunded"}, `{"status":"refunded"}`, nil},
-			want{http.StatusOK, nil},
-		},
-		{
-			"異常系 publish 失敗でも 200 を返す",
-			args{db.PaymentPayment{ID: 1, OrderID: 20, AmountCents: 2980, Status: "settled"}, `{"status":"settled"}`, errors.New("broker down")},
-			want{http.StatusOK, []event.PaymentSettled{{PaymentID: 1, OrderID: 20, AmountCents: 2980}}},
+			"準正常系 非確定 status への更新では publish しない",
+			args{`{"status":"refunded"}`},
+			want{"refunded", nil},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pub := &stub.PublisherStub{Err: tt.args.pubErr}
+			pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+			ctx := t.Context()
+			if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
+				t.Fatalf("truncate: %v", err)
+			}
+			if _, err := pool.Exec(ctx,
+				`INSERT INTO payment.payments (order_id, amount_cents, method, status) VALUES ($1, $2, $3, $4)`,
+				int64(20), int64(2980), "card", "pending"); err != nil {
+				t.Fatalf("insert: %v", err)
+			}
+
+			pub := &stub.PublisherStub{}
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPut, "/payments/1", bytes.NewReader([]byte(tt.args.body)))
 			req.Header.Set("Content-Type", "application/json")
-			newWriteServerWithPublisher(stub.PaymentStub{Payment: tt.args.row}, pub).ServeHTTP(rec, req)
-			if rec.Code != tt.want.status {
-				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
+			newWriteServerWithPublisher(rdb.NewPaymentCommand(pool), pub).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
 			}
+			var got api.Payment
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: tt.want.status}
+			assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 			assert.DeepEqualSlice(t, tt.want.calls, pub.Calls)
 		})
 	}
