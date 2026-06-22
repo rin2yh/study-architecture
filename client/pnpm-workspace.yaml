@@ -1,5 +1,6 @@
 packages:
   - "app/*"
+  - "e2e"
 
 minimumReleaseAge: 10080
 
