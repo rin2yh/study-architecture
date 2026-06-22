@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
-import { readCart } from "../cart";
+import { readCart } from "@/entities/cart";
 import Home, { ErrorBoundary, HydrateFallback } from "./home";
 
 type Product = {

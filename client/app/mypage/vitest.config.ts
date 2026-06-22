@@ -1,8 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [viteReact()],
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   test: {
     environment: "jsdom",
     globals: true,
@@ -15,7 +19,9 @@ export default defineConfig({
         "src/routes/home.tsx",
         "src/routes/login.tsx",
         "src/routes/logout.tsx",
-        "src/session.ts",
+        "src/entities/session/model/session.ts",
+        "src/features/**/*.tsx",
+        "src/pages/**/ui/*.tsx",
       ],
       exclude: ["**/*.config.*", "src/root.tsx", "src/routes.ts", ".react-router/**", "build/**"],
       thresholds: {

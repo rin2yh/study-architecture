@@ -3,11 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Login, { action, loader } from "./login";
-import { currentMemberId, SESSION_COOKIE } from "../session";
+import { currentMemberId, SESSION_COOKIE } from "@/entities/session";
 import { createSession } from "api/member";
 
-vi.mock("../session", async (importActual) => {
-  const actual = await importActual<typeof import("../session")>();
+vi.mock("@/entities/session", async (importActual) => {
+  const actual = await importActual<typeof import("@/entities/session")>();
   return { ...actual, currentMemberId: vi.fn() };
 });
 vi.mock("api/member", async (importActual) => {

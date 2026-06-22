@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { action, loader } from "./logout";
-import { SESSION_COOKIE } from "../session";
+import { SESSION_COOKIE } from "@/entities/session";
 import { deleteSession } from "api/member";
 
 vi.mock("api/member", async (importActual) => {

@@ -3,12 +3,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import { checkout } from "api/order";
-import { type CartItem, readCart, writeCart } from "../cart";
-import { currentMemberId } from "../session";
+import { type CartItem, readCart, writeCart } from "@/entities/cart";
+import { currentMemberId } from "@/entities/session";
 import Checkout, { action } from "./checkout";
 
 vi.mock("api/order", () => ({ checkout: vi.fn() }));
-vi.mock("../session", () => ({ currentMemberId: vi.fn() }));
+vi.mock("@/entities/session", () => ({ currentMemberId: vi.fn() }));
 
 const order = {
   id: 7,

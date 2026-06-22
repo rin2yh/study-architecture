@@ -3,10 +3,10 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Home, { ErrorBoundary, HydrateFallback, loader } from "./home";
-import { currentMemberId } from "../session";
+import { currentMemberId } from "@/entities/session";
 import { listOrders } from "api/order";
 
-vi.mock("../session", () => ({ currentMemberId: vi.fn() }));
+vi.mock("@/entities/session", () => ({ currentMemberId: vi.fn() }));
 vi.mock("api/order", async (importActual) => {
   const actual = await importActual<typeof import("api/order")>();
   return { ...actual, listOrders: vi.fn() };

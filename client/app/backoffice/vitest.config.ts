@@ -1,8 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [viteReact()],
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   test: {
     environment: "jsdom",
     globals: true,
@@ -11,7 +15,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],
       reportsDirectory: "./coverage",
-      include: ["src/routes/home.tsx"],
+      include: ["src/routes/home.tsx", "src/pages/**/ui/*.tsx"],
       exclude: ["**/*.config.*", "src/root.tsx", "src/routes.ts", ".react-router/**", "build/**"],
       thresholds: {
         lines: 60,
