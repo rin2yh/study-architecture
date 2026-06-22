@@ -9,8 +9,8 @@ vi.mock("api/member", async (importActual) => {
   return { ...actual, deleteSession: vi.fn() };
 });
 
-function actionArgs(request: Request) {
-  return { request } as unknown as Parameters<typeof action>[0];
+function actionArgs(request: Request): Parameters<typeof action>[0] {
+  return { request, url: new URL(request.url), params: {}, pattern: "/logout", context: {} };
 }
 function reqWithCookie(cookie: string | null): Request {
   const headers = new Headers();
@@ -24,9 +24,10 @@ describe("logout action", () => {
   describe("正常系", () => {
     it("トークンがあれば破棄し Cookie を消して /login へ", async () => {
       vi.mocked(deleteSession).mockResolvedValue({
+        data: undefined,
         status: 204,
         headers: new Headers(),
-      } as Awaited<ReturnType<typeof deleteSession>>);
+      });
 
       const res = await action(actionArgs(reqWithCookie(`${SESSION_COOKIE}=tok123`)));
 
@@ -57,9 +58,10 @@ describe("logout action", () => {
 describe("logout loader", () => {
   describe("準正常系", () => {
     it("GET は /login へリダイレクト", async () => {
-      const thrown = await loader().catch((e) => e);
+      const thrown: unknown = await loader().catch((e: unknown) => e);
       expect(thrown).toBeInstanceOf(Response);
-      expect((thrown as Response).headers.get("Location")).toBe("/login");
+      if (!(thrown instanceof Response)) throw thrown;
+      expect(thrown.headers.get("Location")).toBe("/login");
     });
   });
 });

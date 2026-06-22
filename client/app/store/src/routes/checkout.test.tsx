@@ -28,12 +28,19 @@ function postRequest(fields: Record<string, string>) {
 }
 
 function callAction(fields: Record<string, string>) {
-  return action({ request: postRequest(fields), params: {}, context: {} } as never);
+  const request = postRequest(fields);
+  return action({
+    request,
+    url: new URL(request.url),
+    params: {},
+    pattern: "/checkout",
+    context: {},
+  });
 }
 
 function renderCheckout(actionResult?: unknown) {
   const Stub = createRoutesStub([
-    { path: "/checkout", Component: Checkout as never, action: () => actionResult ?? null },
+    { path: "/checkout", Component: Checkout, action: () => actionResult ?? null },
   ]);
   render(<Stub initialEntries={["/checkout"]} />);
 }
@@ -47,7 +54,7 @@ describe("action", () => {
   describe("正常系", () => {
     it("カートと支払い方法を渡すと checkout を呼び注文を返す", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(1);
-      vi.mocked(checkout).mockResolvedValue({ data: order, status: 201 } as never);
+      vi.mocked(checkout).mockResolvedValue({ data: order, status: 201, headers: new Headers() });
 
       const result = await callAction({
         items: JSON.stringify([{ productId: 1, quantity: 2 }]),

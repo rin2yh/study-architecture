@@ -30,7 +30,7 @@ interface CheckoutItemInput {
 function parseItems(raw: FormDataEntryValue | null): CheckoutItemInput[] {
   try {
     const parsed: unknown = JSON.parse(String(raw ?? "[]"));
-    return Array.isArray(parsed) ? (parsed as CheckoutItemInput[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }

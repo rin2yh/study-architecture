@@ -70,7 +70,7 @@ describe("currentMemberId", () => {
         data: { id: "tok123", memberId: 7, expiresAt: "2026-07-01T00:00:00Z" },
         status: 200,
         headers: new Headers(),
-      } as Awaited<ReturnType<typeof getSession>>);
+      });
 
       expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBe(7);
       expect(vi.mocked(getSession).mock.calls[0][0]).toBe("tok123");
