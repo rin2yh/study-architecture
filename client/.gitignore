@@ -155,3 +155,5 @@ todos.json
 # ── Storybook / VRT ──
 storybook-static
 __diff_output__
+# ベースラインは main の artifact に持つ (リポジトリにはコミットしない)
+app/store/__vrt__/__snapshots__

@@ -1,6 +1,7 @@
 name: Visual Regression Test
 
-# ベースライン更新は vrt-baseline.yml に分離 (ADR-202606220600)。
+# ベースラインはリポジトリに置かず main の成果物 (artifact) に持つ。PR は main のベースラインと
+# 比較するだけ、main へ merge されたら撮り直して更新する (ADR-202606220600)。
 on:
   push:
     branches: [main]
@@ -14,6 +15,8 @@ on:
 
 permissions:
   contents: read
+  # PR ジョブが main 実行のベースライン artifact を取得するため。
+  actions: read
 
 concurrency:
   group: vrt-${{ github.workflow }}-${{ github.ref }}
@@ -49,15 +52,48 @@ jobs:
       - name: install chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: vrt
+      - name: build storybook
         env:
           STORYBOOK_DISABLE_TELEMETRY: "1"
+        run: pnpm build-storybook
+
+      - name: serve storybook
         run: |
           set -eu
-          pnpm build-storybook
           pnpm exec http-server storybook-static -p 6006 --silent &
           pnpm exec wait-on tcp:127.0.0.1:6006
-          pnpm exec test-storybook --ci --url http://127.0.0.1:6006
+
+      - name: update baselines (main)
+        if: github.event_name == 'push'
+        run: pnpm exec test-storybook -u --url http://127.0.0.1:6006
+
+      - name: upload baselines (main)
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vrt-baselines
+          path: client/app/store/__vrt__/__snapshots__/
+          retention-days: 90
+
+      - name: download baselines (PR)
+        id: baseline
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          run_id=$(gh run list -w vrt.yml -b main -e push -s success -L 1 \
+            --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+          if [ -n "$run_id" ] && gh run download "$run_id" -n vrt-baselines -D __vrt__/__snapshots__ 2>/dev/null; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::main にベースライン未確立のため VRT 比較をスキップ"
+          fi
+
+      - name: compare (PR)
+        if: github.event_name == 'pull_request' && steps.baseline.outputs.found == 'true'
+        run: pnpm exec test-storybook --ci --url http://127.0.0.1:6006
 
       - name: upload vrt diff
         if: failure()

@@ -14,22 +14,18 @@ pnpm -F store storybook        # 手元で Storybook を開いて確認する
 pnpm -F store build-storybook  # storybook-static を生成する (VRT の前段)
 ```
 
-### CI は比較専用 (`vrt.yml`)
+### ベースラインは main の artifact (`vrt.yml`)
 
-`client-store-vrt` ジョブはコミット済みベースライン (`__vrt__/__snapshots__/`) と**比較するだけ**で、
-差分か欠落が出たら fail し diff 画像を `vrt-diff` artifact に上げる。CI はベースラインを書き換えない。
-`ubuntu-24.04` 上で `playwright install` した Chromium を使う。store ページ / `ui` に関係ない変更では
+ベースライン PNG はリポジトリに置かず、**main の VRT 実行の artifact (`vrt-baselines`)** に持つ。
+`ubuntu-24.04` 上で `playwright install` した Chromium で撮る。store ページ / `ui` に関係ない変更では
 走らないよう `paths` で絞っている。
 
-### ベースラインの更新は専用ワークフロー (`vrt-baseline.yml`)
+- **PR**: main の最新 `vrt-baselines` を取得して比較し、差分が出たら fail、diff 画像を `vrt-diff`
+  artifact に上げる。main にベースライン未確立のときは比較せず gate を通す。
+- **main へ merge**: 撮り直して `vrt-baselines` artifact を更新する。
 
-ベースラインはレンダリング環境に依存するため、比較ゲートと**同じ runner (`ubuntu-24.04` + Playwright)**
-で撮り直す必要がある。手元の OS で撮ると差分が出るので、撮影は CI に寄せて承認トリガで回す。
+### 見た目を意図的に変えるとき
 
-- **更新する**: 見た目を意図的に変えた PR に **`vrt:update` ラベル**を付ける。`vrt-baseline.yml` が
-  全ベースラインを撮り直して PR ブランチへコミットする。再更新したいときはラベルを一度外して付け直す。
-- **退行を確認する**: 差分は `vrt-diff` artifact で確認する。意図した変更なら上のラベルで更新し、
-  そうでなければコードを直す。
-
-ラベルでの更新コミットは `GITHUB_TOKEN` の push なので比較ゲートは再発火しない。HEAD を green にするには
-更新後に何か push する (次のコミットで比較が回る)。
+PR では main のベースラインと比較するため、意図した変更でも `client-store-vrt` は **fail** する
+(差分が `vrt-diff` artifact に出る)。差分を確認のうえ merge すれば、main 側の実行がベースラインを
+更新する。PR 上でベースラインを「承認して green にする」運用は持たない。

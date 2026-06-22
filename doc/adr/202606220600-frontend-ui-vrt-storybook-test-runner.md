@@ -27,18 +27,17 @@ shadcn でユニットテストを持たない方針のため、CI では covera
   cart / checkout の各状態 (一覧/空、カート有/空、フォーム/エラー/確定/空) を fixtures + メモリルータで
   描画し、light / `.dark` の両テーマで撮る。実ページのローダはバックエンドを叩くため、stories は
   ページ合成だけを再現する。`mypage` / `backoffice` には手を入れない。
-- **ベースラインは `ubuntu-24.04` runner 上で `playwright install` した Chromium で撮り、PNG を
-  リポジトリ内 (`store/__vrt__/__snapshots__`) にコミットする**。比較・撮影とも同じ runner で行うので
-  レンダリング差は出ない。Docker コンテナは使わない (plain runner で足りる)。
-- **比較 (ゲート) と更新 (撮影) をワークフローで分離する**。CI の `client-store-vrt` は比較専用
-  (`--ci`) で、差分か欠落が出たら fail し diff 画像を artifact に上げる (ベースラインは書き換えない)。
-  ベースライン更新は専用の `vrt-baseline.yml` が同じイメージで撮り直してコミットする。
-  - 理由: 「差分が出たら自動更新」は意図しない退行も受け入れてしまいゲートが無意味になる。更新は必ず
-    **人間の承認シグナル** (PR への `vrt:update` ラベル) を起点にする。
-  - push は `GITHUB_TOKEN` で行う。これは比較ゲートを再発火しないため、更新後に HEAD を green にするには
-    何か push する (次のコミットで比較が回る) 運用とする。PAT 等は持ち込まない。
+- **撮影は `ubuntu-24.04` runner 上で `playwright install` した Chromium で行う**。比較・撮影とも同じ
+  runner なのでレンダリング差は出ない。Docker コンテナは使わない (plain runner で足りる)。
+- **ベースラインはリポジトリにコミットせず、main の VRT 実行の artifact (`vrt-baselines`) に持つ**。
+  単一の `vrt.yml` がイベントで振る舞いを変える:
+  - **PR**: main の最新 `vrt-baselines` を取得して比較 (`--ci`)。差分が出たら fail し diff を artifact に
+    上げる。main 未確立時は比較せず gate を通す。
+  - **main へ push**: 撮り直して `vrt-baselines` artifact を更新する (= merge 時にベースライン更新)。
+  - 理由: PNG をリポジトリに置かず、CI からの push もなくす。意図した変更は「PR で fail → 差分確認 →
+    merge → main がベースライン更新」で取り込む。PR 上でベースラインを承認して green にする運用は持たない。
   - CI が比較も更新も兼ねて PR ブランチへ自動 push する初期案は、部分更新不可・ローカルとリモートの
-    乖離・HEAD が未検証、の 3 点で運用が脆く、これを避けるため比較と更新を分離した。
+    乖離・HEAD が未検証、の 3 点で運用が脆かった。artifact 方式はこれらを丸ごと回避する。
 - **依存は `store` の devDeps に直接ピンする** (catalog に入れない)。VRT 専用ツール
   (storybook / @storybook/react-vite / @storybook/test-runner / playwright / jest-image-snapshot /
   http-server / wait-on) は他パッケージで共有しないため。serve + 実行はワークフローの shell で
@@ -47,17 +46,16 @@ shadcn でユニットテストを持たない方針のため、CI では covera
 
 ## Consequences
 
-- store のページの見た目変更は PR の `client-store-vrt` で差分として検出でき、ページが使う `ui` の
-  退行も実合成として捕まる。意図した変更は専用ワークフローでベースラインを更新してレビューする。
-- ベースラインが `ubuntu-24.04` runner のレンダリング依存になるため、GitHub が runner イメージの
-  フォント等を更新すると差分が出うる。その場合は更新ワークフローで撮り直す (Docker 固定より緩い代わりに
-  構成は単純、という割り切り)。
-- 手元では Storybook の確認 (`pnpm -F store storybook`) はできるが、ベースライン撮影は CI runner に
-  委ねる。ブラウザバイナリ取得とフォント差でローカル撮影は環境依存になりやすい、という割り切り。
-- 更新は `vrt:update` ラベル承認を起点にする。secret (PAT) を持ち込まないぶん単純だが、更新後に HEAD を
-  green にするには何か push する一手間が要る (`GITHUB_TOKEN` push は CI を再発火しないため)。
-- `store` に VRT ツールチェーンが乗るぶん install が重くなるが、`client` matrix とは別ジョブのため
-  既存の coverage パイプラインには影響しない。
+- PNG をリポジトリにコミットしないので git 履歴が汚れず、CI からの push も不要 (secret/PAT も不要)。
+  ベースライン更新は main への merge で自動的に行われる。
+- **意図した見た目変更は PR では必ず fail する** (main のベースラインと違うため)。差分は `vrt-diff`
+  artifact で確認し、納得して merge する運用。PR 上で「承認して green」にはできない、という割り切り。
+- artifact の保持期間 (90 日) を超えて main の store/`ui` が変わらないとベースラインが失効する。その間の
+  PR は比較スキップ (gate を通す) になる。次の main 変更で再生成される。
+- ベースラインが `ubuntu-24.04` runner のレンダリング依存のため、GitHub が runner イメージのフォント等を
+  更新すると差分が出うる。次の main push で更新される (Docker 固定より緩い代わりに構成は単純)。
+- `store` に VRT ツールチェーンが乗るぶん install が重くなるが、別ワークフローのため既存の coverage
+  パイプラインには影響しない。
 
 ## Alternatives considered
 
