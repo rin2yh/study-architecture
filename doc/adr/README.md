@@ -29,3 +29,4 @@
 | [202606211200](202606211200-event-driven-shipment-on-payment-settled.md) | Accepted | 決済確定イベントを起点に shipping が配送を手配する (Redis Streams) |
 | [202606211520](202606211520-test-case-class-4xx-quasi-normal.md) | Accepted | テストのケース分類で 4xx を準正常系・5xx を異常系に分ける |
 | [202606220300](202606220300-frontend-fsd-component-layering.md) | Accepted | フロントエンドのコンポーネントを Feature-Sliced Design で層分けする |
+| [202606220716](202606220716-ci-split-by-architecture-quantum.md) | Accepted | CI をアーキテクチャ量子 (顧客系 / backoffice) ごとに 2 ワークフローへ分割する |

@@ -1,0 +1,229 @@
+name: CI (backoffice)
+
+# backoffice 量子 (backoffice / product / shipping / db-ops)。量子の括りと量子別ワークフロー
+# 分割の根拠は ADR-[[202606220716]]。
+on:
+  push:
+    branches: [main]
+    # 共有 lib ブロックは customer 側と同一内容を複製する (anchor はファイルを跨げない。ADR-[[202606220716]])。
+    paths: &trigger-paths
+      - "server/product/**"
+      - "server/shipping/**"
+      - "client/app/backoffice/**"
+      - "server/internal/**"
+      - "server/tools/**"
+      - "go.mod"
+      - "go.sum"
+      - "client/app/ui/**"
+      - "client/app/api/**"
+      - "client/pnpm-workspace.yaml"
+      - "client/pnpm-lock.yaml"
+      - "client/package.json"
+      - "client/tsconfig.json"
+      - "scripts/**"
+      - "compose.yaml"
+      - ".github/workflows/ci-backoffice.yml"
+  pull_request:
+    paths: *trigger-paths
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-backoffice-${{ github.ref }}
+  cancel-in-progress: true
+
+# PR では GITHUB_SHA が merge commit になるため、coverage コメントのフッタには head sha を渡す。
+env:
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  server-unit:
+    name: server-unit-${{ matrix.service }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [product, shipping]
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: format
+        run: test -z "$(go fmt ./server/...)"
+
+      - name: vet
+        run: go vet ./server/${{ matrix.service }}/... ./server/internal/...
+
+      - name: unit test
+        id: cov
+        run: |
+          svc=${{ matrix.service }}
+          pkgs=$(go run ./server/tools/coverpkg ./server/$svc/... ./server/internal/...)
+          go test ./server/$svc/... ./server/internal/... -short -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
+          bash scripts/coverage-report.sh "server-unit-$svc" cover.out > coverage.md
+
+      # 単一マーカーだと per-service の各ジョブが同じコメントを奪い合うため。
+      - name: comment coverage
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        with:
+          header: coverage-server-unit-${{ matrix.service }}
+          path: coverage.md
+
+      - name: coverage gate
+        env:
+          TOTAL: ${{ steps.cov.outputs.total }}
+        run: |
+          awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
+            || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
+
+  client:
+    name: client-${{ matrix.package }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [backoffice]
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: typecheck
+        run: pnpm -F "${{ matrix.package }}" run --if-present typecheck
+
+      - name: coverage
+        run: pnpm -F "${{ matrix.package }}" test:cov
+
+      - name: report coverage
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
+        with:
+          name: ${{ matrix.package }}
+          # 既定の repo root のままだと package 配下の coverage json/config を解決できない。
+          working-directory: client/app/${{ matrix.package }}
+          # v2.12.1 は閾値を読んでも Status が 🔵 のまま。60% 境界は server の coverage gate と揃える。
+          threshold-icons: "{0: '🔴', 60: '🟢'}"
+
+      - name: build
+        run: pnpm -F "${{ matrix.package }}" run --if-present build
+
+  # lint/format は workspace 全体が対象 (量子では割れない)。共有パッケージ ui/api も量子ではなく
+  # 両ワークフローへ fan-out する (ADR-[[202606220716]])。per-app の typecheck/build は client matrix 側。
+  client-shared:
+    name: client-shared
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        run: pnpm lint
+
+      - name: format
+        run: pnpm format:check
+
+      - name: typecheck (ui)
+        run: pnpm -F ui typecheck
+
+      - name: typecheck (api)
+        run: pnpm -F api run --if-present typecheck
+
+      - name: coverage (api)
+        run: pnpm -F api test:cov
+
+      - name: report coverage (api)
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
+        with:
+          name: api
+          working-directory: client/app/api
+          threshold-icons: "{0: '🔴', 60: '🟢'}"
+
+  server-integration:
+    name: server-integration
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: start db
+        run: docker compose up -d --wait db-ops
+
+      - name: migrate
+        run: |
+          for svc in product shipping; do
+            ./scripts/migrate.sh "$svc"
+          done
+
+      - name: test
+        id: cov
+        # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
+        env:
+          DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
+        run: |
+          target="./server/product/... ./server/shipping/... ./server/internal/..."
+          pkgs=$(go run ./server/tools/coverpkg $target)
+          go test $target -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
+          echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
+          bash scripts/coverage-report.sh "server-integration-backoffice" cover.out > coverage.md
+
+      - name: comment coverage
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        with:
+          header: coverage-server-integration-backoffice
+          path: coverage.md
+
+      - name: coverage gate
+        env:
+          TOTAL: ${{ steps.cov.outputs.total }}
+        run: |
+          awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
+            || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
