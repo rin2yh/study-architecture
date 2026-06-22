@@ -161,6 +161,7 @@ services:
       PRODUCT_API_URL: http://edge-proxy/product
       ORDER_API_URL: http://edge-proxy/order
       PAYMENT_API_URL: http://edge-proxy/payment
+      MEMBER_API_URL: http://edge-proxy/member
     ports: ["5173:5173"]
     depends_on:
       edge-proxy:
