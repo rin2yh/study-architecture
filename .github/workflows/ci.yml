@@ -207,9 +207,11 @@ jobs:
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
   # store は SSR loader が実バックエンドを叩くため、ブラウザ側 mock では E2E できない。
+  # フルスタックの build/up を伴い高コストなので、軽量な単体・型・結合が通ってから回す。
   client-e2e:
     name: client-e2e
     runs-on: ubuntu-24.04
+    needs: [server-unit, client, client-ui, server-integration]
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
