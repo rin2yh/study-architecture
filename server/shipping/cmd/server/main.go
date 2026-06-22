@@ -32,10 +32,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	cons, err := di.InitConsumer(ctx)
-	if err != nil {
-		return err
-	}
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
@@ -53,12 +49,6 @@ func run() error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
-	}()
-
-	go func() {
-		if err := cons.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			slog.Error("shipping consumer terminated", "error", err)
-		}
 	}()
 
 	slog.Info("shipping service listening", "addr", srv.Addr)

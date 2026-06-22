@@ -46,6 +46,19 @@ DB と同類の**共有 infra** である broker は対象外とする。broker 
 **唯一の非同期チャネル**で、edge-proxy が同期の境界越えを一手に引き受けるのと対になる
 (payment は publish のみ・shipping は consume のみ、と用途も絞られる)。
 
+### consumer は別バイナリ (worker) として分離する
+
+consumer は shipping の HTTP プロセスに同居させず、同一コードベースの**別バイナリ・別デプロイ**
+にする (web/worker 分離)。shipping は `cmd/server` (HTTP) と `cmd/worker` (consumer) の 2 main を
+持ち、compose も `shipping` と `shipping-worker` の 2 サービスに分ける。決め手:
+
+- **独立にスケール・再起動できる**。HTTP と consumer は負荷も停止条件も別。
+- **fail loud**。worker は Run が確定エラーを返したら非ゼロ終了し、オーケストレータの再起動に
+  委ねる。HTTP に同居させた goroutine だと consumer が静かに死んでも `/healthz` は 200 のままで
+  気付けない (silent partial outage)。
+- worker を持つのは shipping だけなので、`cmd/` 分割もこのサービスに限る。他サービスは単一 main の
+  ままにし、無駄な構成差を増やさない。
+
 ### shipping schema の見直し
 
 carrier / tracking_no は配送手配の時点では未確定で、運送会社割当後に埋まる。確定時の業務

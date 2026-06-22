@@ -127,8 +127,20 @@ services:
       dockerfile: server/shipping/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
-      REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8005:80"]
+    depends_on:
+      db-ops:
+        condition: service_healthy
+    networks: [internal-private]
+
+  # ADR-[[202606211200]]
+  shipping-worker:
+    build:
+      context: .
+      dockerfile: server/shipping/Dockerfile.worker
+    environment:
+      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      REDIS_URL: redis://broker:6379
     depends_on:
       db-ops:
         condition: service_healthy

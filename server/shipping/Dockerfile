@@ -12,7 +12,7 @@ RUN go mod download
 
 # ソース一式を COPY し、このサービスの cmd だけビルドする
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -o /out/shipping ./server/shipping
+RUN CGO_ENABLED=0 go build -trimpath -o /out/shipping ./server/shipping/cmd/server
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/shipping /shipping
