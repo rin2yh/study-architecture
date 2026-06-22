@@ -7,6 +7,8 @@
     "react-router.config.ts",
     ".react-router/types/**/*"
   ],
+  // test-runner.ts は jest の expect (jest-image-snapshot 拡張) を使う。@types/jest を入れると
+  // vitest のグローバルと衝突するため typecheck から外す。
   "exclude": ["node_modules", "storybook-static", ".storybook/test-runner.ts"],
   "compilerOptions": {
     "rootDirs": [".", "./.react-router/types"],

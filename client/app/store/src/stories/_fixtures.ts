@@ -1,6 +1,6 @@
 import type { Order } from "api/order";
 import type { Product } from "api/product";
-import type { CartItem } from "@/entities/cart";
+import { cartTotalCents, type CartItem } from "@/entities/cart";
 
 export const products: Product[] = [
   {
@@ -31,14 +31,17 @@ export const cartItems: CartItem[] = [
   { productId: 2, name: "ドリッパー", priceCents: 220000, quantity: 1 },
 ];
 
+// cartItems と二重に持つと齟齬が出るため。
 export const order: Order = {
   id: 1042,
   memberId: 1,
   status: "confirmed",
-  totalCents: 580000,
   createdAt: "2026-06-01T00:00:00Z",
-  items: [
-    { productId: 1, productName: "コーヒー豆 200g", unitPriceCents: 180000, quantity: 2 },
-    { productId: 2, productName: "ドリッパー", unitPriceCents: 220000, quantity: 1 },
-  ],
+  totalCents: cartTotalCents(cartItems),
+  items: cartItems.map((i) => ({
+    productId: i.productId,
+    productName: i.name,
+    unitPriceCents: i.priceCents,
+    quantity: i.quantity,
+  })),
 };

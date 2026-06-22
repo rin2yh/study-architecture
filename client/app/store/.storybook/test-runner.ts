@@ -10,14 +10,14 @@ const config: TestRunnerConfig = {
   async postVisit(page, context) {
     // CI と手元でのレンダリング差を抑えるため。
     await page.emulateMedia({ reducedMotion: "reduce" });
+    // FontFaceSet はそのまま返すと直列化に失敗するため void に畳む。テーマ切替でフォントは変わらない。
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const root = page.locator("#storybook-root");
 
     for (const theme of THEMES) {
       await page.evaluate((t) => {
         document.documentElement.classList.toggle("dark", t === "dark");
       }, theme);
-      // FontFaceSet はそのまま返すと直列化に失敗するため void に畳む。
-      await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
       const image = await root.screenshot();
       expect(image).toMatchImageSnapshot({

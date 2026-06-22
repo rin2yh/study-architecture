@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { createRoutesStub } from "react-router";
 
 // ページの表示部品は Link / Form を使うため。
 export function renderInRouter(element: ReactElement) {
-  const router = createMemoryRouter([{ path: "/", element }]);
-  return <RouterProvider router={router} />;
+  const Stub = createRoutesStub([{ path: "/", Component: () => element }]);
+  return <Stub />;
 }
