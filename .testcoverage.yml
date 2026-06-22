@@ -1,0 +1,15 @@
+profile: cover.out
+
+threshold:
+  total: 60
+
+# 生成物・DI wiring・サービス起動点・テストヘルパは業務ロジックでないので分母から外す。
+# go test -coverpkg にはスコープ全体を渡し、計測対象の絞り込みはここに集約する。
+exclude:
+  paths:
+    - server/[^/]+/api/
+    - /internal/db/
+    - /internal/di/
+    - /internal/client/
+    - /internal/test/
+    - server/[^/]+/main\.go$

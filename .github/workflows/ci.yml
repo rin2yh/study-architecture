@@ -22,10 +22,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# PR では GITHUB_SHA が merge commit になるため、coverage コメントのフッタには head sha を渡す。
-env:
-  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-
 jobs:
   server-unit:
     name: server-unit-${{ matrix.service }}
@@ -50,28 +46,34 @@ jobs:
         run: go vet ./server/${{ matrix.service }}/... ./server/internal/...
 
       - name: unit test
-        id: cov
         run: |
           svc=${{ matrix.service }}
-          pkgs=$(bash scripts/coverage-pkgs.sh ./server/$svc/... ./server/internal/...)
-          go test ./server/$svc/... ./server/internal/... -short -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
-          echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
-          bash scripts/coverage-report.sh "server-unit-$svc" cover.out > coverage.md
+          go test ./server/$svc/... ./server/internal/... -short -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg=./server/$svc/...,./server/internal/...
+
+      # 除外・閾値は .testcoverage.yml に集約。gate 失敗でもコメントを残すため continue-on-error。
+      - name: coverage check
+        id: cov
+        uses: vladopajic/go-test-coverage@a93b868a4cbcbf18dc3781650fad241f0020e609 # v2.18.8
+        continue-on-error: true
+        with:
+          config: ./.testcoverage.yml
 
       # 単一マーカーだと 6 ジョブ (per-service 5 + integration) が同じコメントを奪い合うため。
       - name: comment coverage
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.cov.outputs.report != ''
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: coverage-server-unit-${{ matrix.service }}
-          path: coverage.md
+          message: |
+            ## Coverage Report for server-unit-${{ matrix.service }}
+            ```
+            ${{ fromJSON(steps.cov.outputs.report) }}
+            ```
 
       - name: coverage gate
-        env:
-          TOTAL: ${{ steps.cov.outputs.total }}
+        if: steps.cov.outcome == 'failure'
         run: |
-          awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
-            || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
+          echo "coverage below threshold (.testcoverage.yml)"; exit 1
 
   client:
     name: client-${{ matrix.package }}
@@ -146,27 +148,32 @@ jobs:
         run: ./scripts/migrate.sh
 
       - name: test
-        id: cov
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
           DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
           DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
-        run: |
-          pkgs=$(bash scripts/coverage-pkgs.sh ./server/...)
-          go test ./server/... -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
-          echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
-          bash scripts/coverage-report.sh "server-integration" cover.out > coverage.md
+        run: go test ./server/... -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg=./server/...
+
+      # 除外・閾値は .testcoverage.yml に集約。gate 失敗でもコメントを残すため continue-on-error。
+      - name: coverage check
+        id: cov
+        uses: vladopajic/go-test-coverage@a93b868a4cbcbf18dc3781650fad241f0020e609 # v2.18.8
+        continue-on-error: true
+        with:
+          config: ./.testcoverage.yml
 
       - name: comment coverage
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.cov.outputs.report != ''
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: coverage-server-integration
-          path: coverage.md
+          message: |
+            ## Coverage Report for server-integration
+            ```
+            ${{ fromJSON(steps.cov.outputs.report) }}
+            ```
 
       - name: coverage gate
-        env:
-          TOTAL: ${{ steps.cov.outputs.total }}
+        if: steps.cov.outcome == 'failure'
         run: |
-          awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
-            || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
+          echo "coverage below threshold (.testcoverage.yml)"; exit 1
