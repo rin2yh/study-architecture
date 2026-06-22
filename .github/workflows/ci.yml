@@ -206,8 +206,8 @@ jobs:
           awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
-  client-e2e:
-    name: client-e2e
+  e2e:
+    name: e2e
     runs-on: ubuntu-24.04
     needs: [server-unit, client, client-ui, server-integration]
     steps:

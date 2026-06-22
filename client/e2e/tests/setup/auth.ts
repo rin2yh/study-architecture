@@ -1,4 +1,3 @@
-// /login からのログインには member が既存である必要があるため。
 export const MEMBER_API_URL = process.env.E2E_MEMBER_API_URL ?? "http://localhost:8004";
 
 export const MEMBER = {
