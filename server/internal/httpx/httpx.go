@@ -8,7 +8,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,15 +22,6 @@ func NewEngine() *gin.Engine {
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.ErrorJSON())
 	return engine
-}
-
-// ListenAddr は待ち受けアドレスを返す。コンテナ既定は :80 だが、テストや
-// ローカル実行で port を差し替えられるよう LISTEN_ADDR で上書きできる。
-func ListenAddr() string {
-	if addr := os.Getenv("LISTEN_ADDR"); addr != "" {
-		return addr
-	}
-	return ":80"
 }
 
 // Serve は handler を addr で起動し、ctx のキャンセルでグレースフルに停止する。

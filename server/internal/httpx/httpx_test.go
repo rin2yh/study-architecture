@@ -29,21 +29,6 @@ func TestNewEngine(t *testing.T) {
 	}
 }
 
-func TestListenAddr(t *testing.T) {
-	t.Run("正常系 未設定は既定の :80", func(t *testing.T) {
-		t.Setenv("LISTEN_ADDR", "")
-		if got := ListenAddr(); got != ":80" {
-			t.Fatalf("ListenAddr() = %q, want :80", got)
-		}
-	})
-	t.Run("正常系 LISTEN_ADDR で上書き", func(t *testing.T) {
-		t.Setenv("LISTEN_ADDR", "127.0.0.1:8080")
-		if got := ListenAddr(); got != "127.0.0.1:8080" {
-			t.Fatalf("ListenAddr() = %q, want 127.0.0.1:8080", got)
-		}
-	})
-}
-
 func TestServe_GracefulShutdown(t *testing.T) {
 	addr := freeAddr(t)
 	engine := NewEngine()
