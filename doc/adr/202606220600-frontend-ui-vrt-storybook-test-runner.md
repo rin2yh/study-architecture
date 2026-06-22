@@ -1,4 +1,4 @@
-# ADR-202606220600: 共有 ui の VRT は store 上の Storybook + test-runner で行う
+# ADR-202606220600: store のページ VRT を Storybook + test-runner で行う
 
 - Status: Accepted
 - Date: 2026-06-22
@@ -14,19 +14,22 @@ shadcn でユニットテストを持たない方針のため、CI では covera
 デザインシステムを単一情報源にした結果、`ui` の見た目変更は全サービスへ一括で波及する。色・余白・
 状態差分といった**視覚的な退行は行カバレッジでは守れない**。スナップショット差分で守る仕組みが要る。
 
+ただし**コンポーネント単体の VRT はデザインシステム (`ui`) の責務**であり、`store` が持つべきは
+**自分のページ**の見た目である。ページ VRT は home / cart / checkout を実合成で撮るので、結果的に
+共有 `ui` の退行も実利用の文脈で検出できる。まずは `store` のページのみを対象にする (`一旦 store のみ`)。
+
 ## Decision
 
 - **ツールは Storybook + `@storybook/test-runner` (Playwright)** にする。ローカル/CI 完結で
   スナップショットをリポジトリ内に持て、外部ホスティング (Chromatic 等) の secret・ネットワーク
   許可を増やさずに済む。
-- **VRT のホストは `store` アプリに置く** (`一旦 store のみ`)。stories は `store/src/stories/*`
-  から `ui/*` を import し、`store` の Vite + Tailwind パイプラインでレンダリングする。Storybook を
-  `ui` にコロケートせず `store` 1 つに閉じることで、`mypage` / `backoffice` には手を入れない。
-  対象は `button` / `card` / `alert` / `badge` / `label` / `input` / `select` / `separator` /
-  `table` / `page-loading`、各コンポーネントを light / `.dark` の両テーマで撮る。
-- **ベースラインは固定した Playwright Docker イメージ (`mcr.microsoft.com/playwright:v1.60.0-noble`)
-  内で撮り、PNG をリポジトリ内 (`store/__vrt__/__snapshots__`) にコミットする**。フォント/ラスタライズ
-  差を排除するため比較・撮影とも常にこのイメージを `container:` で使う。
+- **対象はコンポーネント単体ではなく `store` のページ**。stories (`store/src/stories/*`) は home /
+  cart / checkout の各状態 (一覧/空、カート有/空、フォーム/エラー/確定/空) を fixtures + メモリルータで
+  描画し、light / `.dark` の両テーマで撮る。実ページのローダはバックエンドを叩くため、stories は
+  ページ合成だけを再現する。`mypage` / `backoffice` には手を入れない。
+- **ベースラインは `ubuntu-24.04` runner 上で `playwright install` した Chromium で撮り、PNG を
+  リポジトリ内 (`store/__vrt__/__snapshots__`) にコミットする**。比較・撮影とも同じ runner で行うので
+  レンダリング差は出ない。Docker コンテナは使わない (plain runner で足りる)。
 - **比較 (ゲート) と更新 (撮影) をワークフローで分離する**。CI の `client-store-vrt` は比較専用
   (`--ci`) で、差分か欠落が出たら fail し diff 画像を artifact に上げる (ベースラインは書き換えない)。
   ベースライン更新は専用の `vrt-baseline.yml` が同じイメージで撮り直してコミットする。
@@ -39,16 +42,18 @@ shadcn でユニットテストを持たない方針のため、CI では covera
     push が CI を再発火せず HEAD が未検証になる、の 3 点で運用が脆く、これを避けるため分離した。
 - **依存は `store` の devDeps に直接ピンする** (catalog に入れない)。VRT 専用ツール
   (storybook / @storybook/react-vite / @storybook/test-runner / playwright / jest-image-snapshot /
-  http-server / wait-on / concurrently) は他パッケージで共有しないため。
+  http-server / wait-on) は他パッケージで共有しないため。serve + 実行はワークフローの shell で
+  組むので、package.json には `storybook` / `build-storybook` だけ置く。
 - coverage gate (他 app の 60%) は VRT には課さない。視覚的退行はスナップショット差分で守る分離方針。
 
 ## Consequences
 
-- `ui` の見た目変更は PR の `client-store-vrt` で差分として検出でき、意図した変更はベースライン PNG の
-  更新を PR に含めることでレビューできる。
-- ベースラインが CI イメージ依存になるため、Playwright イメージのタグを上げると再生成が要る。タグは
-  SHA 同様に固定 (move-target を避ける) し、上げるときは意図的に再生成する運用とする。
-- 手元では Storybook の確認 (`pnpm -F store storybook`) はできるが、ベースライン撮影は CI イメージに
+- store のページの見た目変更は PR の `client-store-vrt` で差分として検出でき、ページが使う `ui` の
+  退行も実合成として捕まる。意図した変更は専用ワークフローでベースラインを更新してレビューする。
+- ベースラインが `ubuntu-24.04` runner のレンダリング依存になるため、GitHub が runner イメージの
+  フォント等を更新すると差分が出うる。その場合は更新ワークフローで撮り直す (Docker 固定より緩い代わりに
+  構成は単純、という割り切り)。
+- 手元では Storybook の確認 (`pnpm -F store storybook`) はできるが、ベースライン撮影は CI runner に
   委ねる。ブラウザバイナリ取得とフォント差でローカル撮影は環境依存になりやすい、という割り切り。
 - 更新は承認 (ラベル / dispatch) を起点にする半自動で、`GITHUB_TOKEN` 自動 push の脆さを避けられる。
   代償として最良の体験 (更新後に HEAD が自動 green) には `VRT_PAT` secret の登録が要る。
@@ -57,9 +62,14 @@ shadcn でユニットテストを持たない方針のため、CI では covera
 
 ## Alternatives considered
 
+- **コンポーネント単体 (`button` / `card` …) を `store` で VRT**: 当初こうしたが、コンポーネント単体の
+  見た目はデザインシステム (`ui`) の責務で `store` の責務ではない。`store` は自分のページを撮るべき、と
+  整理してページ VRT に切り替えた (`ui` 単体 VRT は後続)。
 - **Storybook を `ui` にコロケート**: 単一情報源として素直だが、`ui` は build 成果物を出さない方針で
-  Vite/Tailwind ホストを持たず、VRT のために `ui` 側へツールチェーンを足すことになる。まずは `store`
-  1 つで運用を確かめる (`一旦 store のみ`) ことを優先し、横展開は後続とした。
+  Vite/Tailwind ホストを持たず、VRT のために `ui` 側へツールチェーンを足すことになる。`store` のページを
+  撮る今回の目的では `store` に置くのが自然。
+- **固定 Playwright Docker イメージを `container:` で使う**: フォント差を最も厳密に固定できるが、
+  `ubuntu-24.04` runner + `playwright install` で十分回る。構成を単純にするためコンテナは使わない。
 - **Chromatic (ホスティング + 承認フロー)**: ベースライン管理と UI レビューは手厚いが、外部サービス・
   secret・ネットワーク許可が増える。学習用リポジトリには重い。
 - **ベースラインを各自の OS で撮ってコミット**: CI のレンダリング環境と一致せず、フォント差で常時

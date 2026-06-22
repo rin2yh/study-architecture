@@ -1,8 +1,8 @@
 name: VRT baseline
 
-# 意図した見た目変更を承認するときだけベースラインを撮り直す。承認シグナルは PR への
-# vrt:update ラベル、または手動 dispatch。比較ゲート (ci.yml の client-store-vrt) と同じ
-# 固定 Playwright イメージで撮るので差分が出ない。方針は ADR-202606220600。
+# 「差分が出たら自動更新」は意図しない退行も受け入れるため、更新は人間の承認 (ラベル/dispatch) 起点
+# に限定する。比較ゲート (vrt.yml) と同じ ubuntu-24.04 + Playwright で撮るので差分が出ない。
+# 方針は ADR-202606220600。
 on:
   workflow_dispatch:
     inputs:
@@ -24,8 +24,6 @@ jobs:
     name: vrt-baseline
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'vrt:update'
     runs-on: ubuntu-24.04
-    container:
-      image: mcr.microsoft.com/playwright:v1.60.0-noble
     defaults:
       run:
         working-directory: client
@@ -51,13 +49,18 @@ jobs:
       - name: install
         run: pnpm install --frozen-lockfile
 
+      - name: install chromium
+        run: pnpm -F store exec playwright install --with-deps chromium
+
       - name: regenerate baselines
         env:
           STORYBOOK_DISABLE_TELEMETRY: "1"
         run: |
           set -eu
           pnpm -F store build-storybook
-          pnpm -F store vrt:update
+          pnpm -F store exec http-server storybook-static -p 6006 --silent &
+          pnpm -F store exec wait-on tcp:127.0.0.1:6006
+          pnpm -F store exec test-storybook -u --url http://127.0.0.1:6006
 
       - name: commit baselines
         env:

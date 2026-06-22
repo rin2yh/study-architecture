@@ -3,12 +3,12 @@ import "ui/styles.css";
 
 const preview: Preview = {
   parameters: {
-    layout: "centered",
+    layout: "fullscreen",
     controls: { disable: true },
   },
   decorators: [
     (Story) => (
-      <div className="bg-background text-foreground p-6">
+      <div className="bg-background text-foreground min-h-screen">
         <Story />
       </div>
     ),

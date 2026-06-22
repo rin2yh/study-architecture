@@ -10,6 +10,8 @@ const config: TestRunnerConfig = {
   async postVisit(page, context) {
     // CI と手元でのレンダリング差を抑えるため。
     await page.emulateMedia({ reducedMotion: "reduce" });
+    // useCart は mount 後の effect で ready になる (localStorage 読み)。それ以前は PageLoading。
+    await page.waitForTimeout(200);
     const root = page.locator("#storybook-root");
 
     for (const theme of THEMES) {
