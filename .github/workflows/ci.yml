@@ -210,6 +210,9 @@ jobs:
     name: e2e
     runs-on: ubuntu-24.04
     needs: [server-unit, client, client-ui, server-integration]
+    defaults:
+      run:
+        working-directory: client/e2e
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -232,17 +235,15 @@ jobs:
           cache-dependency-path: client/pnpm-lock.yaml
 
       - name: install
-        working-directory: client
         run: pnpm install --frozen-lockfile
 
       - name: install playwright browser
-        working-directory: client
-        run: pnpm -F e2e exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: e2e
-        working-directory: client
-        run: pnpm -F e2e test
+        run: pnpm test
 
       - name: compose logs
         if: failure()
+        working-directory: ${{ github.workspace }}
         run: docker compose --profile external logs --no-color
