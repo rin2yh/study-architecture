@@ -46,9 +46,9 @@ pnpm -F e2e test
 
 ## 環境変数
 
-| 変数                     | 既定                    | 用途                                        |
-| ------------------------ | ----------------------- | ------------------------------------------- |
-| `E2E_BASE_URL`           | `http://localhost:5173` | store の URL（Playwright の baseURL）       |
-| `E2E_BACKOFFICE_BASE_URL`| `http://localhost:5175` | backoffice の URL                           |
-| `E2E_PRODUCT_API_URL`    | `http://localhost:8001` | シード投入先の product サービス             |
-| `E2E_MEMBER_API_URL`     | `http://localhost:8004` | member シード先（ログイン用アカウント作成） |
+| 変数                      | 既定                    | 用途                                        |
+| ------------------------- | ----------------------- | ------------------------------------------- |
+| `E2E_BASE_URL`            | `http://localhost:5173` | store の URL（Playwright の baseURL）       |
+| `E2E_BACKOFFICE_BASE_URL` | `http://localhost:5175` | backoffice の URL                           |
+| `E2E_PRODUCT_API_URL`     | `http://localhost:8001` | シード投入先の product サービス             |
+| `E2E_MEMBER_API_URL`      | `http://localhost:8004` | member シード先（ログイン用アカウント作成） |
