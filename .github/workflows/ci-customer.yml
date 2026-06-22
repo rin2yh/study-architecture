@@ -252,4 +252,4 @@ jobs:
       - name: compose logs
         if: failure()
         working-directory: ${{ github.workspace }}
-        run: docker compose --profile external logs --no-color
+        run: docker compose --profile external --profile internal logs --no-color
