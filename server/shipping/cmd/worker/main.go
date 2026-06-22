@@ -12,22 +12,22 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := run(ctx); err != nil {
 		slog.Error("shipping worker terminated", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
+func run(ctx context.Context) error {
 	cons, err := di.InitConsumer(ctx)
 	if err != nil {
 		return err
 	}
 
 	slog.Info("shipping worker started")
+	// context.Canceled は SIGTERM 受信後の正常停止なので error とはみなさない。
 	if err := cons.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
