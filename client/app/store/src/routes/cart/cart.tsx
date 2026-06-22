@@ -3,7 +3,7 @@ import { PageLoading } from "@/shared/ui/page-loading";
 import { CartList } from "./cart-list";
 import { EmptyCart } from "./empty-cart";
 
-export function CartPage() {
+export default function Cart() {
   const cart = useCart();
 
   if (!cart.ready) return <PageLoading />;

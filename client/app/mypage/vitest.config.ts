@@ -16,14 +16,18 @@ export default defineConfig({
       reporter: ["text", "json-summary", "lcov"],
       reportsDirectory: "./coverage",
       include: [
-        "src/routes/home.tsx",
-        "src/routes/login.tsx",
-        "src/routes/logout.tsx",
+        "src/routes/**/*.tsx",
         "src/entities/session/model/session.ts",
         "src/features/**/*.tsx",
-        "src/pages/**/ui/*.tsx",
       ],
-      exclude: ["**/*.config.*", "src/root.tsx", "src/routes.ts", ".react-router/**", "build/**"],
+      exclude: [
+        "**/*.config.*",
+        "**/*.test.{ts,tsx}",
+        "src/root.tsx",
+        "src/routes.ts",
+        ".react-router/**",
+        "build/**",
+      ],
       thresholds: {
         lines: 60,
         statements: 60,
