@@ -163,26 +163,20 @@ jobs:
         run: pnpm -F ui typecheck
 
   # 共有 ui の見た目を store 経由の Storybook + test-runner で固定する VRT (ADR-202606220600)。
-  # 行カバレッジでは守れない視覚的退行をスナップショット差分で検出する。
+  # 比較専用ゲート。ベースライン更新は vrt-baseline.yml に分離する。
   client-store-vrt:
     name: client-store-vrt
     runs-on: ubuntu-24.04
-    # ベースラインはレンダリング環境に依存するため、固定した Playwright イメージ内で生成・比較し
-    # 手元との差を排除する。
+    # コミット済みベースラインとのレンダリング差を排すため固定 Playwright イメージ内で比較する。
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble
-    # ベースライン未コミット時に PR ブランチへ初回生成分を push するため write が要る。
-    permissions:
-      contents: write
     defaults:
       run:
         working-directory: client
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          # seeded ベースラインを同じブランチへ push するため credential を残す。
-          ref: ${{ github.head_ref || github.ref_name }}
-          persist-credentials: true
+          persist-credentials: false
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
@@ -198,32 +192,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: vrt
-        id: vrt
         env:
           STORYBOOK_DISABLE_TELEMETRY: "1"
         run: |
           set -eu
-          snap_dir=app/store/__vrt__/__snapshots__
           pnpm -F store build-storybook
-          if [ -z "$(ls -A "$snap_dir" 2>/dev/null || true)" ]; then
-            pnpm -F store vrt:update
-            echo "seeded=true" >> "$GITHUB_OUTPUT"
-          else
-            pnpm -F store vrt:ci
-          fi
-
-      # GITHUB_TOKEN の push は CI を再発火しないため、生成分のコミットでループしない。
-      - name: commit seeded baselines
-        if: steps.vrt.outputs.seeded == 'true' && github.event_name == 'pull_request'
-        env:
-          HEAD_BRANCH: ${{ github.head_ref }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
-          git -C "$GITHUB_WORKSPACE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$GITHUB_WORKSPACE" add client/app/store/__vrt__/__snapshots__
-          git -C "$GITHUB_WORKSPACE" commit -m "test(store): VRT ベースラインを生成 [skip ci]"
-          git -C "$GITHUB_WORKSPACE" push origin "HEAD:${HEAD_BRANCH}"
+          pnpm -F store vrt:ci
 
       - name: upload vrt diff
         if: failure()
