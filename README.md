@@ -3,8 +3,7 @@
 『アーキテクチャの基礎』のサービスベースアーキテクチャを題材に、ローカル完結・費用ゼロで
 EC サイトを段階的に育てる学習プロジェクト。バックエンドは Go、コード生成中心。
 
-単一事業者の EC（storefront）を前提とし、複数出店者のマーケットプレイスではない
-（[doc/adr/202606211200](doc/adr/202606211200-single-merchant-ec-not-marketplace.md)）。
+単一事業者の EC（storefront）を前提とし、複数出店者のマーケットプレイスではない。
 
 - 設計判断 (ADR 一覧): [doc/adr/](doc/adr/README.md)
 - 既知問題: [doc/known-issues.md](doc/known-issues.md)
