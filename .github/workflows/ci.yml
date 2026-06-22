@@ -27,13 +27,107 @@ env:
   COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
+  # CI をデプロイ量子 (server サービス / client アプリ) ごとに gate する。共有 lib は量子ではなく
+  # 各量子にコンパイル時取り込まれるため、変更時は依存する全量子へ fan-out させる
+  # (server/internal → 全サービス、ui・api → 全フロント)。fan-out は各フィルタの anchor で表現する。
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      server_services: ${{ steps.matrix.outputs.server_services }}
+      client_packages: ${{ steps.matrix.outputs.client_packages }}
+      run_integration: ${{ steps.matrix.outputs.run_integration }}
+      run_ui: ${{ steps.matrix.outputs.run_ui }}
+    steps:
+      # paths-filter は push の差分判定に base commit を要するため full history を取る。
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+        id: filter
+        with:
+          filters: |
+            shared_server: &shared_server
+              - 'server/internal/**'
+              - 'server/tools/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'scripts/**'
+              - '.github/workflows/ci.yml'
+            srv_product:
+              - *shared_server
+              - 'server/product/**'
+            srv_order:
+              - *shared_server
+              - 'server/order/**'
+            srv_payment:
+              - *shared_server
+              - 'server/payment/**'
+            srv_member:
+              - *shared_server
+              - 'server/member/**'
+            srv_shipping:
+              - *shared_server
+              - 'server/shipping/**'
+            srv_integration:
+              - *shared_server
+              - 'server/**'
+              - 'compose.yaml'
+            shared_client: &shared_client
+              - 'client/app/ui/**'
+              - 'client/app/api/**'
+              - 'client/pnpm-lock.yaml'
+              - 'client/pnpm-workspace.yaml'
+              - 'client/package.json'
+              - 'client/tsconfig.json'
+              - '.github/workflows/ci.yml'
+            cli_store:
+              - *shared_client
+              - 'client/app/store/**'
+            cli_mypage:
+              - *shared_client
+              - 'client/app/mypage/**'
+            cli_backoffice:
+              - *shared_client
+              - 'client/app/backoffice/**'
+            cli_api:
+              - 'client/app/api/**'
+              - 'client/pnpm-lock.yaml'
+              - 'client/pnpm-workspace.yaml'
+              - 'client/package.json'
+              - 'client/tsconfig.json'
+              - '.github/workflows/ci.yml'
+            cli_ui:
+              - 'client/app/ui/**'
+              - 'client/pnpm-lock.yaml'
+              - 'client/pnpm-workspace.yaml'
+              - 'client/package.json'
+              - 'client/tsconfig.json'
+              - '.github/workflows/ci.yml'
+
+      - id: matrix
+        env:
+          CHANGES: ${{ steps.filter.outputs.changes }}
+        run: |
+          server=$(jq -cn --argjson a "$CHANGES" '[$a[] | select(startswith("srv_") and . != "srv_integration") | ltrimstr("srv_")]')
+          client=$(jq -cn --argjson a "$CHANGES" '[$a[] | select(startswith("cli_") and . != "cli_ui") | ltrimstr("cli_")]')
+          {
+            echo "server_services=$server"
+            echo "client_packages=$client"
+            echo "run_integration=$(jq -n --argjson a "$CHANGES" 'any($a[]; . == "srv_integration")')"
+            echo "run_ui=$(jq -n --argjson a "$CHANGES" 'any($a[]; . == "cli_ui")')"
+          } >> "$GITHUB_OUTPUT"
+
   server-unit:
     name: server-unit-${{ matrix.service }}
+    needs: changes
+    if: needs.changes.outputs.server_services != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        service: [product, order, payment, member, shipping]
+        service: ${{ fromJSON(needs.changes.outputs.server_services) }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -73,14 +167,48 @@ jobs:
           awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
+  # ui は vendored shadcn の共有 lib でテストを持たず coverage gate に載らない。lint/format は
+  # client matrix が ui 変更時に必ず回す (fan-out) ため、ここでは未 import の孤立コンポーネントを
+  # 拾う typecheck だけを回す。
+  client-ui:
+    name: client-ui
+    needs: changes
+    if: needs.changes.outputs.run_ui == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: typecheck
+        run: pnpm -F ui typecheck
+
   client:
     name: client-${{ matrix.package }}
+    needs: changes
+    if: needs.changes.outputs.client_packages != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         # api は build script を持たない (後段の build / typecheck は --if-present 前提)
-        package: [store, mypage, backoffice, api]
+        package: ${{ fromJSON(needs.changes.outputs.client_packages) }}
     defaults:
       run:
         working-directory: client
@@ -127,43 +255,10 @@ jobs:
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
-  # ui は vendored shadcn の共有パッケージ (ADR-202606221200)。テストを持たないため
-  # client matrix (coverage gate 前提) には載せず、型崩れ検出用に typecheck だけ独立で回す。
-  client-ui:
-    name: client-ui
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: client
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-        with:
-          version: 11
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: client/pnpm-lock.yaml
-
-      - name: install
-        run: pnpm install --frozen-lockfile
-
-      - name: lint
-        run: pnpm lint
-
-      - name: format
-        run: pnpm format:check
-
-      - name: typecheck
-        run: pnpm -F ui typecheck
-
   server-integration:
     name: server-integration
+    needs: changes
+    if: needs.changes.outputs.run_integration == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
