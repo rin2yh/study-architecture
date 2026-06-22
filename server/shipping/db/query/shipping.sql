@@ -13,6 +13,13 @@ INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status)
 VALUES ($1, $2, $3, $4)
 RETURNING id, order_id, carrier, tracking_no, status, created_at;
 
+-- ADR-[[202606211200]]
+-- name: CreateShipmentForOrder :one
+INSERT INTO shipping.shipments (order_id)
+VALUES ($1)
+ON CONFLICT (order_id) DO NOTHING
+RETURNING id, order_id, carrier, tracking_no, status, created_at;
+
 -- name: UpdateShipment :one
 UPDATE shipping.shipments
 SET status = $2

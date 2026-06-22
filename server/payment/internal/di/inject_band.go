@@ -5,19 +5,26 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
 
 func InitHandler(ctx context.Context) (*handler.Handler, error) {
 	var err error
-	pool, err := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	redisPublisher, err := kessoku.Bind[event.Publisher](kessoku.Provide(event.NewRedisPublisher)).Fn()()
 	if err != nil {
 		var zero *handler.Handler
 		return zero, err
 	}
+	var err0 error
+	pool, err0 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	if err0 != nil {
+		var zero *handler.Handler
+		return zero, err0
+	}
 	paymentQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewPaymentQuery)).Fn()(pool)
 	paymentCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewPaymentCommand)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, paymentCommand)
+	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, paymentCommand, redisPublisher)
 	return handler0, nil
 }

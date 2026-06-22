@@ -33,7 +33,7 @@ func TestCreateMember(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 email 重複は ErrConflict", func(t *testing.T) {
+	t.Run("準正常系 email 重複は ErrConflict", func(t *testing.T) {
 		if _, err := r.CreateMember(t.Context(), db.CreateMemberParams{Email: "exist@example.com", DisplayName: "重複"}); !errors.Is(err, dberr.ErrConflict) {
 			t.Fatalf("err = %v, want ErrConflict", err)
 		}
@@ -57,12 +57,12 @@ func TestUpdateMember(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.UpdateMember(t.Context(), db.UpdateMemberParams{ID: 9999, Email: "x@example.com", DisplayName: "x"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
-	t.Run("異常系 email 重複は ErrConflict", func(t *testing.T) {
+	t.Run("準正常系 email 重複は ErrConflict", func(t *testing.T) {
 		if _, err := r.UpdateMember(t.Context(), db.UpdateMemberParams{ID: 1, Email: "b@example.com", DisplayName: "衝突"}); !errors.Is(err, dberr.ErrConflict) {
 			t.Fatalf("err = %v, want ErrConflict", err)
 		}

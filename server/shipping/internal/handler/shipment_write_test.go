@@ -59,8 +59,8 @@ func TestCreateShipmentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 carrier 欠落は 400 bad_request", args{stub.ShipmentStub{}, `{"orderId":200,"trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 orderId 不正は 400 bad_request", args{stub.ShipmentStub{}, `{"orderId":0,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 carrier 欠落は 400 bad_request", args{stub.ShipmentStub{}, `{"orderId":200,"trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 orderId 不正は 400 bad_request", args{stub.ShipmentStub{}, `{"orderId":0,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ShipmentStub{Err: errors.New("db failure")}, `{"orderId":200,"carrier":"佐川急便","trackingNo":"TRK-10","status":"pending"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
@@ -121,8 +121,8 @@ func TestUpdateShipmentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 status 欠落は 400 bad_request", args{stub.ShipmentStub{}, "/shipments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"異常系 未存在は 404 not_found", args{stub.ShipmentStub{Err: dberr.ErrNotFound}, "/shipments/99", `{"status":"delivered"}`}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 status 欠落は 400 bad_request", args{stub.ShipmentStub{}, "/shipments/1", `{}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 未存在は 404 not_found", args{stub.ShipmentStub{Err: dberr.ErrNotFound}, "/shipments/99", `{"status":"delivered"}`}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.ShipmentStub{Err: errors.New("db failure")}, "/shipments/1", `{"status":"delivered"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

@@ -18,7 +18,7 @@ import (
 )
 
 func newReadServer(query handler.Query) http.Handler {
-	return newServer(handler.New(query, nil))
+	return newServer(handler.New(query, nil, nil))
 }
 
 func TestListPayments(t *testing.T) {
@@ -113,7 +113,7 @@ func TestGetPaymentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"異常系 未存在は 404 not_found", args{stub.PaymentStub{Err: dberr.ErrNotFound}, "/payments/99"}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 未存在は 404 not_found", args{stub.PaymentStub{Err: dberr.ErrNotFound}, "/payments/99"}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, "/payments/1"}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

@@ -72,7 +72,7 @@ describe("login action", () => {
     });
   });
 
-  describe("異常系", () => {
+  describe("準正常系", () => {
     it("認証失敗はエラー文言を返す (リダイレクトしない)", async () => {
       vi.mocked(createSession).mockRejectedValue(new Error("401"));
 

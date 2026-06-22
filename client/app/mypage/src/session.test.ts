@@ -82,10 +82,8 @@ describe("currentMemberId", () => {
       expect(await currentMemberId(reqWithCookie(null))).toBeNull();
       expect(vi.mocked(getSession)).not.toHaveBeenCalled();
     });
-  });
 
-  describe("異常系", () => {
-    it("getSession が throw したら null", async () => {
+    it("セッション検証に失敗 (4xx) したら null", async () => {
       vi.mocked(getSession).mockRejectedValue(new Error("404"));
       expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBeNull();
     });

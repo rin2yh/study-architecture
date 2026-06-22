@@ -25,6 +25,28 @@ func TestCreateShipment(t *testing.T) {
 	}
 }
 
+func TestCreateShipmentForOrder(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewShipmentCommand(pool)
+	seedShipments(t, pool)
+
+	t.Run("正常系 carrier/tracking 未指定の preparing 枠を作る", func(t *testing.T) {
+		got, err := r.CreateShipmentForOrder(t.Context(), 300)
+		if err != nil {
+			t.Fatalf("CreateShipmentForOrder: %v", err)
+		}
+		if got.ID == 0 || got.OrderID != 300 || got.Status != "preparing" || got.Carrier != "" || got.TrackingNo != "" {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("準正常系 同一 order の再手配は ErrConflict (冪等)", func(t *testing.T) {
+		if _, err := r.CreateShipmentForOrder(t.Context(), 300); !errors.Is(err, dberr.ErrConflict) {
+			t.Fatalf("err = %v, want ErrConflict", err)
+		}
+	})
+}
+
 func TestUpdateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
@@ -40,7 +62,7 @@ func TestUpdateShipment(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
-	t.Run("異常系 未存在は ErrNotFound", func(t *testing.T) {
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.UpdateShipment(t.Context(), db.UpdateShipmentParams{ID: 9999, Status: "x"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}

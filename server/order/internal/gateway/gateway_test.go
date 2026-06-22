@@ -34,7 +34,7 @@ func TestProductClientFetchProduct(t *testing.T) {
 			want{snap: gateway.ProductSnapshot{ID: 100, Name: "Widget", UnitPriceCents: 500}},
 		},
 		{
-			"異常系 404 は ErrProductNotFound",
+			"準正常系 404 は ErrProductNotFound",
 			jsonHandler(http.StatusNotFound, `{"code":"not_found","message":"product 100 not found"}`),
 			want{errIs: gateway.ErrProductNotFound, wantErr: true},
 		},
