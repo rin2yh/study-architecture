@@ -22,7 +22,7 @@ function actionArgs(request: Request): Parameters<typeof action>[0] {
   return { request, url: new URL(request.url), params: {}, pattern: "/login", context: {} };
 }
 function postForm(fields: Record<string, string>): Request {
-  return new Request("http://mypage.test/login", {
+  return new Request("http://store.test/login", {
     method: "POST",
     body: new URLSearchParams(fields),
   });
@@ -34,7 +34,7 @@ describe("login loader", () => {
   describe("正常系", () => {
     it("未ログインなら null を返しフォームを出す", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(null);
-      expect(await loader(loaderArgs(new Request("http://mypage.test/login")))).toBeNull();
+      expect(await loader(loaderArgs(new Request("http://store.test/login")))).toBeNull();
     });
   });
 
@@ -42,7 +42,7 @@ describe("login loader", () => {
     it("既ログインなら / へリダイレクト", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(7);
       const thrown: unknown = await loader(
-        loaderArgs(new Request("http://mypage.test/login")),
+        loaderArgs(new Request("http://store.test/login")),
       ).catch((e: unknown) => e);
       expect(thrown).toBeInstanceOf(Response);
       if (!(thrown instanceof Response)) throw thrown;

@@ -29,4 +29,5 @@
 | [202606211200](202606211200-event-driven-shipment-on-payment-settled.md) | Accepted | 決済確定イベントを起点に shipping が配送を手配する (Redis Streams) |
 | [202606211520](202606211520-test-case-class-4xx-quasi-normal.md) | Accepted | テストのケース分類で 4xx を準正常系・5xx を異常系に分ける |
 | [202606220300](202606220300-frontend-fsd-component-layering.md) | Accepted | フロントエンドのコンポーネントを Feature-Sliced Design で層分けする |
-| [202606220600](202606220600-frontend-ui-vrt-storybook-test-runner.md) | Accepted | 共有 ui の VRT は store 上の Storybook + test-runner で行う |
+| [202606220600](202606220600-frontend-ui-vrt-storybook-test-runner.md) | Accepted | store のページ VRT を Storybook + test-runner で行う |
+| [202606221300](202606221300-merge-mypage-into-store.md) | Accepted | 社外フロントを store に統合し mypage を退役する |

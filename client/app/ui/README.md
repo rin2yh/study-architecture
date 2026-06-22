@@ -1,6 +1,6 @@
 # ui
 
-全サービス UI 共通の shadcn デザインシステム。`store` / `mypage` / `backoffice` から
+全サービス UI 共通の shadcn デザインシステム。`store` / `backoffice` から
 ワークスペースパッケージとして参照する単一情報源。
 
 ## 使い方

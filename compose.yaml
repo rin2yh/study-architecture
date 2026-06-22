@@ -84,7 +84,7 @@ services:
       dockerfile: server/order/Dockerfile
     environment:
       DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      # checkout の連携先 URL。経路は ADR 0008 / 0012 を参照。
+      # 経路は ADR 0008 / 0012 を参照。
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
     ports: ["8002:80"]
@@ -168,29 +168,7 @@ services:
         condition: service_healthy
     networks: [external-public]
 
-  mypage:
-    profiles: ["external"]
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        APP: mypage
-    environment:
-      PORT: "5174"
-      HOST: "0.0.0.0"
-      NODE_ENV: production
-      MEMBER_API_URL: http://edge-proxy/member
-      ORDER_API_URL: http://edge-proxy/order
-      SHIPPING_API_URL: http://edge-proxy/shipping
-    ports: ["5174:5174"]
-    depends_on:
-      edge-proxy:
-        condition: service_healthy
-    networks: [external-public]
-
-  # 社内 admin gateway: 社内 LAN (internal-public) に公開され、自身は社内 DB
-  # (internal-private) と顧客系 backend (external-private) に手を伸ばす 3 attach の
-  # マルチホーム container。これが「社内 → 社外 OK」経路の表現。
+  # マルチホーム接続で「社内 → 社外 OK」経路を表現する admin gateway。
   backoffice:
     profiles: ["internal"]
     build:
