@@ -21,61 +21,73 @@ function reqWithCookie(cookie: string | null): Request {
 }
 
 describe("readSessionToken", () => {
-  it("正常系 該当 Cookie のトークンを返す (前後の他 Cookie も無視)", () => {
-    const req = reqWithCookie(`foo=bar; ${SESSION_COOKIE}=tok123; baz=qux`);
-    expect(readSessionToken(req)).toBe("tok123");
+  describe("正常系", () => {
+    it.each([
+      [
+        "該当 Cookie のトークンを返す (前後の他 Cookie も無視)",
+        `foo=bar; ${SESSION_COOKIE}=tok123; baz=qux`,
+        "tok123",
+      ],
+      ["URL エンコードされた値をデコードする", `${SESSION_COOKIE}=a%2Fb%3Dc`, "a/b=c"],
+    ])("%s", (_name, cookie, expected) => {
+      expect(readSessionToken(reqWithCookie(cookie))).toBe(expected);
+    });
   });
 
-  it("正常系 URL エンコードされた値をデコードする", () => {
-    const req = reqWithCookie(`${SESSION_COOKIE}=a%2Fb%3Dc`);
-    expect(readSessionToken(req)).toBe("a/b=c");
-  });
-
-  it("準正常系 Cookie ヘッダ無しは null", () => {
-    expect(readSessionToken(reqWithCookie(null))).toBeNull();
-  });
-
-  it("準正常系 該当 Cookie が無ければ null", () => {
-    expect(readSessionToken(reqWithCookie("other=1"))).toBeNull();
+  describe("準正常系", () => {
+    it.each([
+      ["Cookie ヘッダ無しは null", null],
+      ["該当 Cookie が無ければ null", "other=1"],
+    ])("%s", (_name, cookie) => {
+      expect(readSessionToken(reqWithCookie(cookie))).toBeNull();
+    });
   });
 });
 
 describe("sessionCookie / clearSessionCookie", () => {
-  it("正常系 HttpOnly/SameSite/Path/Max-Age を含む", () => {
-    const c = sessionCookie("tok123");
-    expect(c).toContain(`${SESSION_COOKIE}=tok123`);
-    expect(c).toContain("HttpOnly");
-    expect(c).toContain("SameSite=Lax");
-    expect(c).toContain("Path=/");
-    expect(c).toMatch(/Max-Age=\d+/);
-  });
+  describe("正常系", () => {
+    it("HttpOnly/SameSite/Path/Max-Age を含む", () => {
+      const c = sessionCookie("tok123");
+      expect(c).toContain(`${SESSION_COOKIE}=tok123`);
+      expect(c).toContain("HttpOnly");
+      expect(c).toContain("SameSite=Lax");
+      expect(c).toContain("Path=/");
+      expect(c).toMatch(/Max-Age=\d+/);
+    });
 
-  it("正常系 clear は Max-Age=0 で失効させる", () => {
-    expect(clearSessionCookie()).toContain("Max-Age=0");
+    it("clear は Max-Age=0 で失効させる", () => {
+      expect(clearSessionCookie()).toContain("Max-Age=0");
+    });
   });
 });
 
 describe("currentMemberId", () => {
   afterEach(() => vi.clearAllMocks());
 
-  it("正常系 有効なセッションは memberId を返す", async () => {
-    vi.mocked(getSession).mockResolvedValue({
-      data: { id: "tok123", memberId: 7, expiresAt: "2026-07-01T00:00:00Z" },
-      status: 200,
-      headers: new Headers(),
-    } as Awaited<ReturnType<typeof getSession>>);
+  describe("正常系", () => {
+    it("有効なセッションは memberId を返す", async () => {
+      vi.mocked(getSession).mockResolvedValue({
+        data: { id: "tok123", memberId: 7, expiresAt: "2026-07-01T00:00:00Z" },
+        status: 200,
+        headers: new Headers(),
+      } as Awaited<ReturnType<typeof getSession>>);
 
-    expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBe(7);
-    expect(vi.mocked(getSession).mock.calls[0][0]).toBe("tok123");
+      expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBe(7);
+      expect(vi.mocked(getSession).mock.calls[0][0]).toBe("tok123");
+    });
   });
 
-  it("準正常系 トークン無しは getSession を呼ばず null", async () => {
-    expect(await currentMemberId(reqWithCookie(null))).toBeNull();
-    expect(vi.mocked(getSession)).not.toHaveBeenCalled();
+  describe("準正常系", () => {
+    it("トークン無しは getSession を呼ばず null", async () => {
+      expect(await currentMemberId(reqWithCookie(null))).toBeNull();
+      expect(vi.mocked(getSession)).not.toHaveBeenCalled();
+    });
   });
 
-  it("異常系 getSession が throw したら null", async () => {
-    vi.mocked(getSession).mockRejectedValue(new Error("404"));
-    expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBeNull();
+  describe("異常系", () => {
+    it("getSession が throw したら null", async () => {
+      vi.mocked(getSession).mockRejectedValue(new Error("404"));
+      expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBeNull();
+    });
   });
 });

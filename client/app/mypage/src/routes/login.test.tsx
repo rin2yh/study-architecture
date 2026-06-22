@@ -31,49 +31,57 @@ function postForm(fields: Record<string, string>): Request {
 describe("login loader", () => {
   afterEach(() => vi.clearAllMocks());
 
-  it("準正常系 既ログインなら / へリダイレクト", async () => {
-    vi.mocked(currentMemberId).mockResolvedValue(7);
-    const thrown = await loader(loaderArgs(new Request("http://mypage.test/login"))).catch(
-      (e) => e,
-    );
-    expect(thrown).toBeInstanceOf(Response);
-    expect((thrown as Response).headers.get("Location")).toBe("/");
+  describe("正常系", () => {
+    it("未ログインなら null を返しフォームを出す", async () => {
+      vi.mocked(currentMemberId).mockResolvedValue(null);
+      expect(await loader(loaderArgs(new Request("http://mypage.test/login")))).toBeNull();
+    });
   });
 
-  it("正常系 未ログインなら null を返しフォームを出す", async () => {
-    vi.mocked(currentMemberId).mockResolvedValue(null);
-    expect(await loader(loaderArgs(new Request("http://mypage.test/login")))).toBeNull();
+  describe("準正常系", () => {
+    it("既ログインなら / へリダイレクト", async () => {
+      vi.mocked(currentMemberId).mockResolvedValue(7);
+      const thrown = await loader(loaderArgs(new Request("http://mypage.test/login"))).catch(
+        (e) => e,
+      );
+      expect(thrown).toBeInstanceOf(Response);
+      expect((thrown as Response).headers.get("Location")).toBe("/");
+    });
   });
 });
 
 describe("login action", () => {
   afterEach(() => vi.clearAllMocks());
 
-  it("正常系 認証成功で Set-Cookie 付きで / へリダイレクト", async () => {
-    vi.mocked(createSession).mockResolvedValue({
-      data: { id: "tok123", memberId: 7, expiresAt: "2026-07-01T00:00:00Z" },
-      status: 201,
-      headers: new Headers(),
-    } as Awaited<ReturnType<typeof createSession>>);
+  describe("正常系", () => {
+    it("認証成功で Set-Cookie 付きで / へリダイレクト", async () => {
+      vi.mocked(createSession).mockResolvedValue({
+        data: { id: "tok123", memberId: 7, expiresAt: "2026-07-01T00:00:00Z" },
+        status: 201,
+        headers: new Headers(),
+      } as Awaited<ReturnType<typeof createSession>>);
 
-    const res = await action(
-      actionArgs(postForm({ email: "user@example.com", password: "password123" })),
-    );
+      const res = await action(
+        actionArgs(postForm({ email: "user@example.com", password: "password123" })),
+      );
 
-    expect(res).toBeInstanceOf(Response);
-    const response = res as Response;
-    expect(response.headers.get("Location")).toBe("/");
-    expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=tok123`);
+      expect(res).toBeInstanceOf(Response);
+      const response = res as Response;
+      expect(response.headers.get("Location")).toBe("/");
+      expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=tok123`);
+    });
   });
 
-  it("異常系 認証失敗はエラー文言を返す (リダイレクトしない)", async () => {
-    vi.mocked(createSession).mockRejectedValue(new Error("401"));
+  describe("異常系", () => {
+    it("認証失敗はエラー文言を返す (リダイレクトしない)", async () => {
+      vi.mocked(createSession).mockRejectedValue(new Error("401"));
 
-    const res = await action(
-      actionArgs(postForm({ email: "user@example.com", password: "wrong" })),
-    );
+      const res = await action(
+        actionArgs(postForm({ email: "user@example.com", password: "wrong" })),
+      );
 
-    expect(res).toEqual({ error: "メールアドレスまたはパスワードが違います" });
+      expect(res).toEqual({ error: "メールアドレスまたはパスワードが違います" });
+    });
   });
 });
 
@@ -89,15 +97,19 @@ describe("Login component", () => {
     render(<Stub initialEntries={["/login"]} />);
   }
 
-  it("正常系 エラー文言を描画する", () => {
-    renderLogin({ error: "認証に失敗" });
-    expect(screen.getByRole("alert").textContent).toContain("認証に失敗");
-    expect(screen.getByRole("button", { name: "ログイン" })).toBeDefined();
+  describe("正常系", () => {
+    it("エラー文言を描画する", () => {
+      renderLogin({ error: "認証に失敗" });
+      expect(screen.getByRole("alert").textContent).toContain("認証に失敗");
+      expect(screen.getByRole("button", { name: "ログイン" })).toBeDefined();
+    });
   });
 
-  it("準正常系 actionData 無しでもフォームを描画する", () => {
-    renderLogin();
-    expect(screen.getByRole("button", { name: "ログイン" })).toBeDefined();
-    expect(screen.queryByRole("alert")).toBeNull();
+  describe("準正常系", () => {
+    it("actionData 無しでもフォームを描画する", () => {
+      renderLogin();
+      expect(screen.getByRole("button", { name: "ログイン" })).toBeDefined();
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
   });
 });
