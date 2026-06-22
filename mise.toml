@@ -4,7 +4,7 @@ run = """
 for svc in product order payment member shipping shipping-worker; do
   docker compose build "$svc"
 done
-docker compose --profile external build store mypage
+docker compose --profile external build store
 docker compose --profile internal build backoffice
 """
 
