@@ -1,6 +1,6 @@
 import { listOrders, ListOrdersResponse } from "api/order";
 import { redirect } from "react-router";
-import type { Route } from "./+types/home";
+import type { Route } from "./+types/route";
 import { currentMemberId } from "@/entities/session";
 import { LogoutButton } from "@/features/auth";
 import { OrderHistoryTable } from "./components/order-history-table";

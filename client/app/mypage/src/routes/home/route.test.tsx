@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
-import Home, { ErrorBoundary, HydrateFallback, loader } from "./home";
+import Home, { ErrorBoundary, HydrateFallback, loader } from "./route";
 import { currentMemberId } from "@/entities/session";
 import { listOrders } from "api/order";
 

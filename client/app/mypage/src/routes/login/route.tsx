@@ -1,6 +1,6 @@
 import { createSession, CreateSessionResponse } from "api/member";
 import { redirect } from "react-router";
-import type { Route } from "./+types/login";
+import type { Route } from "./+types/route";
 import { currentMemberId, sessionCookie } from "@/entities/session";
 import { LoginForm } from "@/features/auth";
 

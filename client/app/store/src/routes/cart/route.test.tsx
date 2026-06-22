@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
 import { type CartItem, readCart, writeCart } from "@/entities/cart";
-import Cart from "./cart";
+import Cart from "./route";
 
 function renderCart() {
   render(

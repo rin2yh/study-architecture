@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { action, loader } from "./logout";
+import { action, loader } from "./route";
 import { SESSION_COOKIE } from "@/entities/session";
 import { deleteSession } from "api/member";
 

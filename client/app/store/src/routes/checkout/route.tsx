@@ -6,7 +6,7 @@ import { useCart } from "@/entities/cart";
 import { currentMemberId } from "@/entities/session";
 import { CheckoutForm, parseItems, type CheckoutResult } from "@/features/checkout";
 import { PageLoading } from "@/shared/ui/page-loading";
-import type { Route } from "./+types/checkout";
+import type { Route } from "./+types/route";
 import { OrderConfirmed } from "./components/order-confirmed";
 import { EmptyCheckout } from "./components/empty-checkout";
 

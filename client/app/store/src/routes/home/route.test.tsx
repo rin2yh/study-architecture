@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
 import { readCart } from "@/entities/cart";
-import Home, { ErrorBoundary, HydrateFallback } from "./home";
+import Home, { ErrorBoundary, HydrateFallback } from "./route";
 
 type Product = {
   id: number;

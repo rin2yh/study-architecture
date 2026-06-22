@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import Home, { ErrorBoundary, HydrateFallback } from "./home";
+import Home, { ErrorBoundary, HydrateFallback } from "./route";
 
 type Product = {
   id: number;

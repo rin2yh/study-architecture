@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
-import Login, { action, loader } from "./login";
+import Login, { action, loader } from "./route";
 import { currentMemberId, SESSION_COOKIE } from "@/entities/session";
 import { createSession } from "api/member";
 

@@ -1,5 +1,5 @@
 import { listProducts, ListProductsResponse } from "api/product";
-import type { Route } from "./+types/home";
+import type { Route } from "./+types/route";
 import { ProductTable } from "./components/product-table";
 
 export async function loader() {

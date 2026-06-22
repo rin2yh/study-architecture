@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { PageLoading } from "@/shared/ui/page-loading";
 import { useCart } from "@/entities/cart";
-import type { Route } from "./+types/home";
+import type { Route } from "./+types/route";
 import { ProductRow } from "./components/product-row";
 
 export async function loader() {
