@@ -35,15 +35,21 @@ CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / int
 - **顧客系量子**: `store` / `mypage` / `order` / `payment` / `member` / `db-customer`
 - **backoffice 量子**: `backoffice` / `product` / `shipping` / `db-ops`
 
-ワークフローを量子ごとに **2 ファイルへ分割**する (`ci-customer.yml` / `ci-backoffice.yml`)。
+ワークフローは量子ごとの 2 ファイル (`ci-customer.yml` / `ci-backoffice.yml`) に加え、量子では
+ない workspace 共通検査を持つ `ci-shared.yml` の計 3 ファイルにする。
 
+- **client の workspace 共通検査 (lint/format と共有パッケージ ui/api) は `ci-shared.yml` に集約**
+  する。lint/format は単一 pnpm workspace 全体が対象で量子では割れないため、量子ワークフローへ
+  複製せず 1 本に寄せる (`client/**` 変更で起動)。per-app の typecheck/coverage/build は各量子側。
 - **起動制御は native `paths:`** で行い、`dorny/paths-filter` の動的 matrix も集約 gate job も
   使わない。ブランチ保護で個別 check を必須にしない運用 (下記) のため、無関係変更で workflow
   自体が起動しなくても merge はブロックされず、issue #38 の「required check 整合」課題が消える。
 - **共有 lib の fan-out** は、共有パス (`server/internal` / `server/tools` / `go.mod` / `go.sum` /
   `client/app/ui` / `client/app/api` / lockfile・workspace・`package.json` / `tsconfig.json` /
   `scripts` / `compose.yaml`) を**両ファイルの `paths:` に複製**して表現する。YAML anchor は
-  ファイルを跨げないため、量子別ファイルでは複製が正攻法になる。
+  ファイルを跨げないため、量子別ファイルでは複製が正攻法になる。共有 client パッケージ (ui/api)・
+  lockfile の変更は各量子の app ビルドにも影響するので、量子ワークフローのトリガにも残し、
+  `ci-shared.yml` と合わせて影響範囲をすべて再実行する。
 - **integration job も量子別に分割**する。計測上、顧客系サービスと backoffice 側サービスを相互
   import するテストは 0 件で、redis 依存テストは miniredis (in-process) のため、各量子の
   integration は自量子の DB だけ起動すればよい。
@@ -56,8 +62,10 @@ CI を組む単位として、ADR-[[202606170909]] の **external (顧客) / int
   構造が一致し、量子の概念を学ぶ教材としても読みやすい。
 - 共有パスリストを 2 ファイルに複製するため、共有 lib のパス追加時は**両ファイルを揃えて直す**
   必要がある (片方忘れると fan-out が片肺になる)。
-- workspace 全体を対象にする lint/format (oxlint/oxfmt) は、起動した側の量子ワークフローで
-  全体を 1 回走らせる。共有変更で両方が起動したときは二重に走るが、oxlint/oxfmt は高速なので許容。
+- workspace 全体を対象にする lint/format (oxlint/oxfmt) と共有パッケージ ui/api の検査は
+  `ci-shared.yml` で 1 回だけ走る。量子ワークフローへ複製していた旧構成の二重実行・api coverage
+  コメント競合は解消した。代わりに client 共通変更では ci-shared と両量子が起動し、量子内では
+  server/client が同一トリガを共有するため client 変更で server job も回る (broad fan-out は許容)。
 - **「2 量子」は厳密な量子ではなく、DB/network 境界 (ADR-[[202606170909]]) に寄せた運用上の近似**
   である。edge-proxy 越しの同期呼び出しが残るため、教科書的には単一量子に縮約される点は承知の上。
 - **required check を将来有効化する場合**、native `paths:` では無関係変更時に workflow が起動せず
