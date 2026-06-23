@@ -1,17 +1,15 @@
-import { listOrders, ListOrdersResponse } from "api/order";
-import { redirect } from "react-router";
+import { ListOrdersResponse } from "api/order";
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import { PageLoading } from "ui/page-loading";
 import type { Route } from "./+types/route";
-import { currentMemberId } from "@/entities/session";
+import { listMyOrders } from "@/entities/order";
+import { requireMemberId } from "@/entities/session";
 import { LogoutButton } from "@/features/auth";
 import { OrderHistoryTable } from "./components/order-history-table";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const memberId = await currentMemberId(request);
-  if (memberId === null) throw redirect("/login");
-
-  const { data } = await listOrders({ headers: { "X-Member-Id": String(memberId) } });
+  const memberId = await requireMemberId(request);
+  const { data } = await listMyOrders(memberId);
   return { memberId, orders: ListOrdersResponse.parse(data) };
 }
 

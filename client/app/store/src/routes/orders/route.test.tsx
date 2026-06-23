@@ -3,14 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Orders, { ErrorBoundary, HydrateFallback, loader } from "./route";
-import { currentMemberId } from "@/entities/session";
-import { listOrders } from "api/order";
+import { requireMemberId } from "@/entities/session";
+import { listMyOrders } from "@/entities/order";
+import { redirect } from "react-router";
 
-vi.mock("@/entities/session", () => ({ currentMemberId: vi.fn() }));
-vi.mock("api/order", async (importActual) => {
-  const actual = await importActual<typeof import("api/order")>();
-  return { ...actual, listOrders: vi.fn() };
-});
+vi.mock("@/entities/session", () => ({ requireMemberId: vi.fn() }));
+vi.mock("@/entities/order", () => ({ listMyOrders: vi.fn() }));
 
 type Order = {
   id: number;
@@ -35,9 +33,9 @@ describe("Orders loader", () => {
   afterEach(() => vi.clearAllMocks());
 
   describe("正常系", () => {
-    it("ログイン済みなら X-Member-Id を付けて注文を返す", async () => {
-      vi.mocked(currentMemberId).mockResolvedValue(7);
-      vi.mocked(listOrders).mockResolvedValue({
+    it("ログイン済みなら memberId で注文を取得して返す", async () => {
+      vi.mocked(requireMemberId).mockResolvedValue(7);
+      vi.mocked(listMyOrders).mockResolvedValue({
         data: [
           {
             id: 1,
@@ -53,7 +51,7 @@ describe("Orders loader", () => {
 
       const result = await loader(loaderArgs(new Request("http://store.test/")));
 
-      expect(vi.mocked(listOrders).mock.calls[0][0]).toEqual({ headers: { "X-Member-Id": "7" } });
+      expect(vi.mocked(listMyOrders)).toHaveBeenCalledWith(7);
       expect(result).toEqual({
         memberId: 7,
         orders: [
@@ -71,7 +69,7 @@ describe("Orders loader", () => {
 
   describe("準正常系", () => {
     it("未ログインなら /login へリダイレクトする", async () => {
-      vi.mocked(currentMemberId).mockResolvedValue(null);
+      vi.mocked(requireMemberId).mockRejectedValue(redirect("/login"));
 
       const thrown: unknown = await loader(loaderArgs(new Request("http://store.test/"))).catch(
         (e: unknown) => e,
@@ -81,7 +79,7 @@ describe("Orders loader", () => {
       if (!(thrown instanceof Response)) throw thrown;
       expect(thrown.status).toBe(302);
       expect(thrown.headers.get("Location")).toBe("/login");
-      expect(vi.mocked(listOrders)).not.toHaveBeenCalled();
+      expect(vi.mocked(listMyOrders)).not.toHaveBeenCalled();
     });
   });
 });

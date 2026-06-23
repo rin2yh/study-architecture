@@ -1,3 +1,5 @@
+import { redirect } from "react-router";
+
 import { getSession, GetSessionResponse } from "api/member";
 
 export const SESSION_COOKIE = "member_session";
@@ -37,4 +39,16 @@ export async function currentMemberId(request: Request): Promise<number | null> 
   } catch {
     return null;
   }
+}
+
+// ADR-[[202606230930]]
+export async function requireMemberId(request: Request): Promise<number> {
+  const memberId = await currentMemberId(request);
+  if (memberId === null) throw redirect("/login");
+  return memberId;
+}
+
+// ADR-[[202606230930]]
+export async function redirectIfAuthenticated(request: Request, to = "/"): Promise<void> {
+  if ((await currentMemberId(request)) !== null) throw redirect(to);
 }

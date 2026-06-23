@@ -5,6 +5,8 @@ import {
   clearSessionCookie,
   currentMemberId,
   readSessionToken,
+  redirectIfAuthenticated,
+  requireMemberId,
   sessionCookie,
 } from "./session";
 import { getSession } from "api/member";
@@ -86,6 +88,57 @@ describe("currentMemberId", () => {
     it("セッション検証に失敗 (4xx) したら null", async () => {
       vi.mocked(getSession).mockRejectedValue(new Error("404"));
       expect(await currentMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBeNull();
+    });
+  });
+});
+
+function okSession(memberId: number) {
+  vi.mocked(getSession).mockResolvedValue({
+    data: { id: "tok123", memberId, expiresAt: "2026-07-01T00:00:00Z" },
+    status: 200,
+    headers: new Headers(),
+  });
+}
+
+describe("requireMemberId", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  describe("正常系", () => {
+    it("有効なセッションは memberId を返す", async () => {
+      okSession(7);
+      expect(await requireMemberId(reqWithCookie(`${SESSION_COOKIE}=tok123`))).toBe(7);
+    });
+  });
+
+  describe("準正常系", () => {
+    it("未ログインは /login へ throw redirect", async () => {
+      const thrown: unknown = await requireMemberId(reqWithCookie(null)).catch((e: unknown) => e);
+      expect(thrown).toBeInstanceOf(Response);
+      if (!(thrown instanceof Response)) throw thrown;
+      expect(thrown.status).toBe(302);
+      expect(thrown.headers.get("Location")).toBe("/login");
+    });
+  });
+});
+
+describe("redirectIfAuthenticated", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  describe("正常系", () => {
+    it("未ログインは throw せず通す", async () => {
+      await expect(redirectIfAuthenticated(reqWithCookie(null))).resolves.toBeUndefined();
+    });
+  });
+
+  describe("準正常系", () => {
+    it("既ログインは指定先へ throw redirect", async () => {
+      okSession(7);
+      const thrown: unknown = await redirectIfAuthenticated(
+        reqWithCookie(`${SESSION_COOKIE}=tok123`),
+      ).catch((e: unknown) => e);
+      expect(thrown).toBeInstanceOf(Response);
+      if (!(thrown instanceof Response)) throw thrown;
+      expect(thrown.headers.get("Location")).toBe("/");
     });
   });
 });

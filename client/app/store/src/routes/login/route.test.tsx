@@ -3,12 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Login, { action, loader } from "./route";
-import { currentMemberId, SESSION_COOKIE } from "@/entities/session";
+import { redirectIfAuthenticated, SESSION_COOKIE } from "@/entities/session";
 import { createSession } from "api/member";
+import { redirect } from "react-router";
 
 vi.mock("@/entities/session", async (importActual) => {
   const actual = await importActual<typeof import("@/entities/session")>();
-  return { ...actual, currentMemberId: vi.fn() };
+  return { ...actual, redirectIfAuthenticated: vi.fn() };
 });
 vi.mock("api/member", async (importActual) => {
   const actual = await importActual<typeof import("api/member")>();
@@ -33,14 +34,14 @@ describe("login loader", () => {
 
   describe("正常系", () => {
     it("未ログインなら null を返しフォームを出す", async () => {
-      vi.mocked(currentMemberId).mockResolvedValue(null);
+      vi.mocked(redirectIfAuthenticated).mockResolvedValue(undefined);
       expect(await loader(loaderArgs(new Request("http://store.test/login")))).toBeNull();
     });
   });
 
   describe("準正常系", () => {
     it("既ログインなら / へリダイレクト", async () => {
-      vi.mocked(currentMemberId).mockResolvedValue(7);
+      vi.mocked(redirectIfAuthenticated).mockRejectedValue(redirect("/"));
       const thrown: unknown = await loader(
         loaderArgs(new Request("http://store.test/login")),
       ).catch((e: unknown) => e);
