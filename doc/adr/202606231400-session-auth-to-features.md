@@ -58,6 +58,9 @@ FSD レイヤリング (ADR-[[202606220300]]) で `store` の `entities/` は `c
   `features/auth/model` に更新 (集約の挙動・X-Member-Id 付与点は不変)。
 - ADR-[[202606220300]] の entities 例から `session` が外れ `cart` のみが残る。`session` は features の例に移る。
 - カバレッジは `src/features/**` の既存 glob が拾うため、vitest.config.ts の個別パス指定を削除。
+- 同じ軸で `entities/cart` を見直し、checkout 専用の射影 `toCheckoutItems` (cart→注文 API 形状,
+  ADR-[[202606190900]]) を `features/checkout` へ移した。`entities/cart` は cart 自身のモデル
+  (`CartItem` + 操作 + `useCart`) のみを持つ。
 
 ## Alternatives considered
 
