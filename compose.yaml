@@ -166,6 +166,11 @@ services:
     depends_on:
       edge-proxy:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks: [external-public]
 
   # マルチホーム接続で「社内 → 社外 OK」経路を表現する admin gateway。
@@ -185,4 +190,9 @@ services:
       SHIPPING_API_URL: http://shipping
     ports: ["5175:5175"]
     depends_on: [product, order, shipping]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks: [internal-public, internal-private, external-private]

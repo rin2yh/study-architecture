@@ -6,8 +6,8 @@ cd "$(dirname "$0")/.."
 
 app="${1:?usage: e2e-up.sh <store|backoffice>}"
 case "$app" in
-  store) profile=external; port=5173 ;;
-  backoffice) profile=internal; port=5175 ;;
+  store) profile=external ;;
+  backoffice) profile=internal ;;
   *)
     echo "unknown app: $app (want store|backoffice)" >&2
     exit 1
@@ -22,14 +22,6 @@ for svc in product order payment member shipping shipping-worker; do
   docker compose build "$svc"
 done
 docker compose --profile "$profile" build "$app"
-docker compose --profile "$profile" up -d --wait
 
-# frontend は healthcheck を持たない (compose の --wait では待てない)。
-deadline=$((SECONDS + 120))
-until curl -fsS -o /dev/null "http://localhost:${port}/"; do
-  if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "timeout waiting for frontend on :${port}" >&2
-    exit 1
-  fi
-  sleep 1
-done
+# frontend の healthcheck まで含めて --wait が待つ。
+docker compose --profile "$profile" up -d --wait
