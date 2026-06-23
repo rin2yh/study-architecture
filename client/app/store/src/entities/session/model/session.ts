@@ -49,6 +49,6 @@ export async function requireMemberId(request: Request): Promise<number> {
 }
 
 // ADR-[[202606230930]]
-export async function redirectIfAuthenticated(request: Request, to = "/"): Promise<void> {
-  if ((await currentMemberId(request)) !== null) throw redirect(to);
+export async function redirectIfAuthenticated(request: Request): Promise<void> {
+  if ((await currentMemberId(request)) !== null) throw redirect("/");
 }
