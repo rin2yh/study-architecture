@@ -1,12 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { apps, appConfig } from "./tests/stack/apps";
+// スタックの起動は Playwright の外 (mise タスク / CI の scripts/e2e-up.sh) で行う。webServer を
+// project 単位に持てないため、ここでは tests と seed (globalSetup) だけを扱う。
+const baseURLs = {
+  store: process.env.E2E_BASE_URL ?? "http://localhost:5173",
+  backoffice: process.env.E2E_BACKOFFICE_BASE_URL ?? "http://localhost:5175",
+};
 
-// webServer はグローバルで project 単位に持てないため、スタックの起動/停止は setup/teardown
-// project に寄せる。--project=store なら Playwright が依存の store-setup だけ走らせるので、
-// 起動するスタックも自然にその project に絞られる。
 export default defineConfig({
   testDir: "./tests",
+  globalSetup: "./tests/setup/seed.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -15,21 +18,16 @@ export default defineConfig({
   use: {
     trace: "on-first-retry",
   },
-  projects: apps.flatMap((app) => [
+  projects: [
     {
-      name: `${app}-setup`,
-      testMatch: /stack\/setup\.ts$/,
-      teardown: `${app}-teardown`,
+      name: "store",
+      testDir: "./tests/store",
+      use: { ...devices["Desktop Chrome"], baseURL: baseURLs.store },
     },
     {
-      name: `${app}-teardown`,
-      testMatch: /stack\/teardown\.ts$/,
+      name: "backoffice",
+      testDir: "./tests/backoffice",
+      use: { ...devices["Desktop Chrome"], baseURL: baseURLs.backoffice },
     },
-    {
-      name: app,
-      testDir: `./tests/${app}`,
-      dependencies: [`${app}-setup`],
-      use: { ...devices["Desktop Chrome"], baseURL: appConfig[app].baseURL },
-    },
-  ]),
+  ],
 });

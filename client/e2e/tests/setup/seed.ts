@@ -1,7 +1,4 @@
 import { MEMBER_API_URL, ensureMember } from "./auth";
-import type { App } from "../stack/apps";
-import { appConfig } from "../stack/apps";
-import { waitForOk } from "../stack/wait";
 
 // product のマイグレーションはテーブル作成だけでシードを持たないため、E2E が前提とする商品を
 // ここで用意する。store の loader は edge-proxy 経由で読むが、シード投入は product サービスへ
@@ -18,6 +15,22 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
   { sku: "E2E-001", name: "E2E テスト商品", priceCents: 12300 },
   { sku: "E2E-002", name: "E2E テスト商品(2)", priceCents: 4560 },
 ];
+
+async function waitForHealthy(baseUrl: string, timeoutMs = 60_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${baseUrl}/healthz`);
+      if (res.ok) return;
+      lastError = new Error(`healthz returned ${res.status}`);
+    } catch (e) {
+      lastError = e;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`service not healthy at ${baseUrl}: ${String(lastError)}`);
+}
 
 async function seedProducts(): Promise<void> {
   const res = await fetch(`${PRODUCT_API_URL}/products`);
@@ -39,11 +52,10 @@ async function seedProducts(): Promise<void> {
   }
 }
 
-export async function seedForApp(app: App): Promise<void> {
-  const waits = [waitForOk(`${PRODUCT_API_URL}/healthz`)];
-  if (appConfig[app].needsMember) waits.push(waitForOk(`${MEMBER_API_URL}/healthz`));
-  await Promise.all(waits);
-
+// 起動済みスタックに対し product / member を冪等に用意する。member は backoffice では未使用だが、
+// 常に揃えても害がなく app 分岐を持たない方が単純。
+export default async function globalSetup(): Promise<void> {
+  await Promise.all([waitForHealthy(PRODUCT_API_URL), waitForHealthy(MEMBER_API_URL)]);
   await seedProducts();
-  if (appConfig[app].needsMember) await ensureMember();
+  await ensureMember();
 }
