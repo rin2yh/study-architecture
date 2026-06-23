@@ -1,15 +1,14 @@
-import { ListOrdersResponse } from "api/order";
+import { listOrders, ListOrdersResponse } from "api/order";
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import { PageLoading } from "ui/page-loading";
 import type { Route } from "./+types/route";
-import { listMyOrders } from "@/entities/order";
 import { requireMemberId } from "@/entities/session";
 import { LogoutButton } from "@/features/auth";
 import { OrderHistoryTable } from "./components/order-history-table";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const memberId = await requireMemberId(request);
-  const { data } = await listMyOrders(memberId);
+  const { data } = await listOrders({ headers: { "X-Member-Id": String(memberId) } });
   return { memberId, orders: ListOrdersResponse.parse(data) };
 }
 

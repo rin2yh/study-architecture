@@ -4,11 +4,14 @@ import { createRoutesStub } from "react-router";
 
 import Orders, { ErrorBoundary, HydrateFallback, loader } from "./route";
 import { requireMemberId } from "@/entities/session";
-import { listMyOrders } from "@/entities/order";
+import { listOrders } from "api/order";
 import { redirect } from "react-router";
 
 vi.mock("@/entities/session", () => ({ requireMemberId: vi.fn() }));
-vi.mock("@/entities/order", () => ({ listMyOrders: vi.fn() }));
+vi.mock("api/order", async (importActual) => {
+  const actual = await importActual<typeof import("api/order")>();
+  return { ...actual, listOrders: vi.fn() };
+});
 
 type Order = {
   id: number;
@@ -33,9 +36,9 @@ describe("Orders loader", () => {
   afterEach(() => vi.clearAllMocks());
 
   describe("正常系", () => {
-    it("ログイン済みなら memberId で注文を取得して返す", async () => {
+    it("ログイン済みなら X-Member-Id を付けて注文を返す", async () => {
       vi.mocked(requireMemberId).mockResolvedValue(7);
-      vi.mocked(listMyOrders).mockResolvedValue({
+      vi.mocked(listOrders).mockResolvedValue({
         data: [
           {
             id: 1,
@@ -51,7 +54,7 @@ describe("Orders loader", () => {
 
       const result = await loader(loaderArgs(new Request("http://store.test/")));
 
-      expect(vi.mocked(listMyOrders)).toHaveBeenCalledWith(7);
+      expect(vi.mocked(listOrders).mock.calls[0][0]).toEqual({ headers: { "X-Member-Id": "7" } });
       expect(result).toEqual({
         memberId: 7,
         orders: [
@@ -79,7 +82,7 @@ describe("Orders loader", () => {
       if (!(thrown instanceof Response)) throw thrown;
       expect(thrown.status).toBe(302);
       expect(thrown.headers.get("Location")).toBe("/login");
-      expect(vi.mocked(listMyOrders)).not.toHaveBeenCalled();
+      expect(vi.mocked(listOrders)).not.toHaveBeenCalled();
     });
   });
 });
