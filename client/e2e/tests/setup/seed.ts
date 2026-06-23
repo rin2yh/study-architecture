@@ -52,8 +52,7 @@ async function seedProducts(): Promise<void> {
   }
 }
 
-// 起動済みスタックに対し product / member を冪等に用意する。member は backoffice では未使用だが、
-// 常に揃えても害がなく app 分岐を持たない方が単純。
+// member は backoffice では未使用だが、常に揃えても害がなく app 分岐を持たない方が単純。
 export default async function globalSetup(): Promise<void> {
   await Promise.all([waitForHealthy(PRODUCT_API_URL), waitForHealthy(MEMBER_API_URL)]);
   await seedProducts();

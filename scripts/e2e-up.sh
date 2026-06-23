@@ -22,6 +22,4 @@ for svc in product order payment member shipping shipping-worker; do
   docker compose build "$svc"
 done
 docker compose --profile "$profile" build "$app"
-
-# frontend の healthcheck まで含めて --wait が待つ。
 docker compose --profile "$profile" up -d --wait
