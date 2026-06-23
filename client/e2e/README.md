@@ -1,8 +1,18 @@
 # e2e
 
-`store`（社外）と `backoffice`（社内）は到達できるネットワークが異なるため、別スタックの compose を
-起動して E2E を回す。
+Playwright による store / backoffice の E2E テスト。compose のフルスタックを起動して実行する。
 
-スタックの起動は Playwright の外（`scripts/e2e-up.sh`）に置き、テスト前に mise タスク / CI から呼ぶ。
-Playwright の `webServer` は project 単位に持てず、`--project` を絞っても全 webServer が起動して
-しまうため。
+## 必要なもの
+
+- docker / docker compose（スタック起動用）
+- mise（タスク実行用）
+
+## 実行
+
+リポジトリルートから。スタックの起動からテストまでタスクが行う（初回は Playwright ブラウザの取得も走る）:
+
+```sh
+mise run test:e2e             # store → backoffice を順に実行
+mise run test:e2e:store       # store のみ
+mise run test:e2e:backoffice  # backoffice のみ
+```
