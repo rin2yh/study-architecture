@@ -32,3 +32,4 @@
 | [202606220716](202606220716-ci-split-by-architecture-quantum.md) | Accepted | CI をアーキテクチャ量子 (顧客系 / backoffice) ごとに 2 ワークフローへ分割する |
 | [202606221300](202606221300-merge-mypage-into-store.md) | Accepted | 社外フロントを store に統合し mypage を退役する |
 | [202606230930](202606230930-bff-auth-context-and-trust-boundary.md) | Accepted | store BFF に認証コンテキストの集約と X-Member-Id の付与点を置く |
+| [202606231400](202606231400-session-module-to-shared-lib.md) | Accepted | session モジュールを entities から shared/lib へ移す |

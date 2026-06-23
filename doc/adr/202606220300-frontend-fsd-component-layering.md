@@ -1,6 +1,6 @@
 # ADR-202606220300: フロントエンドのコンポーネントを Feature-Sliced Design で層分けする
 
-- Status: Accepted
+- Status: Accepted (entities の例から `session` は ADR-[[202606231400]] で `shared/lib` に移動。`cart` のみ残置)
 - Date: 2026-06-22
 - Relates to: ADR-[[202606170905]] / ADR-[[202606170908]] / ADR-[[202606190901]] / ADR-[[202606170906]]
 

@@ -4,11 +4,11 @@ import { createRoutesStub } from "react-router";
 
 import { checkout } from "api/order";
 import { type CartItem, readCart, writeCart } from "@/entities/cart";
-import { currentMemberId } from "@/entities/session";
+import { currentMemberId } from "@/shared/lib/session";
 import Checkout, { action } from "./route";
 
 vi.mock("api/order", () => ({ checkout: vi.fn() }));
-vi.mock("@/entities/session", () => ({ currentMemberId: vi.fn() }));
+vi.mock("@/shared/lib/session", () => ({ currentMemberId: vi.fn() }));
 
 const order = {
   id: 7,
