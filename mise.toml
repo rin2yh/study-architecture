@@ -1,3 +1,7 @@
+[tools]
+# migrate.sh は prebuilt goose を使う (go tool goose は全 DB ドライバを毎回ビルドして遅い)。
+goose = "3.27.1"
+
 [tasks.build]
 description = "全 image を 1 つずつ build (並列 build で daemon が詰まるのを避ける)"
 run = """
