@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { apps, baseURLs } from "./tests/stack/apps";
+import { apps, appConfig } from "./tests/stack/apps";
 
 // webServer はグローバルで project 単位に持てないため、スタックの起動/停止は setup/teardown
 // project に寄せる。--project=store なら Playwright が依存の store-setup だけ走らせるので、
@@ -18,7 +18,7 @@ export default defineConfig({
   projects: apps.flatMap((app) => [
     {
       name: `${app}-setup`,
-      testMatch: new RegExp(`stack/${app}\\.setup\\.ts$`),
+      testMatch: /stack\/setup\.ts$/,
       teardown: `${app}-teardown`,
     },
     {
@@ -29,7 +29,7 @@ export default defineConfig({
       name: app,
       testDir: `./tests/${app}`,
       dependencies: [`${app}-setup`],
-      use: { ...devices["Desktop Chrome"], baseURL: baseURLs[app] },
+      use: { ...devices["Desktop Chrome"], baseURL: appConfig[app].baseURL },
     },
   ]),
 });

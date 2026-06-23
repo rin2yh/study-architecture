@@ -3,15 +3,8 @@
 # 起動する。停止は teardown project の e2e-down.sh が行う。
 set -euo pipefail
 
-target="${1:?usage: e2e-up.sh <store|backoffice>}"
-case "$target" in
-  store) profile=external ;;
-  backoffice) profile=internal ;;
-  *)
-    echo "unknown target: $target (want store|backoffice)" >&2
-    exit 1
-    ;;
-esac
+target="${1:?usage: e2e-up.sh <app> <profile>}"
+profile="${2:?usage: e2e-up.sh <app> <profile>}"
 
 docker compose up -d --wait db-customer db-ops
 ./scripts/migrate.sh

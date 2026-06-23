@@ -1,5 +1,7 @@
 import { MEMBER_API_URL, ensureMember } from "./auth";
 import type { App } from "../stack/apps";
+import { appConfig } from "../stack/apps";
+import { waitForOk } from "../stack/wait";
 
 // product のマイグレーションはテーブル作成だけでシードを持たないため、E2E が前提とする商品を
 // ここで用意する。store の loader は edge-proxy 経由で読むが、シード投入は product サービスへ
@@ -16,22 +18,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
   { sku: "E2E-001", name: "E2E テスト商品", priceCents: 12300 },
   { sku: "E2E-002", name: "E2E テスト商品(2)", priceCents: 4560 },
 ];
-
-async function waitForHealthy(baseUrl: string, timeoutMs = 60_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastError: unknown;
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`${baseUrl}/healthz`);
-      if (res.ok) return;
-      lastError = new Error(`healthz returned ${res.status}`);
-    } catch (e) {
-      lastError = e;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  throw new Error(`service not healthy at ${baseUrl}: ${String(lastError)}`);
-}
 
 async function seedProducts(): Promise<void> {
   const res = await fetch(`${PRODUCT_API_URL}/products`);
@@ -53,14 +39,11 @@ async function seedProducts(): Promise<void> {
   }
 }
 
-// store はログインフローがあるため member も用意する。backoffice は閲覧のみで認証を要さない。
 export async function seedForApp(app: App): Promise<void> {
-  if (app === "store") {
-    await Promise.all([waitForHealthy(PRODUCT_API_URL), waitForHealthy(MEMBER_API_URL)]);
-    await seedProducts();
-    await ensureMember();
-    return;
-  }
-  await waitForHealthy(PRODUCT_API_URL);
+  const waits = [waitForOk(`${PRODUCT_API_URL}/healthz`)];
+  if (appConfig[app].needsMember) waits.push(waitForOk(`${MEMBER_API_URL}/healthz`));
+  await Promise.all(waits);
+
   await seedProducts();
+  if (appConfig[app].needsMember) await ensureMember();
 }

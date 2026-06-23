@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Playwright の teardown project から呼ばれる。profile 配下のフロントも落とすため両 profile を指定する。
+# Playwright の teardown project から呼ばれる。profile 配下のフロントも落とすため。
 set -euo pipefail
 
-docker compose --profile external --profile internal down
+profile="${1:?usage: e2e-down.sh <profile>}"
+
+docker compose --profile "$profile" down
