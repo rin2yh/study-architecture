@@ -1,6 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
+// スタックの起動は Playwright の外 (mise タスク / CI の scripts/e2e-up.sh) で行う。webServer を
+// project 単位に持てないため、ここでは tests と seed (globalSetup) だけを扱う。
+const baseURLs = {
+  store: process.env.E2E_BASE_URL ?? "http://localhost:5173",
+  backoffice: process.env.E2E_BACKOFFICE_BASE_URL ?? "http://localhost:5175",
+};
 
 export default defineConfig({
   testDir: "./tests",
@@ -11,15 +16,18 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL,
     trace: "on-first-retry",
   },
-  webServer: {
-    command: "bash scripts/e2e-up.sh",
-    cwd: "../..",
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 600_000,
-  },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "store",
+      testDir: "./tests/store",
+      use: { ...devices["Desktop Chrome"], baseURL: baseURLs.store },
+    },
+    {
+      name: "backoffice",
+      testDir: "./tests/backoffice",
+      use: { ...devices["Desktop Chrome"], baseURL: baseURLs.backoffice },
+    },
+  ],
 });

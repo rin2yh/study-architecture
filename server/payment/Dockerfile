@@ -8,11 +8,11 @@ WORKDIR /src
 
 # 依存解決ファイルを先に COPY してレイヤキャッシュを活かす
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod,id=gomod go mod download
 
 # ソース一式を COPY し、このサービスの cmd だけビルドする
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -o /out/payment ./server/payment
+RUN --mount=type=cache,target=/go/pkg/mod,id=gomod --mount=type=cache,target=/root/.cache/go-build,id=gobuild CGO_ENABLED=0 go build -trimpath -o /out/payment ./server/payment
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/payment /payment

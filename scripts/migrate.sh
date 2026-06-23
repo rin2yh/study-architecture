@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# host から goose で migration を流す。引数 1 つで個別サービス、無しで 5 サービス全部。
-# DATABASE_URL_CUSTOMER / DATABASE_URL_OPS で DSN を上書きできる (CI などで使う)。
 set -euo pipefail
 
 : "${DATABASE_URL_CUSTOMER:=postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable}"
 : "${DATABASE_URL_OPS:=postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable}"
+
+# go tool goose は全 DB ドライバを毎回ビルドして遅いため、prebuilt があればそれを使う。
+goose=(goose)
+command -v goose >/dev/null 2>&1 || goose=(go tool goose)
 
 migrate_one() {
   local svc="$1"
@@ -14,7 +16,7 @@ migrate_one() {
     product|shipping)     dsn="$DATABASE_URL_OPS" ;;
     *) echo "unknown service: $svc" >&2; return 1 ;;
   esac
-  go tool goose -table "goose_${svc}_version" -dir "server/${svc}/db/migration" postgres "$dsn" up
+  "${goose[@]}" -table "goose_${svc}_version" -dir "server/${svc}/db/migration" postgres "$dsn" up
 }
 
 if [ "$#" -ge 1 ]; then

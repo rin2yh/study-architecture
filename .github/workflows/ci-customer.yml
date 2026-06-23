@@ -213,9 +213,17 @@ jobs:
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
   e2e:
-    name: e2e
+    name: e2e (${{ matrix.project }})
     runs-on: ubuntu-24.04
     needs: [code-quality, server-unit, client, server-integration]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: store
+            profile: external
+          - project: backoffice
+            profile: internal
     defaults:
       run:
         working-directory: client/e2e
@@ -224,11 +232,12 @@ jobs:
         with:
           persist-credentials: false
 
-      # スタック起動は Playwright の webServer が担う。その中の migrate が goose を使うため Go が要る。
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: go.mod
-          cache: true
+      # e2e-up.sh の migrate は prebuilt goose を使う (go tool goose だと全 DB ドライバを毎回ビルドして遅い)。
+      - name: install goose
+        run: |
+          curl -fsSL -o /usr/local/bin/goose \
+            https://github.com/pressly/goose/releases/download/v3.27.1/goose_linux_x86_64
+          chmod +x /usr/local/bin/goose
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
@@ -246,10 +255,14 @@ jobs:
       - name: install playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: start stack
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/e2e-up.sh ${{ matrix.project }}
+
       - name: e2e
-        run: pnpm test
+        run: pnpm test --project=${{ matrix.project }}
 
       - name: compose logs
         if: failure()
         working-directory: ${{ github.workspace }}
-        run: docker compose --profile external logs --no-color
+        run: docker compose --profile ${{ matrix.profile }} logs --no-color

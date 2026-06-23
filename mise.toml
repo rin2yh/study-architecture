@@ -1,3 +1,7 @@
+[tools]
+# migrate.sh は prebuilt goose を使う (go tool goose は全 DB ドライバを毎回ビルドして遅い)。
+goose = "3.27.1"
+
 [tasks.build]
 description = "全 image を 1 つずつ build (並列 build で daemon が詰まるのを避ける)"
 run = """
@@ -39,13 +43,39 @@ depends = ["up:db", "migrate"]
 env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
 run = "go test ./server/... -race -count=1"
 
-# スタックの起動は Playwright の webServer (scripts/e2e-up.sh) が担う。
-[tasks."test:e2e"]
-description = "store の E2E を実行 (Playwright が compose スタックを起動する)"
+# E2E は scripts/e2e-up.sh でスタックを起動してから Playwright を回す。install は 3 タスクで共有する。
+[tasks."test:e2e:install"]
+description = "E2E 用に client 依存と Playwright ブラウザを入れる"
 run = """
 pnpm -C client install --frozen-lockfile
 pnpm -C client -F e2e exec playwright install --with-deps chromium
-pnpm -C client -F e2e test
+"""
+
+[tasks."test:e2e:store"]
+description = "store の E2E を実行 (社外スタックを起動)"
+depends = ["test:e2e:install"]
+run = """
+./scripts/e2e-up.sh store
+pnpm -C client -F e2e test --project=store
+"""
+
+[tasks."test:e2e:backoffice"]
+description = "backoffice の E2E を実行 (社内スタックを起動)"
+depends = ["test:e2e:install"]
+run = """
+./scripts/e2e-up.sh backoffice
+pnpm -C client -F e2e test --project=backoffice
+"""
+
+# store / backoffice はスタックが別なので 1 つずつ順に起動して実行する。
+[tasks."test:e2e"]
+description = "store / backoffice の E2E を順に実行"
+depends = ["test:e2e:install"]
+run = """
+./scripts/e2e-up.sh store
+pnpm -C client -F e2e test --project=store
+./scripts/e2e-up.sh backoffice
+pnpm -C client -F e2e test --project=backoffice
 """
 
 [tasks.down]

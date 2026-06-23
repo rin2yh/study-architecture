@@ -6,10 +6,10 @@ FROM golang:1.26-alpine AS build
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod,id=gomod go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -o /out/shipping-worker ./server/shipping/cmd/worker
+RUN --mount=type=cache,target=/go/pkg/mod,id=gomod --mount=type=cache,target=/root/.cache/go-build,id=gobuild CGO_ENABLED=0 go build -trimpath -o /out/shipping-worker ./server/shipping/cmd/worker
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/shipping-worker /shipping-worker
