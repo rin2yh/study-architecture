@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "u
 import { Separator } from "ui/separator";
 import { type CartItem, cartTotalCents } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
-import { toCheckoutItems } from "../model/to-checkout-items";
+import { toCheckoutItems } from "../model/checkout-items";
 
 interface CheckoutFormProps {
   items: CartItem[];
