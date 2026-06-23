@@ -6,7 +6,7 @@ set -euo pipefail
 : "${DATABASE_URL_CUSTOMER:=postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable}"
 : "${DATABASE_URL_OPS:=postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable}"
 
-# prebuilt goose を優先する。go tool goose は全 DB ドライバを毎回ビルドして遅い。
+# go tool goose は全 DB ドライバを毎回ビルドして遅いため、prebuilt があればそれを使う。
 goose=(goose)
 command -v goose >/dev/null 2>&1 || goose=(go tool goose)
 
