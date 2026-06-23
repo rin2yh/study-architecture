@@ -3,10 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Orders, { ErrorBoundary, HydrateFallback, loader } from "./route";
-import { currentMemberId } from "@/entities/session";
+import { requireMemberId } from "@/entities/session";
 import { listOrders } from "api/order";
+import { redirect } from "react-router";
 
-vi.mock("@/entities/session", () => ({ currentMemberId: vi.fn() }));
+vi.mock("@/entities/session", () => ({ requireMemberId: vi.fn() }));
 vi.mock("api/order", async (importActual) => {
   const actual = await importActual<typeof import("api/order")>();
   return { ...actual, listOrders: vi.fn() };
@@ -36,7 +37,7 @@ describe("Orders loader", () => {
 
   describe("正常系", () => {
     it("ログイン済みなら X-Member-Id を付けて注文を返す", async () => {
-      vi.mocked(currentMemberId).mockResolvedValue(7);
+      vi.mocked(requireMemberId).mockResolvedValue(7);
       vi.mocked(listOrders).mockResolvedValue({
         data: [
           {
@@ -71,7 +72,7 @@ describe("Orders loader", () => {
 
   describe("準正常系", () => {
     it("未ログインなら /login へリダイレクトする", async () => {
-      vi.mocked(currentMemberId).mockResolvedValue(null);
+      vi.mocked(requireMemberId).mockRejectedValue(redirect("/login"));
 
       const thrown: unknown = await loader(loaderArgs(new Request("http://store.test/"))).catch(
         (e: unknown) => e,

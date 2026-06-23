@@ -3,5 +3,7 @@ export {
   clearSessionCookie,
   currentMemberId,
   readSessionToken,
+  redirectIfAuthenticated,
+  requireMemberId,
   sessionCookie,
 } from "./model/session";
