@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E 用スタックを起動する。Playwright を呼ぶ前に mise タスク / CI から実行する。
+# E2E 用スタックを起動する。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
