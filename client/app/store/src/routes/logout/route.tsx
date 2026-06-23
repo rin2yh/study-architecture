@@ -1,7 +1,7 @@
 import { deleteSession } from "api/member";
 import { redirect } from "react-router";
 import type { Route } from "./+types/route";
-import { clearSessionCookie, readSessionToken } from "@/shared/lib/session";
+import { clearSessionCookie, readSessionToken } from "@/features/auth";
 
 export async function action({ request }: Route.ActionArgs) {
   const token = readSessionToken(request);

@@ -3,11 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Orders, { ErrorBoundary, HydrateFallback, loader } from "./route";
-import { requireMemberId } from "@/shared/lib/session";
+import { requireMemberId } from "@/features/auth/model/session";
 import { listOrders } from "api/order";
 import { redirect } from "react-router";
 
-vi.mock("@/shared/lib/session", () => ({ requireMemberId: vi.fn() }));
+vi.mock("@/features/auth/model/session", () => ({ requireMemberId: vi.fn() }));
 vi.mock("api/order", async (importActual) => {
   const actual = await importActual<typeof import("api/order")>();
   return { ...actual, listOrders: vi.fn() };
