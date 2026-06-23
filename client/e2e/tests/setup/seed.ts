@@ -1,4 +1,5 @@
 import { MEMBER_API_URL, ensureMember } from "./auth";
+import type { App } from "../stack/apps";
 
 // product のマイグレーションはテーブル作成だけでシードを持たないため、E2E が前提とする商品を
 // ここで用意する。store の loader は edge-proxy 経由で読むが、シード投入は product サービスへ
@@ -52,8 +53,14 @@ async function seedProducts(): Promise<void> {
   }
 }
 
-export default async function globalSetup(): Promise<void> {
-  await Promise.all([waitForHealthy(PRODUCT_API_URL), waitForHealthy(MEMBER_API_URL)]);
+// store はログインフローがあるため member も用意する。backoffice は閲覧のみで認証を要さない。
+export async function seedForApp(app: App): Promise<void> {
+  if (app === "store") {
+    await Promise.all([waitForHealthy(PRODUCT_API_URL), waitForHealthy(MEMBER_API_URL)]);
+    await seedProducts();
+    await ensureMember();
+    return;
+  }
+  await waitForHealthy(PRODUCT_API_URL);
   await seedProducts();
-  await ensureMember();
 }

@@ -1,29 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const appNames = ["store", "backoffice"] as const;
-type App = (typeof appNames)[number];
+import { apps, baseURLs } from "./tests/stack/apps";
 
-const baseURLs: Record<App, string> = {
-  store: process.env.E2E_BASE_URL ?? "http://localhost:5173",
-  backoffice: process.env.E2E_BACKOFFICE_BASE_URL ?? "http://localhost:5175",
-};
-
-// webServer は --project では絞られないため、CLI の --project を自前で読んで起動スタックも
-// 同じ project に合わせる。未指定なら両方。
-function selectProjects(): readonly App[] {
-  const picked = new Set<string>();
-  process.argv.forEach((arg, i) => {
-    if (arg === "--project") picked.add(process.argv[i + 1] ?? "");
-    else if (arg.startsWith("--project=")) picked.add(arg.slice("--project=".length));
-  });
-  const valid = appNames.filter((app) => picked.has(app));
-  return valid.length > 0 ? valid : appNames;
-}
-const selected = selectProjects();
-
+// webServer はグローバルで project 単位に持てないため、スタックの起動/停止は setup/teardown
+// project に寄せる。--project=store なら Playwright が依存の store-setup だけ走らせるので、
+// 起動するスタックも自然にその project に絞られる。
 export default defineConfig({
   testDir: "./tests",
-  globalSetup: "./tests/setup/seed.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -32,16 +15,21 @@ export default defineConfig({
   use: {
     trace: "on-first-retry",
   },
-  webServer: selected.map((app) => ({
-    command: `bash scripts/e2e-up.sh ${app}`,
-    cwd: "../..",
-    url: baseURLs[app],
-    reuseExistingServer: !process.env.CI,
-    timeout: 600_000,
-  })),
-  projects: selected.map((app) => ({
-    name: app,
-    testDir: `./tests/${app}`,
-    use: { ...devices["Desktop Chrome"], baseURL: baseURLs[app] },
-  })),
+  projects: apps.flatMap((app) => [
+    {
+      name: `${app}-setup`,
+      testMatch: new RegExp(`stack/${app}\\.setup\\.ts$`),
+      teardown: `${app}-teardown`,
+    },
+    {
+      name: `${app}-teardown`,
+      testMatch: /stack\/teardown\.ts$/,
+    },
+    {
+      name: app,
+      testDir: `./tests/${app}`,
+      dependencies: [`${app}-setup`],
+      use: { ...devices["Desktop Chrome"], baseURL: baseURLs[app] },
+    },
+  ]),
 });

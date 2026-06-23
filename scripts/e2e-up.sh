@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Playwright の webServer から起動される。引数のフロントエンド (store / backoffice) を listen
-# させたままフォアグラウンドで保持し、Playwright の url ポーリングを起動完了の検知に使う
-# (teardown 時に Playwright が停止する)。
+# Playwright の setup project から呼ばれ、指定フロント (store / backoffice) のスタックを detached で
+# 起動する。停止は teardown project の e2e-down.sh が行う。
 set -euo pipefail
 
 target="${1:?usage: e2e-up.sh <store|backoffice>}"
@@ -23,4 +22,4 @@ for svc in product order payment member shipping shipping-worker; do
 done
 docker compose --profile "$profile" build "$target"
 
-exec docker compose --profile "$profile" up --no-build
+docker compose --profile "$profile" up -d --wait
