@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# host から goose で migration を流す。引数 1 つで個別サービス、無しで 5 サービス全部。
-# DATABASE_URL_CUSTOMER / DATABASE_URL_OPS で DSN を上書きできる (CI などで使う)。
 set -euo pipefail
 
 : "${DATABASE_URL_CUSTOMER:=postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable}"
