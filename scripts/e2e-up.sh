@@ -16,6 +16,7 @@ esac
 
 docker compose up -d --wait db-customer db-ops
 ./scripts/migrate.sh
+./scripts/grant.sh
 
 # 並列 build で docker daemon の I/O が詰まるのを避けるため 1 つずつ build する (.claude/rules/docker.md)。
 for svc in product order payment member shipping shipping-worker; do
