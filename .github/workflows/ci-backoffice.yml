@@ -185,7 +185,7 @@ jobs:
           chmod +x /usr/local/bin/goose
 
       - name: start db
-        run: docker compose up -d --wait db-ops
+        run: docker compose up -d --wait db-ops db-shipping
 
       - name: migrate
         run: |
@@ -198,6 +198,7 @@ jobs:
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
           DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
+          DATABASE_URL_SHIPPING: postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable
         run: |
           target="./server/product/... ./server/shipping/... ./server/internal/..."
           pkgs=$(go run ./server/tools/coverpkg $target)

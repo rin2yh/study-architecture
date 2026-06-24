@@ -23,7 +23,7 @@ func newReadServer(query handler.Query) http.Handler {
 
 func TestListShipments(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	pool := testdb.Open(t, "DATABASE_URL_SHIPPING")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
@@ -74,7 +74,7 @@ func TestListShipmentsError(t *testing.T) {
 
 func TestGetShipment(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	pool := testdb.Open(t, "DATABASE_URL_SHIPPING")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)

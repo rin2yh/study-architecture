@@ -10,6 +10,17 @@ volumes:
   pg_customer_data:
   pg_payment_data:
   pg_ops_data:
+  pg_shipping_data:
+
+x-postgres: &postgres
+  image: postgres:17-alpine
+  environment: &postgres-env
+    POSTGRES_USER: ec
+    POSTGRES_PASSWORD: ec_pass
+  healthcheck: &postgres-healthcheck
+    interval: 5s
+    timeout: 3s
+    retries: 10
 
 services:
   edge-proxy:
@@ -34,54 +45,59 @@ services:
     networks: [external-private, internal-private]
 
   db-customer:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_customer
     ports:
       - "5432:5432"
     volumes:
       - pg_customer_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     networks: [external-private]
 
   db-payment:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_payment
     ports:
       - "5434:5432"
     volumes:
       - pg_payment_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_payment"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     networks: [external-private]
 
   db-ops:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_ops
     ports:
       - "5433:5432"
     volumes:
       - pg_ops_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+    networks: [internal-private]
+
+  db-shipping:
+    <<: *postgres
+    environment:
+      <<: *postgres-env
+      POSTGRES_DB: ec_shipping
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg_shipping_data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_shipping"]
     networks: [internal-private]
 
   product:
@@ -144,10 +160,10 @@ services:
       context: .
       dockerfile: server/shipping/docker/server.Dockerfile
     environment:
-      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-ops:5432/ec_ops?sslmode=disable # ADR-[[202606231000]]
+      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
     ports: ["8005:80"]
     depends_on:
-      db-ops:
+      db-shipping:
         condition: service_healthy
     networks: [internal-private]
 
@@ -157,10 +173,10 @@ services:
       context: .
       dockerfile: server/shipping/docker/worker.Dockerfile
     environment:
-      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-ops:5432/ec_ops?sslmode=disable # ADR-[[202606231000]]
+      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379
     depends_on:
-      db-ops:
+      db-shipping:
         condition: service_healthy
       broker:
         condition: service_healthy
