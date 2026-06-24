@@ -222,8 +222,6 @@ jobs:
         include:
           - project: store
             profile: external
-          - project: backoffice
-            profile: internal
     defaults:
       run:
         working-directory: client/e2e
@@ -232,7 +230,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # e2e-up.sh の migrate は prebuilt goose を使う (go tool goose だと全 DB ドライバを毎回ビルドして遅い)。
+      # e2e-up.sh の migrate で go tool goose を使うと全 DB ドライバを毎回ビルドして遅いため。
       - name: install goose
         run: |
           curl -fsSL -o /usr/local/bin/goose \
