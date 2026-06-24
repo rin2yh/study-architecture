@@ -24,7 +24,7 @@ func newWriteServer(command handler.Command) http.Handler {
 
 func TestCreateShipment(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	pool := testdb.Open(t, "DATABASE_URL_SHIPPING")
 	if _, err := pool.Exec(t.Context(), `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestCreateShipmentError(t *testing.T) {
 
 func TestUpdateShipment(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	pool := testdb.Open(t, "DATABASE_URL_SHIPPING")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)

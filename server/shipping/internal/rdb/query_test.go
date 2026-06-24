@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
-const dbEnv = "DATABASE_URL_OPS"
+const dbEnv = "DATABASE_URL_SHIPPING"
 
 func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...db.ShippingShipment) {
 	t.Helper()

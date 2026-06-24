@@ -10,6 +10,7 @@ volumes:
   pg_customer_data:
   pg_payment_data:
   pg_ops_data:
+  pg_shipping_data:
 
 services:
   edge-proxy:
@@ -84,6 +85,23 @@ services:
       retries: 10
     networks: [internal-private]
 
+  db-shipping:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ec
+      POSTGRES_PASSWORD: ec_pass
+      POSTGRES_DB: ec_shipping
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg_shipping_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_shipping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal-private]
+
   product:
     build:
       context: .
@@ -144,10 +162,10 @@ services:
       context: .
       dockerfile: server/shipping/docker/server.Dockerfile
     environment:
-      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-ops:5432/ec_ops?sslmode=disable # ADR-[[202606231000]]
+      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
     ports: ["8005:80"]
     depends_on:
-      db-ops:
+      db-shipping:
         condition: service_healthy
     networks: [internal-private]
 
@@ -157,10 +175,10 @@ services:
       context: .
       dockerfile: server/shipping/docker/worker.Dockerfile
     environment:
-      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-ops:5432/ec_ops?sslmode=disable # ADR-[[202606231000]]
+      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379
     depends_on:
-      db-ops:
+      db-shipping:
         condition: service_healthy
       broker:
         condition: service_healthy
