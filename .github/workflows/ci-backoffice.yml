@@ -212,15 +212,9 @@ jobs:
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
   e2e:
-    name: e2e (${{ matrix.project }})
+    name: e2e (backoffice)
     runs-on: ubuntu-24.04
     needs: [code-quality, server-unit, client, server-integration]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - project: backoffice
-            profile: internal
     defaults:
       run:
         working-directory: client/e2e
@@ -254,12 +248,12 @@ jobs:
 
       - name: start stack
         working-directory: ${{ github.workspace }}
-        run: ./scripts/e2e-up.sh ${{ matrix.project }}
+        run: ./scripts/e2e-up.sh backoffice
 
       - name: e2e
-        run: pnpm test --project=${{ matrix.project }}
+        run: pnpm test --project=backoffice
 
       - name: compose logs
         if: failure()
         working-directory: ${{ github.workspace }}
-        run: docker compose --profile ${{ matrix.profile }} logs --no-color
+        run: docker compose --profile internal logs --no-color
