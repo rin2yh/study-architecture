@@ -29,7 +29,7 @@ run = "docker compose --profile internal up -d --no-build"
 
 [tasks."up:db"]
 description = "DB だけ起動 (CI / 結合テスト用)"
-run = "docker compose up -d --wait db-customer db-payment db-shipping db-ops"
+run = "docker compose up -d --wait db-customer db-payment db-member db-shipping db-ops"
 
 [tasks.migrate]
 description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
@@ -46,7 +46,7 @@ run = "./scripts/grant.sh"
 [tasks."test:integration"]
 description = "DB を立てて結合テストまで含めて実行"
 depends = ["up:db", "migrate"]
-env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_PAYMENT = "postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable", DATABASE_URL_SHIPPING = "postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
+env = { DATABASE_URL_CUSTOMER = "postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable", DATABASE_URL_PAYMENT = "postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable", DATABASE_URL_MEMBER = "postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable", DATABASE_URL_SHIPPING = "postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable", DATABASE_URL_OPS = "postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable" }
 run = "go test ./server/... -race -count=1"
 
 # E2E は scripts/e2e-up.sh でスタックを起動してから Playwright を回す。install は 3 タスクで共有する。

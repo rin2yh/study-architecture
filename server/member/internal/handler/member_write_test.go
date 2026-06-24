@@ -24,7 +24,7 @@ func newWriteServer(command handler.Command) http.Handler {
 
 func TestCreateMember(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_MEMBER")
 	if _, err := pool.Exec(t.Context(), `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestCreateMemberError(t *testing.T) {
 
 func TestUpdateMember(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_MEMBER")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
