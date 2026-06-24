@@ -168,6 +168,7 @@ jobs:
   server-integration:
     name: server-integration
     runs-on: ubuntu-24.04
+    needs: [server-unit]
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -213,17 +214,9 @@ jobs:
             || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
 
   e2e:
-    name: e2e (${{ matrix.project }})
+    name: e2e
     runs-on: ubuntu-24.04
-    needs: [code-quality, server-unit, client, server-integration]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - project: store
-            profile: external
-          - project: backoffice
-            profile: internal
+    needs: [code-quality, client, server-integration]
     defaults:
       run:
         working-directory: client/e2e
@@ -232,7 +225,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # e2e-up.sh の migrate は prebuilt goose を使う (go tool goose だと全 DB ドライバを毎回ビルドして遅い)。
+      # e2e-up.sh の migrate で go tool goose を使うと全 DB ドライバを毎回ビルドして遅いため。
       - name: install goose
         run: |
           curl -fsSL -o /usr/local/bin/goose \
@@ -257,12 +250,12 @@ jobs:
 
       - name: start stack
         working-directory: ${{ github.workspace }}
-        run: ./scripts/e2e-up.sh ${{ matrix.project }}
+        run: ./scripts/e2e-up.sh store
 
       - name: e2e
-        run: pnpm test --project=${{ matrix.project }}
+        run: pnpm test --project=store
 
       - name: compose logs
         if: failure()
         working-directory: ${{ github.workspace }}
-        run: docker compose --profile ${{ matrix.profile }} logs --no-color
+        run: docker compose --profile external logs --no-color
