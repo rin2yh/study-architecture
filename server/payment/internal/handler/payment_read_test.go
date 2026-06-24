@@ -23,7 +23,7 @@ func newReadServer(query handler.Query) http.Handler {
 
 func TestListPayments(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_PAYMENT")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
@@ -74,7 +74,7 @@ func TestListPaymentsError(t *testing.T) {
 
 func TestGetPayment(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_PAYMENT")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
