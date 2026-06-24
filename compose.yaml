@@ -1,5 +1,6 @@
 name: ec-service-based
 
+# TEMP: root .dockerignore の e2e wall-time 計測トリガ。計測後に revert する。
 networks:
   external-public: {}
   external-private: {}
