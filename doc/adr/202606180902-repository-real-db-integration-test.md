@@ -1,8 +1,7 @@
 # ADR-202606180902: repository 層は実 DB 結合テストで検証する
 
 - Status: Accepted (本文の「異常系 = stub 注入」はエラー注入という検証手段の軸を指す。テストの
-  ケース分類 (4xx=準正常系 / 5xx=異常系) は ADR-[[202606211520]] で更新。CI を unit / integration の
-  2 job に割る構成は ADR-[[202606240821]] で単一 server-test job に集約 — 検証手段の二段構え自体は不変)
+  ケース分類 (4xx=準正常系 / 5xx=異常系) は ADR-[[202606211520]] で更新)
 - Date: 2026-06-18
 - Related: ADR-[[202606170909]] (customer/ops 物理 DB 分割) / ADR-[[202606180900]] (migration をサービスごとに分割)
 

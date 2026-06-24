@@ -119,8 +119,6 @@ jobs:
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
-  # -short なしの 1 ラン (ユニット + 実 DB 結合) に集約。-short は結合を skip させるだけで
-  # ユニットは結合ランでも走るため、別建ての -short ユニット job は二重実行だった (ADR-[[202606240821]])。
   server-test:
     name: server-test
     runs-on: ubuntu-24.04

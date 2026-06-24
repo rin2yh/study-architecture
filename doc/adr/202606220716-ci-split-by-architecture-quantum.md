@@ -1,7 +1,6 @@
 # ADR-202606220716: CI をアーキテクチャ量子 (顧客系 / backoffice) ごとに 2 ワークフローへ分割する
 
-- Status: Accepted (各量子内の server job を server-unit + server-integration の 2 本にする構成は
-  ADR-[[202606240821]] で単一 server-test job に集約。量子分割の判断自体は不変)
+- Status: Accepted
 - Date: 2026-06-22
 - Relates to: ADR-[[202606170900]] (サービスベースアーキテクチャ), ADR-[[202606170909]] (顧客系/運用系 DB・network 分離), ADR-[[202606211200]] (payment→shipping 非同期 seam), ADR-[[202606221300]] (mypage を store に統合・退役), [[ci.md]] (CI 規約)
 
