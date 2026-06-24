@@ -6,7 +6,7 @@ runs:
   steps:
     - name: install goose
       shell: bash
-      # prebuilt が無いと go tool goose で全 DB ドライバを毎回ビルドして遅い (server-integration / e2e で共用)。
+      # prebuilt が無いと go tool goose で全 DB ドライバを毎回ビルドして遅い (server-test / e2e で共用)。
       run: |
         curl -fsSL -o /usr/local/bin/goose \
           https://github.com/pressly/goose/releases/download/v3.27.1/goose_linux_x86_64

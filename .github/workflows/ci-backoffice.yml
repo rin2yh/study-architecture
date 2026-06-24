@@ -61,52 +61,6 @@ jobs:
       - name: format
         run: pnpm format:check
 
-  server-unit:
-    name: server-unit-${{ matrix.service }}
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [product, shipping]
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: format
-        run: test -z "$(go fmt ./server/...)"
-
-      - name: vet
-        run: go vet ./server/${{ matrix.service }}/... ./server/internal/...
-
-      - name: unit test
-        id: cov
-        run: |
-          svc=${{ matrix.service }}
-          pkgs=$(go run ./server/tools/coverpkg ./server/$svc/... ./server/internal/...)
-          go test ./server/$svc/... ./server/internal/... -short -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
-          echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
-          bash scripts/coverage-report.sh "server-unit-$svc" cover.out > coverage.md
-
-      # 単一マーカーだと per-service の各ジョブが同じコメントを奪い合うため。
-      - name: comment coverage
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
-        with:
-          header: coverage-server-unit-${{ matrix.service }}
-          path: coverage.md
-
-      - name: coverage gate
-        env:
-          TOTAL: ${{ steps.cov.outputs.total }}
-        run: |
-          awk -v t="${TOTAL%\%}" 'BEGIN { exit (t + 0 >= 60) ? 0 : 1 }' \
-            || { echo "coverage ${TOTAL} is below 60%"; exit 1; }
-
   client:
     name: client-${{ matrix.package }}
     runs-on: ubuntu-24.04
@@ -143,10 +97,30 @@ jobs:
       - name: build
         run: pnpm -F "${{ matrix.package }}" run --if-present build
 
-  server-integration:
-    name: server-integration
+  server-lint:
+    name: server-lint
     runs-on: ubuntu-24.04
-    needs: [server-unit]
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: format
+        run: test -z "$(go fmt ./server/...)"
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+        with:
+          version: v2.12.2
+          args: ./server/...
+
+  server-test:
+    name: server-test
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -178,13 +152,13 @@ jobs:
           pkgs=$(go run ./server/tools/coverpkg $target)
           go test $target -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"
-          bash scripts/coverage-report.sh "server-integration-backoffice" cover.out > coverage.md
+          bash scripts/coverage-report.sh "server-test-backoffice" cover.out > coverage.md
 
       - name: comment coverage
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
-          header: coverage-server-integration-backoffice
+          header: coverage-server-test-backoffice
           path: coverage.md
 
       - name: coverage gate
@@ -197,7 +171,7 @@ jobs:
   e2e:
     name: e2e
     runs-on: ubuntu-24.04
-    needs: [code-quality, client, server-integration]
+    needs: [code-quality, client, server-lint, server-test]
     defaults:
       run:
         working-directory: client/e2e

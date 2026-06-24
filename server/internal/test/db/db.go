@@ -87,7 +87,11 @@ func createClone(t *testing.T, ctx context.Context, adminDSN, clone, template st
 	if err != nil {
 		t.Fatalf("connect admin: %v", err)
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			t.Logf("create %s: close admin conn: %v", clone, err)
+		}
+	}()
 	sql := fmt.Sprintf("CREATE DATABASE %s TEMPLATE %s",
 		pgx.Identifier{clone}.Sanitize(), pgx.Identifier{template}.Sanitize())
 	if _, err := conn.Exec(ctx, sql); err != nil {
@@ -102,7 +106,11 @@ func dropClone(t *testing.T, ctx context.Context, adminDSN, clone string) {
 		t.Logf("drop %s: connect admin: %v", clone, err)
 		return
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			t.Logf("drop %s: close admin conn: %v", clone, err)
+		}
+	}()
 	// WITH (FORCE): pool.Close 後も残る接続があっても落とせるようにする (PG13+)。
 	if _, err := conn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", pgx.Identifier{clone}.Sanitize())); err != nil {
 		t.Logf("drop %s: %v", clone, err)
