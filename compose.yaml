@@ -50,7 +50,6 @@ services:
       retries: 10
     networks: [external-private]
 
-  # 結合の弱い縁から先に剥がす Step 3 の最初の分割 (#49)。
   db-payment:
     image: postgres:17-alpine
     environment:
