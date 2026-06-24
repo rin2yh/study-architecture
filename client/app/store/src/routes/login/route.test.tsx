@@ -3,12 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import Login, { action, loader } from "./route";
-import { redirectIfAuthenticated, SESSION_COOKIE } from "@/entities/session";
+import { redirectIfAuthenticated, SESSION_COOKIE } from "@/features/auth/model/session";
 import { createSession } from "api/member";
 import { redirect } from "react-router";
 
-vi.mock("@/entities/session", async (importActual) => {
-  const actual = await importActual<typeof import("@/entities/session")>();
+vi.mock("@/features/auth/model/session", async (importActual) => {
+  const actual = await importActual<typeof import("@/features/auth/model/session")>();
   return { ...actual, redirectIfAuthenticated: vi.fn() };
 });
 vi.mock("api/member", async (importActual) => {

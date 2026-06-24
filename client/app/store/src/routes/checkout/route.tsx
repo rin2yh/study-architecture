@@ -3,7 +3,7 @@ import { useNavigation } from "react-router";
 
 import { checkout } from "api/order";
 import { useCart } from "@/entities/cart";
-import { currentMemberId } from "@/entities/session";
+import { currentMemberId } from "@/features/auth";
 import { CheckoutForm, parseItems, type CheckoutResult } from "@/features/checkout";
 import { PageLoading } from "ui/page-loading";
 import type { Route } from "./+types/route";

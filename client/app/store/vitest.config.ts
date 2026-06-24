@@ -19,7 +19,6 @@ export default defineConfig({
       include: [
         "src/entities/cart/model/cart.ts",
         "src/entities/cart/model/use-cart.ts",
-        "src/entities/session/model/session.ts",
         "src/shared/lib/money.ts",
         "src/features/**/*.{ts,tsx}",
         "src/routes/**/*.tsx",

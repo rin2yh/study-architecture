@@ -6,8 +6,9 @@ import { Card, CardContent } from "ui/card";
 import { Label } from "ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "ui/select";
 import { Separator } from "ui/separator";
-import { type CartItem, cartTotalCents, toCheckoutItems } from "@/entities/cart";
+import { type CartItem, cartTotalCents } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
+import { toCheckoutItems } from "../model/checkout-items";
 
 interface CheckoutFormProps {
   items: CartItem[];
