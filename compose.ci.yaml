@@ -1,0 +1,39 @@
+# CI 専用オーバーレイ。type=gha は GitHub Actions cache backend 前提でローカルには無いため、
+# compose.yaml に直書きすると mise run up が壊れる。cross-run レイヤキャッシュの配線をここに隔離する
+# (ADR-[[202606241216]])。docker compose build を bake 経由 (COMPOSE_BAKE) + container driver で動かす前提。
+#
+# 共有の go mod download レイヤが scope 間で重複保存されても、同一 scope への並行 cache_to
+# 書き込み競合を避ける方を優先する (scope をサービスで分ける理由)。
+services:
+  product:
+    build:
+      cache_from: ["type=gha,scope=product"]
+      cache_to: ["type=gha,mode=max,scope=product"]
+  order:
+    build:
+      cache_from: ["type=gha,scope=order"]
+      cache_to: ["type=gha,mode=max,scope=order"]
+  payment:
+    build:
+      cache_from: ["type=gha,scope=payment"]
+      cache_to: ["type=gha,mode=max,scope=payment"]
+  member:
+    build:
+      cache_from: ["type=gha,scope=member"]
+      cache_to: ["type=gha,mode=max,scope=member"]
+  shipping:
+    build:
+      cache_from: ["type=gha,scope=shipping"]
+      cache_to: ["type=gha,mode=max,scope=shipping"]
+  shipping-worker:
+    build:
+      cache_from: ["type=gha,scope=shipping-worker"]
+      cache_to: ["type=gha,mode=max,scope=shipping-worker"]
+  store:
+    build:
+      cache_from: ["type=gha,scope=store"]
+      cache_to: ["type=gha,mode=max,scope=store"]
+  backoffice:
+    build:
+      cache_from: ["type=gha,scope=backoffice"]
+      cache_to: ["type=gha,mode=max,scope=backoffice"]
