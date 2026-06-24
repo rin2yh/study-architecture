@@ -30,7 +30,7 @@ func run(args []string) error {
 		configPath, args = args[1], args[2:]
 	}
 	if len(args) == 0 {
-		return fmt.Errorf("usage: coverpkg [-config path] <go-list-pattern>...")
+		return fmt.Errorf("usage: coverpkg [-config path] followed by one or more go-list patterns")
 	}
 
 	excludes, err := loadExcludes(configPath)

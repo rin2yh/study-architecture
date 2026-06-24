@@ -134,8 +134,11 @@ jobs:
       - name: format
         run: test -z "$(go fmt ./server/...)"
 
-      - name: vet
-        run: go vet ./server/order/... ./server/payment/... ./server/member/... ./server/internal/...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+        with:
+          version: v2.12.2
+          args: ./server/...
 
       # goose は prebuilt が無いと go tool goose で全 DB ドライバを毎回ビルドして遅い (server-test / e2e で共用)。
       - &install-goose

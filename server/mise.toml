@@ -1,5 +1,6 @@
 [tools]
 go = "1.26"
+golangci-lint = "2.12.2"
 
 [tasks.gen]
 description = "コード生成一式 (go generate)"
@@ -23,6 +24,11 @@ run = "go test ./... -race -count=1"
 description = "go vet"
 dir = ".."
 run = "go vet ./..."
+
+[tasks.lint]
+description = "golangci-lint (govet 含む)"
+dir = ".."
+run = "golangci-lint run ./server/..."
 
 [tasks.fmt]
 description = "go fmt 整形"
@@ -49,6 +55,6 @@ run = [
 ]
 
 [tasks.ci]
-description = "CI 相当 (fmt:check → vet → test)"
-depends = ["fmt:check", "vet", "test"]
+description = "CI 相当 (fmt:check → lint → test)"
+depends = ["fmt:check", "lint", "test"]
 run = "echo 'CI OK'"

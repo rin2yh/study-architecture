@@ -43,7 +43,9 @@ func TestServe_GracefulShutdown(t *testing.T) {
 	for range 100 {
 		resp, err := http.Get("http://" + addr + "/ping")
 		if err == nil {
-			resp.Body.Close()
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Logf("close ping body: %v", cerr)
+			}
 			ready = true
 			break
 		}
@@ -73,7 +75,11 @@ func TestServe_ListenError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("net.Listen: %v", err)
 	}
-	defer l.Close()
+	defer func() {
+		if err := l.Close(); err != nil {
+			t.Logf("close listener: %v", err)
+		}
+	}()
 
 	if err := Serve(ctx, l.Addr().String(), NewEngine()); err == nil {
 		t.Fatal("Serve(): want error for in-use addr")
