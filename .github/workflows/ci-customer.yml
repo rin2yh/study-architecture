@@ -178,8 +178,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # migrate.sh の goose は prebuilt が無いと go tool goose で全 DB ドライバを毎回ビルドして遅い。
-      - name: install goose
+      # goose は prebuilt が無いと go tool goose で全 DB ドライバを毎回ビルドして遅い (server-integration / e2e で共用)。
+      - &install-goose
+        name: install goose
         run: |
           curl -fsSL -o /usr/local/bin/goose \
             https://github.com/pressly/goose/releases/download/v3.27.1/goose_linux_x86_64
@@ -233,12 +234,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # e2e-up.sh の migrate で go tool goose を使うと全 DB ドライバを毎回ビルドして遅いため。
-      - name: install goose
-        run: |
-          curl -fsSL -o /usr/local/bin/goose \
-            https://github.com/pressly/goose/releases/download/v3.27.1/goose_linux_x86_64
-          chmod +x /usr/local/bin/goose
+      - *install-goose
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
