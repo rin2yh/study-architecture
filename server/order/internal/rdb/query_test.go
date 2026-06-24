@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-const dbEnv = "DATABASE_URL_CUSTOMER"
+const dbEnv = "DATABASE_URL_ORDER"
 
 func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
 	t.Helper()

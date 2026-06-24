@@ -1,6 +1,6 @@
 name: CI (backoffice)
 
-# backoffice 量子 (backoffice / product / shipping / db-ops)。分割根拠は ADR-[[202606220716]]。
+# backoffice 量子 (backoffice / product / shipping / db-product)。分割根拠は ADR-[[202606220716]]。
 on:
   push:
     branches: [main]
@@ -186,7 +186,7 @@ jobs:
           chmod +x /usr/local/bin/goose
 
       - name: start db
-        run: docker compose up -d --wait db-ops db-shipping
+        run: docker compose up -d --wait db-product db-shipping
 
       - name: migrate
         run: |
@@ -198,7 +198,7 @@ jobs:
         id: cov
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
-          DATABASE_URL_OPS: postgres://ec:ec_pass@localhost:5433/ec_ops?sslmode=disable
+          DATABASE_URL_PRODUCT: postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable
           DATABASE_URL_SHIPPING: postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable
         run: |
           target="./server/product/... ./server/shipping/... ./server/internal/..."

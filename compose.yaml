@@ -7,10 +7,10 @@ networks:
   internal-private: {}
 
 volumes:
-  pg_customer_data:
+  pg_order_data:
   pg_payment_data:
   pg_member_data:
-  pg_ops_data:
+  pg_product_data:
   pg_shipping_data:
 
 x-postgres: &postgres
@@ -45,18 +45,18 @@ services:
       retries: 10
     networks: [external-private, internal-private]
 
-  db-customer:
+  db-order:
     <<: *postgres
     environment:
       <<: *postgres-env
-      POSTGRES_DB: ec_customer
+      POSTGRES_DB: ec_order
     ports:
       - "5432:5432"
     volumes:
-      - pg_customer_data:/var/lib/postgresql/data
+      - pg_order_data:/var/lib/postgresql/data
     healthcheck:
       <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_order"]
     networks: [external-private]
 
   db-payment:
@@ -87,18 +87,18 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_member"]
     networks: [external-private]
 
-  db-ops:
+  db-product:
     <<: *postgres
     environment:
       <<: *postgres-env
-      POSTGRES_DB: ec_ops
+      POSTGRES_DB: ec_product
     ports:
       - "5433:5432"
     volumes:
-      - pg_ops_data:/var/lib/postgresql/data
+      - pg_product_data:/var/lib/postgresql/data
     healthcheck:
       <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_product"]
     networks: [internal-private]
 
   db-shipping:
@@ -121,10 +121,10 @@ services:
       dockerfile: server/product/Dockerfile
     environment:
       # 自 schema にしか触れない最小権限ロールで接続する (ADR-[[202606231000]])。
-      DATABASE_URL: postgres://product_svc:product_pass@db-ops:5432/ec_ops?sslmode=disable
+      DATABASE_URL: postgres://product_svc:product_pass@db-product:5432/ec_product?sslmode=disable
     ports: ["8001:80"]
     depends_on:
-      db-ops:
+      db-product:
         condition: service_healthy
     networks: [internal-private]
 
@@ -133,13 +133,13 @@ services:
       context: .
       dockerfile: server/order/Dockerfile
     environment:
-      DATABASE_URL: postgres://order_svc:order_pass@db-customer:5432/ec_customer?sslmode=disable # ADR-[[202606231000]]
+      DATABASE_URL: postgres://order_svc:order_pass@db-order:5432/ec_order?sslmode=disable # ADR-[[202606231000]]
       # (ADR 0008 / 0012)
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
     ports: ["8002:80"]
     depends_on:
-      db-customer:
+      db-order:
         condition: service_healthy
     networks: [external-private]
 
