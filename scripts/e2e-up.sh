@@ -14,7 +14,7 @@ case "$app" in
     ;;
 esac
 
-docker compose up -d --wait db-customer db-payment db-member db-shipping db-ops
+docker compose up -d --wait db-order db-payment db-member db-shipping db-product
 ./scripts/migrate.sh
 ./scripts/grant.sh
 
