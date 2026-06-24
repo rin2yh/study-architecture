@@ -42,8 +42,6 @@ services:
       - "5432:5432"
     volumes:
       - pg_customer_data:/var/lib/postgresql/data
-      # ADR-[[202606231000]]
-      - ./infra/db/customer/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
       interval: 5s
@@ -61,8 +59,6 @@ services:
       - "5433:5432"
     volumes:
       - pg_ops_data:/var/lib/postgresql/data
-      # ADR-[[202606231000]]
-      - ./infra/db/ops/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
       interval: 5s

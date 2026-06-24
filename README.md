@@ -56,12 +56,13 @@ mise gen
 mise build
 mise test
 
-# 3. 起動（db + 5サービス）
-mise up
-
-# 4. マイグレーション適用（ホストの goose、または compose のワンショット）
+# 3. DB 起動 → マイグレーション → ロール権限付与（この順序が必須。ADR-[[202606231000]]）
+mise up:db
 mise migrate
-#   または: docker compose run --rm migrate up
+mise grant      # サービスごとの最小権限ロールを作成・付与（再実行可能・冪等）
+
+# 4. サービス起動（5サービス）
+mise up
 
 # 動作確認（ブラウザ/HTTPクライアントで）
 #   http://localhost:8001/healthz
