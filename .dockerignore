@@ -1,0 +1,14 @@
+# Go イメージ (product/order/payment/member/shipping/shipping-worker) のビルドコンテキストは
+# リポジトリルート (compose の context: .)。go build が要るのは go.mod / go.sum / server/ だけで、
+# go:embed も無い。不要ツリーを除外して context 転送を縮め、かつ COPY . . レイヤが無関係な変更
+# (client/ や doc/ の編集) で無効化されないようにする = レイヤキャッシュのヒット率のため。ADR-[[202606241216]]
+.git/
+.github/
+.claude/
+client/
+doc/
+infra/
+scripts/
+**/*.md
+**/.env
+**/.env.local
