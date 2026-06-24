@@ -72,7 +72,8 @@ services:
       context: .
       dockerfile: server/product/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      # 自 schema にしか触れない最小権限ロールで接続する (ADR-[[202606231000]])。
+      DATABASE_URL: postgres://product_svc:product_pass@db-ops:5432/ec_ops?sslmode=disable
     ports: ["8001:80"]
     depends_on:
       db-ops:
@@ -84,8 +85,8 @@ services:
       context: .
       dockerfile: server/order/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
-      # 経路は ADR 0008 / 0012 を参照。
+      DATABASE_URL: postgres://order_svc:order_pass@db-customer:5432/ec_customer?sslmode=disable # ADR-[[202606231000]]
+      # (ADR 0008 / 0012)
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
     ports: ["8002:80"]
@@ -99,7 +100,7 @@ services:
       context: .
       dockerfile: server/payment/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+      DATABASE_URL: postgres://payment_svc:payment_pass@db-customer:5432/ec_customer?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8003:80"]
     depends_on:
@@ -114,7 +115,7 @@ services:
       context: .
       dockerfile: server/member/Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-customer:5432/ec_customer?sslmode=disable
+      DATABASE_URL: postgres://member_svc:member_pass@db-customer:5432/ec_customer?sslmode=disable # ADR-[[202606231000]]
     ports: ["8004:80"]
     depends_on:
       db-customer:
@@ -126,7 +127,7 @@ services:
       context: .
       dockerfile: server/shipping/docker/server.Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-ops:5432/ec_ops?sslmode=disable # ADR-[[202606231000]]
     ports: ["8005:80"]
     depends_on:
       db-ops:
@@ -139,7 +140,7 @@ services:
       context: .
       dockerfile: server/shipping/docker/worker.Dockerfile
     environment:
-      DATABASE_URL: postgres://ec:ec_pass@db-ops:5432/ec_ops?sslmode=disable
+      DATABASE_URL: postgres://shipping_svc:shipping_pass@db-ops:5432/ec_ops?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379
     depends_on:
       db-ops:

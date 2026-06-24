@@ -56,12 +56,13 @@ mise gen
 mise build
 mise test
 
-# 3. 起動（db + 5サービス）
-mise up
-
-# 4. マイグレーション適用（ホストの goose、または compose のワンショット）
+# 3. DB 起動 → マイグレーション → ロール権限付与（この順序が必須。ADR-[[202606231000]]）
+mise up:db
 mise migrate
-#   または: docker compose run --rm migrate up
+mise grant      # サービスごとの最小権限ロールを作成・付与（再実行可能・冪等）
+
+# 4. サービス起動（5サービス）
+mise up
 
 # 動作確認（ブラウザ/HTTPクライアントで）
 #   http://localhost:8001/healthz
@@ -131,5 +132,5 @@ pnpm format         # oxfmt
 
 - **Step 0（現在）**: 分割UI + 直接呼び出し + 共有DB（schema 分離）
 - **Step 1**: API ファサード（UI の BFF）を足す
-- **Step 2**: データ所有権を確定し schema 分離を徹底
+- **Step 2**: データ所有権を確定し schema 分離を徹底（サービスごとの最小権限 DB ロールで強制。ADR-[[202606231000]]）
 - **Step 3**: 結合の弱い縁から DB を分割（payment / shipping → member → product × order）

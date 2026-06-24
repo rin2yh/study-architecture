@@ -35,6 +35,12 @@ run = "docker compose up -d --wait db-customer db-ops"
 description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
 run = "./scripts/migrate.sh"
 
+# サービスを実ロールで起動する前に必要 (ADR-[[202606231000]])。
+[tasks.grant]
+description = "サービスごとの最小権限 DB ロールを作成・付与する"
+depends = ["up:db", "migrate"]
+run = "./scripts/grant.sh"
+
 # repository の実 DB 結合テストは DATABASE_URL_{CUSTOMER,OPS} が無いと skip される。
 # このタスクは DB 起動 → migrate → DSN を渡して全テストを実行する (CI server-integration 相当)。
 [tasks."test:integration"]
