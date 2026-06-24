@@ -50,8 +50,3 @@ export function removeFromCart(items: CartItem[], productId: number): CartItem[]
 export function cartTotalCents(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0);
 }
-
-// ADR-[[202606190900]]
-export function toCheckoutItems(items: CartItem[]): { productId: number; quantity: number }[] {
-  return items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
-}

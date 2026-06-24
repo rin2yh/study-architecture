@@ -7,7 +7,6 @@ import {
   readCart,
   removeFromCart,
   setQuantity,
-  toCheckoutItems,
   writeCart,
 } from "./cart";
 
@@ -62,14 +61,6 @@ describe("cartTotalCents", () => {
         { ...orange, quantity: 1 },
       ];
       expect(cartTotalCents(items)).toBe(12300 * 2 + 4560);
-    });
-  });
-});
-
-describe("toCheckoutItems", () => {
-  describe("正常系", () => {
-    it("productId と quantity のみに絞る", () => {
-      expect(toCheckoutItems([{ ...apple, quantity: 3 }])).toEqual([{ productId: 1, quantity: 3 }]);
     });
   });
 });

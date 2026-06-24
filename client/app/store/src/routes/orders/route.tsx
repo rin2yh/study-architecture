@@ -2,8 +2,7 @@ import { listOrders, ListOrdersResponse } from "api/order";
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import { PageLoading } from "ui/page-loading";
 import type { Route } from "./+types/route";
-import { requireMemberId } from "@/entities/session";
-import { LogoutButton } from "@/features/auth";
+import { LogoutButton, requireMemberId } from "@/features/auth";
 import { OrderHistoryTable } from "./components/order-history-table";
 
 export async function loader({ request }: Route.LoaderArgs) {

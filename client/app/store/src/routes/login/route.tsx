@@ -1,8 +1,7 @@
 import { createSession, CreateSessionResponse } from "api/member";
 import { redirect } from "react-router";
 import type { Route } from "./+types/route";
-import { redirectIfAuthenticated, sessionCookie } from "@/entities/session";
-import { LoginForm } from "@/features/auth";
+import { LoginForm, redirectIfAuthenticated, sessionCookie } from "@/features/auth";
 
 export async function loader({ request }: Route.LoaderArgs) {
   await redirectIfAuthenticated(request);
