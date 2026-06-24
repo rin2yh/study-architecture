@@ -187,7 +187,7 @@ jobs:
           chmod +x /usr/local/bin/goose
 
       - name: start db
-        run: docker compose up -d --wait db-customer db-payment
+        run: docker compose up -d --wait db-customer db-payment db-member
 
       - name: migrate
         run: |
@@ -201,6 +201,7 @@ jobs:
         env:
           DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
           DATABASE_URL_PAYMENT: postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable
+          DATABASE_URL_MEMBER: postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable
         run: |
           target="./server/order/... ./server/payment/... ./server/member/... ./server/internal/..."
           pkgs=$(go run ./server/tools/coverpkg $target)

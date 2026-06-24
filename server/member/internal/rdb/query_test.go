@@ -14,7 +14,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
-const dbEnv = "DATABASE_URL_CUSTOMER"
+const dbEnv = "DATABASE_URL_MEMBER"
 
 func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
 	t.Helper()
