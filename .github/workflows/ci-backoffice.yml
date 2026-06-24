@@ -177,6 +177,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # migrate.sh の goose は prebuilt が無いと go tool goose で全 DB ドライバを毎回ビルドして遅い。
+      - name: install goose
+        run: |
+          curl -fsSL -o /usr/local/bin/goose \
+            https://github.com/pressly/goose/releases/download/v3.27.1/goose_linux_x86_64
+          chmod +x /usr/local/bin/goose
+
       - name: start db
         run: docker compose up -d --wait db-ops
 
