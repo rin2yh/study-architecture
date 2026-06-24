@@ -18,9 +18,8 @@ docker compose up -d --wait db-customer db-ops
 ./scripts/migrate.sh
 ./scripts/grant.sh
 
-# 逐次 build は OrbStack (ローカル) の daemon I/O 競合対策 (.claude/rules/docker.md)。CI runner の
-# dockerd には当てはまらず、逐次だと UI/backend のビルドが直列化して支配項になるため、CI では
-# 1 ショット並列 build に切り替える (buildkit が共通 go.mod レイヤを 1 回に dedup する)。
+# 逐次 build は OrbStack (ローカル) の daemon I/O 競合対策で、CI の dockerd には当てはまらない
+# (.claude/rules/docker.md)。並列なら buildkit が共通 go.mod download レイヤを 1 回に dedup できる。
 if [ -n "${CI:-}" ]; then
   docker compose --profile "$profile" build
 else
