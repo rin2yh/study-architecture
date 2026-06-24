@@ -18,14 +18,9 @@ docker compose up -d --wait db-customer db-payment db-ops
 ./scripts/migrate.sh
 ./scripts/grant.sh
 
-# 逐次 build は OrbStack (ローカル) の daemon I/O 競合対策で、CI の dockerd には当てはまらない
-# (.claude/rules/docker.md)。並列なら buildkit が共通 go.mod download レイヤを 1 回に dedup できる。
-if [ -n "${CI:-}" ]; then
-  docker compose --profile "$profile" build
-else
-  for svc in product order payment member shipping shipping-worker; do
-    docker compose build "$svc"
-  done
-  docker compose --profile "$profile" build "$app"
-fi
+# 並列 build で docker daemon の I/O が詰まるのを避けるため 1 つずつ build する (.claude/rules/docker.md)。
+for svc in product order payment member shipping shipping-worker; do
+  docker compose build "$svc"
+done
+docker compose --profile "$profile" build "$app"
 docker compose --profile "$profile" up -d --wait
