@@ -12,6 +12,18 @@ volumes:
   pg_ops_data:
   pg_shipping_data:
 
+# ドメインごとに独立した Postgres インスタンスへ分割する (ADR-[[202606240522]])。
+# instance 間で変わるのは DB 名 / port / volume / network だけなので共通部はここに集約する。
+x-postgres: &postgres
+  image: postgres:17-alpine
+  environment: &postgres-env
+    POSTGRES_USER: ec
+    POSTGRES_PASSWORD: ec_pass
+  healthcheck: &postgres-healthcheck
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
 services:
   edge-proxy:
     image: nginx:1.27-alpine
@@ -35,71 +47,59 @@ services:
     networks: [external-private, internal-private]
 
   db-customer:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_customer
     ports:
       - "5432:5432"
     volumes:
       - pg_customer_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     networks: [external-private]
 
   db-payment:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_payment
     ports:
       - "5434:5432"
     volumes:
       - pg_payment_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_payment"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     networks: [external-private]
 
   db-ops:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_ops
     ports:
       - "5433:5432"
     volumes:
       - pg_ops_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_ops"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     networks: [internal-private]
 
   db-shipping:
-    image: postgres:17-alpine
+    <<: *postgres
     environment:
-      POSTGRES_USER: ec
-      POSTGRES_PASSWORD: ec_pass
+      <<: *postgres-env
       POSTGRES_DB: ec_shipping
     ports:
       - "5435:5432"
     volumes:
       - pg_shipping_data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_shipping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     networks: [internal-private]
 
   product:
