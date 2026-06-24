@@ -8,6 +8,7 @@ networks:
 
 volumes:
   pg_customer_data:
+  pg_payment_data:
   pg_ops_data:
 
 services:
@@ -44,6 +45,23 @@ services:
       - pg_customer_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_customer"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [external-private]
+
+  db-payment:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ec
+      POSTGRES_PASSWORD: ec_pass
+      POSTGRES_DB: ec_payment
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg_payment_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_payment"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -99,11 +117,11 @@ services:
       context: .
       dockerfile: server/payment/Dockerfile
     environment:
-      DATABASE_URL: postgres://payment_svc:payment_pass@db-customer:5432/ec_customer?sslmode=disable # ADR-[[202606231000]]
+      DATABASE_URL: postgres://payment_svc:payment_pass@db-payment:5432/ec_payment?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8003:80"]
     depends_on:
-      db-customer:
+      db-payment:
         condition: service_healthy
       broker:
         condition: service_healthy

@@ -33,3 +33,4 @@
 | [202606221300](202606221300-merge-mypage-into-store.md) | Accepted | 社外フロントを store に統合し mypage を退役する |
 | [202606230930](202606230930-bff-auth-context-and-trust-boundary.md) | Accepted | store BFF に認証コンテキストの集約と X-Member-Id の付与点を置く |
 | [202606231000](202606231000-enforce-schema-ownership-with-db-roles.md) | Accepted | データ所有権を schema ごとの最小権限 DB ロールで強制する |
+| [202606240522](202606240522-step3-split-db-per-domain-from-weak-edge.md) | Accepted | Step 3 で結合の弱い縁からドメインごとに DB インスタンスを分割する |
