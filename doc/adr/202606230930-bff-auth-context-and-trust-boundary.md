@@ -1,6 +1,6 @@
 # ADR-202606230930: store BFF に認証コンテキストの集約と X-Member-Id の付与点を置く
 
-- Status: Accepted (認証ガードの配置先 `entities/session` は ADR-[[202606231400]] で `features/auth/model` に更新)
+- Status: Accepted
 - Date: 2026-06-23
 - Relates to: ADR-[[202606170900]] / ADR-[[202606170905]] / ADR-[[202606211100]] / ADR-[[202606220300]]
 
