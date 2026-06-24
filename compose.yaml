@@ -12,8 +12,6 @@ volumes:
   pg_ops_data:
   pg_shipping_data:
 
-# ドメインごとに独立した Postgres インスタンスへ分割する (ADR-[[202606240522]])。
-# instance 間で変わるのは DB 名 / port / volume / network だけなので共通部はここに集約する。
 x-postgres: &postgres
   image: postgres:17-alpine
   environment: &postgres-env
