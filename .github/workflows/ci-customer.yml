@@ -1,6 +1,6 @@
 name: CI (customer)
 
-# 顧客系量子 (store / order / payment / member / db-customer)。分割根拠は ADR-[[202606220716]]。
+# 顧客系量子 (store / order / payment / member / db-order)。分割根拠は ADR-[[202606220716]]。
 on:
   push:
     branches: [main]
@@ -179,7 +179,7 @@ jobs:
           cache: true
 
       - name: start db
-        run: docker compose up -d --wait db-customer db-payment db-member
+        run: docker compose up -d --wait db-order db-payment db-member
 
       - name: migrate
         run: |
@@ -191,7 +191,7 @@ jobs:
         id: cov
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
-          DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
+          DATABASE_URL_ORDER: postgres://ec:ec_pass@localhost:5432/ec_order?sslmode=disable
           DATABASE_URL_PAYMENT: postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable
           DATABASE_URL_MEMBER: postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable
         run: |

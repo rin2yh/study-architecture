@@ -23,7 +23,7 @@ func newReadServer(query handler.Query) http.Handler {
 
 func TestListOrders(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_ORDER")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
@@ -49,7 +49,7 @@ func TestListOrders(t *testing.T) {
 
 func TestListOrdersFilter(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_ORDER")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
@@ -117,7 +117,7 @@ func TestListOrdersError(t *testing.T) {
 
 func TestGetOrder(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_ORDER")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)

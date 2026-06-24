@@ -23,7 +23,7 @@ func newReadServer(query handler.Query) http.Handler {
 
 func TestListProducts(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	pool := testdb.Open(t, "DATABASE_URL_PRODUCT")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE product.products RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
@@ -76,7 +76,7 @@ func TestListProductsError(t *testing.T) {
 
 func TestGetProduct(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_OPS")
+	pool := testdb.Open(t, "DATABASE_URL_PRODUCT")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE product.products RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
