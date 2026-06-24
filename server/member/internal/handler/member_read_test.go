@@ -23,7 +23,7 @@ func newReadServer(query handler.Query) http.Handler {
 
 func TestListMembers(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_MEMBER")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
@@ -73,7 +73,7 @@ func TestListMembersError(t *testing.T) {
 
 func TestGetMember(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_MEMBER")
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
 		t.Fatalf("truncate: %v", err)
