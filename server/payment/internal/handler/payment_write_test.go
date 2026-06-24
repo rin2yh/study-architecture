@@ -29,7 +29,7 @@ func newWriteServerWithPublisher(command handler.Command, publisher *stub.Publis
 
 func TestCreatePayment(t *testing.T) {
 	skip.Short(t)
-	pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+	pool := testdb.Open(t, "DATABASE_URL_PAYMENT")
 	if _, err := pool.Exec(t.Context(), `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestUpdatePayment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pool := testdb.Open(t, "DATABASE_URL_CUSTOMER")
+			pool := testdb.Open(t, "DATABASE_URL_PAYMENT")
 			ctx := t.Context()
 			if _, err := pool.Exec(ctx, `TRUNCATE payment.payments RESTART IDENTITY`); err != nil {
 				t.Fatalf("truncate: %v", err)

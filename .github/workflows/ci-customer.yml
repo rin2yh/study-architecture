@@ -179,7 +179,7 @@ jobs:
           cache: true
 
       - name: start db
-        run: docker compose up -d --wait db-customer
+        run: docker compose up -d --wait db-customer db-payment
 
       - name: migrate
         run: |
@@ -192,6 +192,7 @@ jobs:
         # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
         env:
           DATABASE_URL_CUSTOMER: postgres://ec:ec_pass@localhost:5432/ec_customer?sslmode=disable
+          DATABASE_URL_PAYMENT: postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable
         run: |
           target="./server/order/... ./server/payment/... ./server/member/... ./server/internal/..."
           pkgs=$(go run ./server/tools/coverpkg $target)
