@@ -8,5 +8,5 @@ cd "$(dirname "$0")/.."
 # psql は host に無い場合があるので postgres コンテナ内のものを使う。
 apply() { docker compose exec -T "$1" psql -U ec -d "$2" -v ON_ERROR_STOP=1; }
 
-apply db-customer ec_customer < infra/db/customer/grant.sql
-apply db-ops      ec_ops      < infra/db/ops/grant.sql
+apply db-customer ec_customer < scripts/grant.customer.sql
+apply db-ops      ec_ops      < scripts/grant.ops.sql
