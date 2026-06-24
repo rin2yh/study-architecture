@@ -1,4 +1,4 @@
-name: install-goose
+name: setup-goose
 description: goose の prebuilt バイナリを /usr/local/bin に導入する
 
 runs:

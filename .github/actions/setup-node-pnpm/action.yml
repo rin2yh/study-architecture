@@ -1,7 +1,6 @@
 name: setup-node-pnpm
 description: pnpm / Node をセットアップし client workspace の依存をインストールする
 
-# CI 規約 (ci.md): mise を使わず setup 系 action を直接呼ぶ / uses は最新版 + 40 桁 SHA で pin する
 runs:
   using: composite
   steps:
