@@ -258,7 +258,7 @@ jobs:
 
       - name: start stack
         working-directory: ${{ github.workspace }}
-        # compose.ci.yaml で cross-run gha キャッシュを上書きする (ADR-[[202606241216]])。bake 経由で container driver を使う。
+        # ADR-[[202606241216]]
         env:
           COMPOSE_FILE: compose.yaml:compose.ci.yaml
           COMPOSE_BAKE: "true"
