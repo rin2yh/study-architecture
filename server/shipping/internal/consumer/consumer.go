@@ -25,6 +25,10 @@ const (
 	backoff       = time.Second
 )
 
+// メッセージごとに引かないよう保持する。otel の global は遅延差し替えに対応するので、
+// TracerProvider 設定前に取得しても問題ない。
+var tracer = otel.Tracer("shipping-worker")
+
 type ShipmentCreator interface {
 	CreateShipmentForOrder(ctx context.Context, orderID int64) (db.ShippingShipment, error)
 }
@@ -109,7 +113,7 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 
 // producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
 func (c *Consumer) process(ctx context.Context, values map[string]any) error {
-	ctx, span := otel.Tracer("shipping-worker").Start(ctx, "payment.settled process",
+	ctx, span := tracer.Start(ctx, "payment.settled process",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithLinks(paymentevent.LinkFrom(ctx, values)),
 	)
