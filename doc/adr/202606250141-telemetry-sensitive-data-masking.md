@@ -2,56 +2,30 @@
 
 - Status: Accepted
 - Date: 2026-06-25
-- Relates to: ADR-[[202606241356]] (可観測性スタック OTel + Grafana Alloy + Grafana), ADR-[[202606211100]] (HttpOnly Cookie + サーバ側セッション), ADR-[[202606230930]] (store BFF の信頼境界と X-Member-Id)
+- Relates to: ADR-[[202606241356]] (可観測性スタック), ADR-[[202606211100]] (Cookie セッション), ADR-[[202606230930]] (X-Member-Id)
 
 ## Context
 
-Step 4 で導入するテレメトリ (トレース / ログ / メトリクス) は、payment (決済・金額) や member
-(セッション・認証, ADR-[[202606211100]]) という**機微ドメイン**を通る。何も対策しないと次の経路で
-機微データが混入しうる:
-
-- **トレースの span 属性**: HTTP 計装が拾う `http.url` のクエリに id が乗る、設定次第で
-  `Cookie` / `Authorization` / `X-Member-Id` (ADR-[[202606230930]]) ヘッダが span に入る。
-- **ログ**: `slog` のフィールドに会員 ID・メール・決済金額・リクエストボディが混入する。
-- **メトリクスのラベル**: 会員 ID 等をラベルにすると PII であると同時にカーディナリティ爆発を招く。
-
-テレメトリは Alloy 経由で Grafana スタック (Tempo / Loki) に保存され、将来 exporter 差し替えで外部
-SaaS にも出しうる。一度載ると保存・索引される。対策は全サービスの計装 + Alloy 設定に横断で効き、
-機微情報の取り扱いという覆しにくい判断なので ADR にする (ADR 規約の 2 条件を満たす)。
+テレメトリは payment (金額) / member (セッション・認証) を通る。無対策だと span 属性・ログ・メトリクス
+のラベルに `Cookie` / `Authorization` / `X-Member-Id` / 金額 / email が混入し、Tempo/Loki に保存される。
 
 ## Decision
 
-**計装段 (入れない) と Alloy 段 (落とす) の二重**で機微データを防ぐ。
+**計装段で入れない + Alloy 段で落とす**の二重。
 
-### 1. 計装段: allow-list 思想で最初から入れない
-
-- `otelgin` / `otelhttp` は既定でヘッダ・ボディを span に拾わない。**この既定を崩さない** (機微ヘッダを
-  明示的に有効化しない)。
-- span 属性・ログフィールドに機微値を**手で入れない**。span 名は生パスでなくルートテンプレートを使い
-  (ADR-[[202606241356]])、`http.url` のクエリに乗る id の露出も避ける。
-- Redis Streams のコンテキスト伝播 (ADR-[[202606241356]]) には `traceparent` だけを載せ、ペイロードの
-  機微 (金額等) を伝播フィールドへ混ぜない。
-
-### 2. Alloy 段: deny-list で安全網として落とす
-
-- Alloy の processor で **deny-list のキーを drop / ハッシュ化**する。対象 (最低限):
-  `Cookie` / `Set-Cookie` / `Authorization` / `X-Member-Id` / セッション ID / email / 決済金額
-  (`amountCents` 等) / カード情報。
-- メトリクスのラベルに会員 ID 等の高カーディナリティ・PII を使わない。
-
-deny-list は **Alloy 設定の 1 箇所**に置き、機微フィールドが増えたらそこで足す。
+- 計装段: `otelgin` / `otelhttp` の「ヘッダ・ボディを拾わない」既定を崩さない。span 属性・ログに機微を
+  手で入れない。span 名はルートテンプレート。
+- Alloy 段: deny-list (`Cookie` / `Set-Cookie` / `Authorization` / `X-Member-Id` / session / email / 金額 /
+  カード) を drop / ハッシュ。設定は 1 箇所。
+- メトリクスのラベルに PII・高カーディナリティ (会員 id 等) を使わない。
 
 ## Consequences
 
-- **二重防御**: 計装で入れず、漏れても Alloy で落とす。片側が漏れてももう片側で止まる。
-- **deny-list の維持コスト**: 新しい機微フィールドが増えたら Alloy 設定に追記する運用が要る。
-- **自由記述ログは取りこぼしうる**: 機微を文字列に埋め込むと検知しづらい。コメント規約と同様、
-  機微は構造化フィールドにも本文にも出さない運用で補う。
-- **わずかな処理コスト**: Alloy の redaction は全 span / log を通るため微小なオーバーヘッドが乗る。
+- 片方が漏れてももう片方で止まる。
+- deny-list の維持コスト (機微が増えたら Alloy 設定に追記)。
+- 自由記述ログに埋め込むと取りこぼしうる。
 
 ## Alternatives considered
 
-- **計装段だけ (allow-list のみ)**: シンプルだが、新しい計装ライブラリが既定で機微を拾い始めると
-  素通しになり、安全網が無い。
-- **Alloy 段だけ (deny-list のみ)**: アプリは無頓着でよいが、deny-list の漏れがそのまま流出する。
-  計装段で最初から入れない方が確実で、二段にして両方の穴を塞ぐ。
+- 計装段だけ → 新しい計装が機微を拾い始めると素通し。安全網が無い。
+- Alloy 段だけ → deny-list の漏れがそのまま流出。
