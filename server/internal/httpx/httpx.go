@@ -28,8 +28,8 @@ func NewEngine() *gin.Engine {
 	return engine
 }
 
-// NewHTTPClient はサービス間 HTTP 呼び出し用の共有クライアントを返す。otelhttp が client span を
-// 張り traceparent を注入するので、order の gateway などはこれを WithHTTPClient で共用する。
+// 素の http.Client では traceparent が伝播せずトレースが切れるため、サービス間呼び出しは
+// otelhttp で計装したこの共有クライアントを WithHTTPClient で共用する。
 func NewHTTPClient() *http.Client {
 	return &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 }

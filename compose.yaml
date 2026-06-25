@@ -264,7 +264,7 @@ services:
       - /etc/alloy/config.alloy
       - --server.http.listen-addr=0.0.0.0:12345
     volumes:
-      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./infra/o11y/config.alloy:/etc/alloy/config.alloy:ro
     # 社外側 (order/payment/member) と社内側 (product/shipping) 双方から OTLP を受ける。
     networks: [external-private, internal-private, observability]
     depends_on: [tempo]
@@ -274,7 +274,7 @@ services:
     image: grafana/tempo:2.8.2
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
-      - ./infra/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - ./infra/o11y/tempo.yaml:/etc/tempo/tempo.yaml:ro
     networks: [observability]
 
   grafana:
@@ -285,7 +285,7 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
     volumes:
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/o11y/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
     ports: ["3000:3000"]
     networks: [observability]
     depends_on: [tempo]
