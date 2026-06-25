@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func TestMetricsEndpointConfigured(t *testing.T) {
@@ -28,42 +30,45 @@ func TestMetricsEndpointConfigured(t *testing.T) {
 	}
 }
 
-func TestNewMeterProvider(t *testing.T) {
-	// otelgin / otelhttp が global から引く前提なので、いずれの経路でも nil を返さないことが要件。
-	type args struct{ endpoint string }
-	tests := []struct {
-		name string
-		args args
-	}{
-		{"正常系 宛先ありで exporter 付き provider が立つ", args{"localhost:4317"}},
-		{"準正常系 宛先未指定でも provider は立つ (graceful degradation)", args{""}},
+// otelgin / otelhttp が global から引く前提なので、いずれの経路でも nil を返さないことが要件。
+func buildMeterProvider(t *testing.T) *sdkmetric.MeterProvider {
+	t.Helper()
+	ctx := context.Background()
+	res, err := newResource(ctx, "test")
+	if err != nil {
+		t.Fatalf("newResource: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", tt.args.endpoint)
-			t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
+	mp, err := newMeterProvider(ctx, res)
+	if err != nil {
+		t.Fatalf("newMeterProvider: %v", err)
+	}
+	if mp == nil {
+		t.Fatal("meter provider is nil")
+	}
+	return mp
+}
 
-			ctx := context.Background()
-			res, err := newResource(ctx, "test")
-			if err != nil {
-				t.Fatalf("newResource: %v", err)
-			}
-			mp, err := newMeterProvider(ctx, res)
-			if err != nil {
-				t.Fatalf("newMeterProvider: %v", err)
-			}
-			if mp == nil {
-				t.Fatal("meter provider is nil")
-			}
+func TestNewMeterProvider(t *testing.T) {
+	// 宛先未指定 (graceful degradation): exporter を組まず flush 対象が無いので shutdown は必ず成功する。
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
 
-			// 宛先ありは到達不能な exporter を抱えるため、flush で停止を引きずらせない短い期限で止める。
-			shutdownCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-			defer cancel()
-			err = mp.Shutdown(shutdownCtx)
-			// exporter 無しの経路は flush 対象が無く必ず成功するので、ここだけは error を許さない。
-			if tt.args.endpoint == "" && err != nil {
-				t.Fatalf("shutdown without exporter should not fail: %v", err)
-			}
-		})
+	mp := buildMeterProvider(t)
+	if err := mp.Shutdown(context.Background()); err != nil {
+		t.Fatalf("shutdown without exporter should not fail: %v", err)
+	}
+}
+
+func TestNewMeterProviderWithExporter(t *testing.T) {
+	// 宛先ありで OTLP exporter を組む経路。到達不能な exporter の flush で停止を引きずらせない短い期限で止める。
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
+
+	mp := buildMeterProvider(t)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	// Alloy 不在では flush が期限切れしうるが、ここでは provider が立つことだけを確かめる。
+	if err := mp.Shutdown(shutdownCtx); err != nil {
+		t.Logf("shutdown with unreachable exporter returned (expected): %v", err)
 	}
 }
