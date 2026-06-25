@@ -6,73 +6,29 @@
 
 ## Context
 
-ADR-[[202606180902]] で repository / handler を実 DB の結合テストで検証するようにした。接続先は
-`DATABASE_URL_CUSTOMER` / `DATABASE_URL_OPS` が指す**共有 DB** (`ec_customer` /
-`ec_ops`) で、各テストは対象 table を `TRUNCATE ... RESTART IDENTITY` してから seed する。
-
-この構成では同じ物理 DB の同じ table を複数テストが奪い合う。Go はパッケージを並列
-(`-p`) 実行するため、`member/internal/repository` と `member/internal/handler` を同時に
-走らせると、一方の TRUNCATE が他方の seed を消すなどの競合が起きる。そのため CI の
-`server-integration` job と `mise run test:integration` は **`-p 1` (逐次)** で逃げていた。
-
-逐次実行は安全だが、結合テストが増えるほど直線的に遅くなる。サービス数 5 × (repository +
-handler) でパッケージが増えており、並列化したい。
+ADR-[[202606180902]] の結合テストは**共有 DB** に接続し、各テストが対象 table を TRUNCATE+seed する。同じ物理 DB の table を複数テストが奪い合うため、Go のパッケージ並列 (`-p`) で TRUNCATE と seed が競合する。CI と `mise run test:integration` は `-p 1` (逐次) で逃げていたが、結合テストが増えるほど直線的に遅くなり並列化できない。
 
 ## Decision
 
-**テストごとに DB を分離する。`testdb.Open` を「DSN が指す DB をテンプレートに
-`CREATE DATABASE ... TEMPLATE` でクローンし、そのクローンへの接続を返す」ヘルパーに変える。**
+**テスト単位で DB を分離する。`testdb.Open` を「DSN の DB を `CREATE DATABASE ... TEMPLATE` でクローンし、そのクローンへの接続を返す」ヘルパーに変え、`-p 1` を撤去する。**
 
-- `Open` 呼び出し 1 回 = クローン DB 1 個。テスト関数ごとに独立した DB を持つので、
-  TRUNCATE/seed が他テストと衝突しない。
-- クローン名は `<template>_t_<8byte hex>`。プロセスをまたいだ並列実行でも衝突しないよう
-  `crypto/rand` で採番する (`go test` はパッケージごとに別プロセス)。
-- `CREATE`/`DROP DATABASE` は対象 DB 接続中・トランザクション内では実行できないため、
-  維持用 DB (`postgres`) への単発接続から発行する。utility 文は extended protocol で
-  prepare できないので simple protocol を既定にした接続を使う。
-- 後始末は `t.Cleanup` で `pool.Close()` → `DROP DATABASE ... WITH (FORCE)` の順
-  (登録は LIFO なので DROP を先に登録)。FORCE は残接続があっても落とすため (PG13+)。
-
-**これにより `-p 1` を撤去する。**
-
-- CI `server-integration` job と `mise run test:integration` の `go test` から `-p 1` を外す。
-- 既存テスト本体 (TRUNCATE+seed) は無改修。変更は `server/internal/test/db` ヘルパーに閉じる。
-- 今回は各テストへの `t.Parallel()` 付与は**行わない**。まずパッケージ間並列 (`-p` 既定) で
-  効果を取り、パッケージ内並列は分離が効くと確認できてから別途入れられる (Open がテスト
-  単位で分離するので後付けは安全)。
-
-テンプレートは ADR-[[202606180900]] の `scripts/migrate.sh` が migration を流した `ec_customer` /
-`ec_ops` をそのまま使う。クローンは migration 済み状態を丸ごと引き継ぐので、テスト側で
-流し直す必要はない。
+- 決め手: `Open` 1 回 = 独立した DB 1 個なので、TRUNCATE/seed が他テストと衝突しない。変更は `server/internal/test/db` ヘルパーに閉じ、既存テスト本体は無改修。
+- クローン名は `crypto/rand` で採番する。`go test` がパッケージごとに別プロセスで走るため、プロセスをまたいでも衝突させないため。
+- テンプレートは ADR-[[202606180900]] の migration 済み `ec_customer` / `ec_ops` を流用する。クローンが migration 済み状態を引き継ぐので流し直し不要。
+- `t.Parallel()` 付与は今回やらない。まずパッケージ間並列で効果を取り、Open がテスト単位で分離するので後付けは安全。
 
 ## Consequences
 
-- **並列化で結合テストが短縮される**: `-p 1` を外し、パッケージを並列実行できる。
-- **分離が強い**: テストごとに別 DB なので、TRUNCATE/seed の競合だけでなく
-  「前のテストが残したデータ」による相互汚染も原理的に起きない。
-- **テンプレートに接続してはいけない**: `CREATE DATABASE ... TEMPLATE foo` は `foo` に
-  アクティブ接続があると失敗する。テストはクローンにのみ接続し、テンプレート
-  (`ec_customer` / `ec_ops`) には直接つながない前提を守る。
-- **superuser/CREATEDB 権限が要る**: クローン作成にはその権限が必要。compose の `ec`
-  ユーザ (postgres 初期化ユーザ = superuser) で満たす。別環境で回すときは権限に注意。
-- **クローンの作成/破棄コストが乗る**: テンプレートは数 table と小さく、`CREATE DATABASE`
-  はファイルコピーなので軽い。migration を毎回流す方式より速い。
-- **CI のセットアップは不変**: DB 起動 → migrate の流れ (ADR-[[202606180900]]/ADR-[[202606180902]]) はそのまま。
-  migrate がテンプレートを用意し、テストがそこからクローンする。
+- **結合テストが短縮される**: `-p 1` を外しパッケージを並列実行できる。
+- **分離が強い**: テストごとに別 DB なので、競合だけでなく前テストの残データによる相互汚染も原理的に起きない。
+- **クローン作成/破棄コストが乗る**: テンプレートは小さく `CREATE DATABASE` はファイルコピーで軽い。migration を毎回流す方式より速い。
+- **制約**: テンプレート (`ec_customer` / `ec_ops`) にはアクティブ接続があるとクローンが失敗するため直接つながない。クローン作成に superuser/CREATEDB 権限が要る (compose の `ec` ユーザで満たす。別環境では要注意)。
+- **CI のセットアップは不変**: DB 起動 → migrate (ADR-[[202606180900]]/ADR-[[202606180902]]) はそのまま。migrate がテンプレートを用意する。
 
 ## Alternatives considered
 
-- **`-p 1` のまま据え置き**: 最も安全だが、結合テストが増えるほど遅くなる。並列化要件に
-  反するので退けた。
-- **トランザクションロールバックで分離 (テストごとに BEGIN→ROLLBACK)**: DB を増やさず速い
-  が、`pgxpool` 越しの複数接続・`TRUNCATE`・複数文をまたぐ検証と相性が悪く、既存テスト
-  (pool を共有し複数クエリを投げる) を大きく書き換える必要がある。Open に閉じない。
-- **schema をテストごとに切り替える (search_path)**: 物理 DB を増やさず分離できるが、
-  sqlc 生成クエリが schema 修飾 (`member.members` 等) を埋め込んでおり search_path で
-  逃がせない。テンプレート DB クローンの方が既存コードに手を入れずに済む。
-- **testcontainers でテストごとに Postgres を起動**: 分離は最も強いがコンテナ起動が重く、
-  ADR-[[202606180902]] で既存 compose DB を流用すると決めた方針とも整合しない。テンプレートクローンは
-  同一インスタンス内の安価な複製で目的を満たす。
-- **パッケージごとに DB を分ける (TestMain で 1 DB)**: クローン数は減るが各 integration
-  パッケージに `TestMain` を足す必要があり、パッケージ内のテーブル共有 (TRUNCATE 競合) は
-  残る。Open 呼び出しごとの分離なら変更がヘルパーに閉じ、分離も強い方を採った。
+- **`-p 1` 据え置き**: 最も安全だが結合テストが増えるほど遅く、並列化要件に反する。
+- **トランザクションロールバックで分離**: 速いが、pool 共有で複数クエリ・TRUNCATE を投げる既存テストと相性が悪く、大幅な書き換えが要り Open に閉じない。
+- **schema をテストごとに切り替える (search_path)**: sqlc 生成クエリが schema 修飾を埋め込んでおり search_path で逃がせない。
+- **testcontainers でテストごとに Postgres 起動**: 分離は最強だが起動が重く、既存 compose DB を流用する ADR-[[202606180902]] の方針と整合しない。
+- **パッケージごとに DB を分ける (TestMain で 1 DB)**: クローン数は減るが各パッケージに TestMain が要り、パッケージ内の TRUNCATE 競合が残る。Open 単位の分離の方が変更が閉じ分離も強い。
