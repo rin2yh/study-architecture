@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+# scrape_configs を持たないのは取り込みが OTLP push のみだから (ADR-[[202606251000]])。
+otlp:
+  translation_strategy: UnderscoreEscapingWithSuffixes
+
+storage:
+  tsdb:
+    # push 経路は scrape のような時刻順を保証しないため、逆順サンプルを許容する。
+    out_of_order_time_window: 30m

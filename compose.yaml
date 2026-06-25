@@ -287,6 +287,17 @@ services:
       - ./infra/o11y/loki.yaml:/etc/loki/loki.yaml:ro
     networks: [observability]
 
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.5.0
+    # ADR-[[202606251000]]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./infra/o11y/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+    networks: [observability]
+
   grafana:
     profiles: ["observability"]
     image: grafana/grafana:12.2.0
@@ -298,4 +309,4 @@ services:
       - ./infra/o11y/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
     ports: ["3000:3000"]
     networks: [observability]
-    depends_on: [tempo, loki]
+    depends_on: [tempo, loki, prometheus]
