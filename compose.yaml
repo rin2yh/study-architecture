@@ -255,7 +255,7 @@ services:
     depends_on: [product, order, shipping]
     networks: [internal-public, internal-private, external-private]
 
-  # e2e/CI のスタックには足さない (ADR-[[202606241356]])。`mise run up:obs` で起動する。
+  # ADR-[[202606241356]]
   alloy:
     profiles: ["observability"]
     image: grafana/alloy:v1.7.5
@@ -265,7 +265,7 @@ services:
       - --server.http.listen-addr=0.0.0.0:12345
     volumes:
       - ./infra/o11y/config.alloy:/etc/alloy/config.alloy:ro
-    # 社外側 (order/payment/member) と社内側 (product/shipping) 双方から OTLP を受ける。
+    # 計装対象が external-private と internal-private に分かれている。
     networks: [external-private, internal-private, observability]
     depends_on: [tempo]
 

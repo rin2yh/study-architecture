@@ -12,7 +12,6 @@ ingester:
   trace_idle_period: 10s
   max_block_duration: 5m
 
-# ローカル完結・費用ゼロ (README 方針)。
 storage:
   trace:
     backend: local
