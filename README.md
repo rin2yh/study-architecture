@@ -127,10 +127,3 @@ pnpm format         # oxfmt
 ```
 
 リポジトリ全体では `mise ui:install` / `mise ui:gen` / `mise ui:build` でも操作できる。
-
-## ロードマップ
-
-- **Step 0（現在）**: 分割UI + 直接呼び出し + 共有DB（schema 分離）
-- **Step 1**: API ファサード（UI の BFF）を足す
-- **Step 2**: データ所有権を確定し schema 分離を徹底（サービスごとの最小権限 DB ロールで強制。ADR-[[202606231000]]）
-- **Step 3**: 結合の弱い縁から DB を分割（payment / shipping → member → product × order）
