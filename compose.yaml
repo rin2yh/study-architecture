@@ -5,6 +5,7 @@ networks:
   external-private: {}
   internal-public: {}
   internal-private: {}
+  observability: {}
 
 volumes:
   pg_order_data:
@@ -12,6 +13,11 @@ volumes:
   pg_member_data:
   pg_product_data:
   pg_shipping_data:
+
+# 送り先は Alloy 固定 (ADR-[[202606241356]])。Alloy 不在 (observability profile 未起動) でも
+# アプリは graceful degradation で起動する。
+x-otel-env: &otel-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
 
 x-postgres: &postgres
   image: postgres:17-alpine
@@ -120,6 +126,8 @@ services:
       context: .
       dockerfile: server/product/Dockerfile
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: product
       # 自 schema にしか触れない最小権限ロールで接続する (ADR-[[202606231000]])。
       DATABASE_URL: postgres://product_svc:product_pass@db-product:5432/ec_product?sslmode=disable
     ports: ["8001:80"]
@@ -133,6 +141,8 @@ services:
       context: .
       dockerfile: server/order/Dockerfile
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: order
       DATABASE_URL: postgres://order_svc:order_pass@db-order:5432/ec_order?sslmode=disable # ADR-[[202606231000]]
       # (ADR 0008 / 0012)
       PAYMENT_API_URL: http://payment
@@ -148,6 +158,8 @@ services:
       context: .
       dockerfile: server/payment/Dockerfile
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: payment
       DATABASE_URL: postgres://payment_svc:payment_pass@db-payment:5432/ec_payment?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8003:80"]
@@ -163,6 +175,8 @@ services:
       context: .
       dockerfile: server/member/Dockerfile
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: member
       DATABASE_URL: postgres://member_svc:member_pass@db-member:5432/ec_member?sslmode=disable # ADR-[[202606231000]]
     ports: ["8004:80"]
     depends_on:
@@ -175,6 +189,8 @@ services:
       context: .
       dockerfile: server/shipping/docker/server.Dockerfile
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: shipping
       DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
     ports: ["8005:80"]
     depends_on:
@@ -188,6 +204,8 @@ services:
       context: .
       dockerfile: server/shipping/docker/worker.Dockerfile
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: shipping-worker
       DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379
     depends_on:
@@ -236,3 +254,38 @@ services:
     ports: ["5175:5175"]
     depends_on: [product, order, shipping]
     networks: [internal-public, internal-private, external-private]
+
+  # e2e/CI のスタックには足さない (ADR-[[202606241356]])。`mise run up:obs` で起動する。
+  alloy:
+    profiles: ["observability"]
+    image: grafana/alloy:v1.7.5
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    # 社外側 (order/payment/member) と社内側 (product/shipping) 双方から OTLP を受ける。
+    networks: [external-private, internal-private, observability]
+    depends_on: [tempo]
+
+  tempo:
+    profiles: ["observability"]
+    image: grafana/tempo:2.8.2
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infra/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    networks: [observability]
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:12.2.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3000:3000"]
+    networks: [observability]
+    depends_on: [tempo]

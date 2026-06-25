@@ -1,0 +1,39 @@
+// 収集役は Alloy 1 本 (ADR-[[202606241356]])。アプリ → Alloy は OTLP/gRPC、Alloy → Tempo も OTLP。
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "0.0.0.0:4317"
+	}
+
+	output {
+		traces = [otelcol.processor.attributes.masking.input]
+	}
+}
+
+// 計装段で入れない前提の安全網としての deny-list (ADR-[[202606250141]])。秘匿情報を持つ属性キーを
+// 落とす。otelgin/otelhttp は既定でヘッダを拾わないが、新しい計装が拾い始めてもここで止める。
+otelcol.processor.attributes "masking" {
+	action {
+		pattern = "(?i).*(cookie|authorization|x-member-id|session|email|password|card|amount).*"
+		action  = "delete"
+	}
+
+	output {
+		traces = [otelcol.processor.batch.default.input]
+	}
+}
+
+otelcol.processor.batch "default" {
+	output {
+		traces = [otelcol.exporter.otlp.tempo.input]
+	}
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "tempo:4317"
+
+		tls {
+			insecure = true
+		}
+	}
+}

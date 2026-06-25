@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
@@ -91,7 +94,7 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 	}
 	for _, st := range res {
 		for _, m := range st.Messages {
-			if err := c.handle(ctx, m.Values); err != nil {
+			if err := c.process(ctx, m.Values); err != nil {
 				// ack せず pending に残し、次回 (XReadGroup の再配送) に委ねる。
 				slog.Error("shipping consumer: handle failed", "id", m.ID, "error", err)
 				continue
@@ -102,6 +105,22 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
+func (c *Consumer) process(ctx context.Context, values map[string]any) error {
+	ctx, span := otel.Tracer("shipping-worker").Start(ctx, "payment.settled process",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithLinks(paymentevent.LinkFrom(ctx, values)),
+	)
+	defer span.End()
+
+	err := c.handle(ctx, values)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return err
 }
 
 func (c *Consumer) handle(ctx context.Context, values map[string]any) error {

@@ -40,8 +40,10 @@ func NewRedisPublisher() (*RedisPublisher, error) {
 }
 
 func (p *RedisPublisher) PublishPaymentSettled(ctx context.Context, e paymentevent.Settled) error {
+	values := e.Values()
+	paymentevent.Inject(ctx, values)
 	return p.rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: paymentevent.Stream,
-		Values: e.Values(),
+		Values: values,
 	}).Err()
 }

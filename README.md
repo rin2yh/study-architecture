@@ -67,7 +67,13 @@ mise up
 # 動作確認（ブラウザ/HTTPクライアントで）
 #   http://localhost:8001/healthz
 #   http://localhost:8001/products
+
+# 5. （任意）可観測性スタックを足す（Alloy + Tempo + Grafana。ADR-[[202606241356]]）
+mise up:obs     # Grafana: http://localhost:3000 で 1 リクエストを 1 トレースとして追える
 ```
+
+可観測性スタックは `observability` profile に隔離してあり、`mise up` / e2e では起動しない。
+未起動でもアプリは graceful degradation で動く。
 
 ## コード生成のしくみ
 
