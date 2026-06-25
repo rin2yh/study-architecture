@@ -98,9 +98,8 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 	}
 	for _, st := range res {
 		for _, m := range st.Messages {
-			if err := c.process(ctx, m.Values); err != nil {
-				// ack せず pending に残し、次回 (XReadGroup の再配送) に委ねる。
-				slog.Error("shipping consumer: handle failed", "id", m.ID, "error", err)
+			if err := c.process(ctx, m.ID, m.Values); err != nil {
+				// span 内で記録済み。ack せず pending に残し、次回 (XReadGroup の再配送) に委ねる。
 				continue
 			}
 			if err := c.rdb.XAck(ctx, paymentevent.Stream, consumerGroup, m.ID).Err(); err != nil {
@@ -112,7 +111,7 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 }
 
 // producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
-func (c *Consumer) process(ctx context.Context, values map[string]any) error {
+func (c *Consumer) process(ctx context.Context, id string, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "payment.settled process",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithLinks(paymentevent.LinkFrom(ctx, values)),
@@ -123,6 +122,8 @@ func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		// span が有効なうちに記録し、ログを trace と相関させる。
+		slog.ErrorContext(ctx, "shipping consumer: handle failed", "id", id, "error", err)
 	}
 	return err
 }
@@ -135,7 +136,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	orderID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
 		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
-		slog.Error("shipping consumer: invalid orderId", "raw", raw, "error", err)
+		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "raw", raw, "error", err)
 		return nil
 	}
 	_, err = c.creator.CreateShipmentForOrder(ctx, orderID)

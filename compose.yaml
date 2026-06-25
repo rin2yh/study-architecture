@@ -265,9 +265,11 @@ services:
       - --server.http.listen-addr=0.0.0.0:12345
     volumes:
       - ./infra/o11y/config.alloy:/etc/alloy/config.alloy:ro
-    # 計装対象が external-private と internal-private に分かれている。
+      # stdout の JSON ログを Docker から直接読むため socket を渡す (ADR-[[202606241356]])。
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # 計装対象が external-private と internal-private に分かれており、両方へ到達する必要があるため。
     networks: [external-private, internal-private, observability]
-    depends_on: [tempo]
+    depends_on: [tempo, loki]
 
   tempo:
     profiles: ["observability"]
@@ -275,6 +277,14 @@ services:
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
       - ./infra/o11y/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    networks: [observability]
+
+  loki:
+    profiles: ["observability"]
+    image: grafana/loki:3.5.1
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./infra/o11y/loki.yaml:/etc/loki/loki.yaml:ro
     networks: [observability]
 
   grafana:
@@ -288,4 +298,4 @@ services:
       - ./infra/o11y/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
     ports: ["3000:3000"]
     networks: [observability]
-    depends_on: [tempo]
+    depends_on: [tempo, loki]
