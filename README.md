@@ -68,8 +68,8 @@ mise up
 #   http://localhost:8001/healthz
 #   http://localhost:8001/products
 
-# 5. （任意）可観測性スタックを足す（Alloy + Tempo + Grafana。ADR-[[202606241356]]）
-mise up:obs     # Grafana: http://localhost:3000 で 1 リクエストを 1 トレースとして追える
+# 5. （任意）可観測性スタックを足す（Alloy + Tempo + Loki + Grafana。ADR-[[202606241356]]）
+mise up:obs     # Grafana: http://localhost:3000 で 1 リクエストを 1 トレースとして追え、trace_id でログと相互に辿れる
 ```
 
 可観測性スタックは `observability` profile に隔離してあり、`mise up` / e2e では起動しない。

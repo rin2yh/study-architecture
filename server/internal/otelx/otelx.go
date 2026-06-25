@@ -17,14 +17,17 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
-// Setup は TracerProvider と propagator を global に設定し、flush 用の shutdown を返す。
-// 返り値は `defer shutdown()` で呼ぶ前提。
+// Setup は TracerProvider と propagator を global に設定し、相関付き slog ハンドラ (SetupLogging) を
+// 据えて、flush 用の shutdown を返す。返り値は `defer shutdown()` で呼ぶ前提。
 //
 // exporter 接続失敗を致命にしない (ADR-[[202606241356]] graceful degradation): OTLP の宛先 env が
 // 無ければ exporter を付けず、TracerProvider だけ立てる。AlwaysSample なので exporter が無くても
 // SpanContext は有効で traceparent 伝播は効く。Alloy 不在のまま endpoint だけ設定された場合も、
 // otlptracegrpc は遅延接続でここでは error にならず、export は background で retry される。
 func Setup(ctx context.Context, serviceName string) (func(), error) {
+	// exporter 構築前に据え、以降の error 経路でも相関付き JSON ログが出るようにする。
+	SetupLogging()
+
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},

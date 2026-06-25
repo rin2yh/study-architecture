@@ -63,9 +63,8 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 			OrderID:     row.OrderID,
 			AmountCents: row.AmountCents,
 		}); err != nil {
-			// 決済確定自体は確定済み。outbox の無い Step 0 ではイベントを再送できないため
-			// 可視化のみ行い 200 を返す (ADR-[[202606211200]] の結果整合の宿題)。
-			slog.Error("publish payment.settled failed", "paymentId", row.ID, "orderId", row.OrderID, "error", err)
+			// 決済確定は確定済みで、outbox の無い Step 0 ではイベントを再送できない (ADR-[[202606211200]] の結果整合の宿題)。
+			slog.ErrorContext(c.Request.Context(), "publish payment.settled failed", "paymentId", row.ID, "orderId", row.OrderID, "error", err)
 		}
 	}
 

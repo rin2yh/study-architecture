@@ -37,3 +37,48 @@ otelcol.exporter.otlp "tempo" {
 		}
 	}
 }
+
+// ログは stdout の JSON を Docker 経由で収集して Loki へ (ADR-[[202606241356]])。アプリにログ送信は
+// 持たせない。trace_id は slog が行内に埋め、相関は Grafana 側で行う (#61)。
+discovery.docker "containers" {
+	host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	// 他 compose プロジェクトのコンテナまで巻き込まないよう本プロジェクトに絞る。
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+		regex         = "ec-service-based"
+		action        = "keep"
+	}
+
+	// 生のコンテナ名はカーディナリティが高いので compose のサービス名を service ラベルにする。
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "service"
+	}
+}
+
+loki.source.docker "containers" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.process.masking.receiver]
+}
+
+// 計装段で入れない前提の安全網 (ADR-[[202606250141]])。秘匿キーの値だけ潰し JSON 構造は壊さない。
+loki.process "masking" {
+	stage.replace {
+		expression = "(?i)\"(?:cookie|set-cookie|authorization|x-member-id|session|email|password|card|amount)\"\\s*:\\s*\"([^\"]*)\""
+		replace    = "REDACTED"
+	}
+
+	forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
