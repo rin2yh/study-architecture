@@ -34,5 +34,6 @@
 | [202606230930](202606230930-bff-auth-context-and-trust-boundary.md) | Accepted | store BFF に認証コンテキストの集約と X-Member-Id の付与点を置く |
 | [202606231000](202606231000-enforce-schema-ownership-with-db-roles.md) | Accepted | データ所有権を schema ごとの最小権限 DB ロールで強制する |
 | [202606240522](202606240522-step3-split-db-per-domain-from-weak-edge.md) | Accepted | Step 3 で結合の弱い縁からドメインごとに DB インスタンスを分割する |
-| [202606241356](202606241356-observability-otel-collector-grafana.md) | Accepted | 可観測性を OpenTelemetry + Collector + Grafana スタックで構築する |
-| [202606241420](202606241420-metrics-push-to-collector-pull-by-prometheus.md) | Accepted | メトリクスはアプリから collector へ push し Prometheus は collector を scrape する |
+| [202606241356](202606241356-observability-otel-collector-grafana.md) | Accepted | 可観測性を OpenTelemetry + Grafana Alloy + Grafana スタックで構築する |
+| [202606241420](202606241420-metrics-push-to-collector-pull-by-prometheus.md) | Accepted | メトリクスはアプリから Alloy へ push し Prometheus は Alloy を scrape する |
+| [202606250141](202606250141-telemetry-sensitive-data-masking.md) | Accepted | テレメトリの機微データは計装段と Alloy 段の二重でマスキングする |
