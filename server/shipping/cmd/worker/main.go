@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rin2yh/study-architecture/server/internal/otelx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/di"
 )
 
@@ -26,6 +27,12 @@ func start(ctx context.Context) int {
 }
 
 func run(ctx context.Context) error {
+	shutdown, err := otelx.Setup(ctx, "shipping-worker")
+	if err != nil {
+		return err
+	}
+	defer shutdown()
+
 	cons, err := di.InitConsumer(ctx)
 	if err != nil {
 		return err

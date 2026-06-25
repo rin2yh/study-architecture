@@ -31,6 +31,11 @@ run = "docker compose --profile internal up -d --no-build"
 description = "DB だけ起動 (CI / 結合テスト用)"
 run = "docker compose up -d --wait db-order db-payment db-member db-shipping db-product"
 
+# 可観測性スタックは observability profile に隔離してある。アプリ起動後に足す。Grafana は :3000。
+[tasks."up:obs"]
+description = "可観測性スタック (Alloy/Tempo/Grafana) を起動"
+run = "docker compose --profile observability up -d"
+
 [tasks.migrate]
 description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
 run = "./scripts/migrate.sh"

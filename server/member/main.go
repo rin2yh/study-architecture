@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/rin2yh/study-architecture/server/internal/httpx"
+	"github.com/rin2yh/study-architecture/server/internal/otelx"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/di"
 )
@@ -27,6 +28,12 @@ func start(ctx context.Context, addr string) int {
 }
 
 func run(ctx context.Context, addr string) error {
+	shutdown, err := otelx.Setup(ctx, "member")
+	if err != nil {
+		return err
+	}
+	defer shutdown()
+
 	h, err := di.InitHandler(ctx)
 	if err != nil {
 		return err

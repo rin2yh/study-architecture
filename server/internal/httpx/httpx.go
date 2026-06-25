@@ -8,9 +8,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 )
@@ -18,9 +21,17 @@ import (
 func NewEngine() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
+	// マスキングは既定を崩さない (ADR-[[202606250141]])。
+	engine.Use(otelgin.Middleware(os.Getenv("OTEL_SERVICE_NAME")))
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.ErrorJSON())
 	return engine
+}
+
+// 素の http.Client では traceparent が伝播せずトレースが切れるため、サービス間呼び出しは
+// otelhttp で計装したこの共有クライアントを WithHTTPClient で共用する。
+func NewHTTPClient() *http.Client {
+	return &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 }
 
 func Serve(ctx context.Context, addr string, handler http.Handler) error {

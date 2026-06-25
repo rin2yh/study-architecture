@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/rin2yh/study-architecture/server/internal/httpx"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
 )
@@ -42,7 +43,7 @@ func NewProductClient() (*ProductClient, error) {
 	if base == "" {
 		return nil, errors.New("PRODUCT_API_URL is required")
 	}
-	c, err := product.NewClientWithResponses(base)
+	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(httpx.NewHTTPClient()))
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func NewPaymentClient() (*PaymentClient, error) {
 	if base == "" {
 		return nil, errors.New("PAYMENT_API_URL is required")
 	}
-	c, err := payment.NewClientWithResponses(base)
+	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(httpx.NewHTTPClient()))
 	if err != nil {
 		return nil, err
 	}
