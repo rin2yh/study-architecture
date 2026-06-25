@@ -1,6 +1,6 @@
 # ADR-202606241420: メトリクスはアプリから Alloy へ push し、Prometheus は Alloy を scrape する
 
-- Status: Accepted
+- Status: Accepted (Alloy→Prometheus の取り込み方式は ADR-[[202606251000]] で Superseded)
 - Date: 2026-06-24
 - Relates to: ADR-[[202606241356]] (可観測性スタック), ADR-[[202606170909]] (network 分離)
 

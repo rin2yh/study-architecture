@@ -1,11 +1,13 @@
-// 収集役は Alloy 1 本 (ADR-[[202606241356]])。アプリ → Alloy は OTLP/gRPC、Alloy → Tempo も OTLP。
+// 収集役は Alloy 1 本 (ADR-[[202606241356]])。アプリ → Alloy は OTLP/gRPC。Alloy → Tempo は OTLP、
+// Alloy → Prometheus は OTLP (Alloy は scrape エンドポイントを公開できないため push, ADR-[[202606251000]])。
 otelcol.receiver.otlp "default" {
 	grpc {
 		endpoint = "0.0.0.0:4317"
 	}
 
 	output {
-		traces = [otelcol.processor.attributes.masking.input]
+		traces  = [otelcol.processor.attributes.masking.input]
+		metrics = [otelcol.processor.attributes.masking.input]
 	}
 }
 
@@ -18,19 +20,33 @@ otelcol.processor.attributes "masking" {
 	}
 
 	output {
-		traces = [otelcol.processor.batch.default.input]
+		traces  = [otelcol.processor.batch.default.input]
+		metrics = [otelcol.processor.batch.default.input]
 	}
 }
 
 otelcol.processor.batch "default" {
 	output {
-		traces = [otelcol.exporter.otlp.tempo.input]
+		traces  = [otelcol.exporter.otlp.tempo.input]
+		metrics = [otelcol.exporter.otlphttp.prometheus.input]
 	}
 }
 
 otelcol.exporter.otlp "tempo" {
 	client {
 		endpoint = "tempo:4317"
+
+		tls {
+			insecure = true
+		}
+	}
+}
+
+// 送り先は Prometheus ネイティブ OTLP receiver (ADR-[[202606251000]])。otlphttp は endpoint に
+// /v1/metrics を付けて送るため、ここは /api/v1/otlp までにする。
+otelcol.exporter.otlphttp "prometheus" {
+	client {
+		endpoint = "http://prometheus:9090/api/v1/otlp"
 
 		tls {
 			insecure = true
