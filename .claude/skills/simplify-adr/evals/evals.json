@@ -1,5 +1,5 @@
 {
-  "skill_name": "adr-simplifier",
+  "skill_name": "simplify-adr",
   "note": "各 eval は doc/adr 配下に fixture の ADR を置いた状態でスキルを起動し、書き直し後のファイルを expectations で評価する想定。fixture は self-contained で、実リポジトリの ADR を改変しない。",
   "evals": [
     {

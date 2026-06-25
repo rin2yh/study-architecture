@@ -1,5 +1,5 @@
 ---
-name: adr-simplifier
+name: simplify-adr
 description: "既存の ADR (doc/adr/*.md) を .claude/rules/adr.md の「簡潔に書く」基準で書き直す。ユーザーが「ADR を簡潔にして」「この ADR を短くして」「冗長な ADR を整理して」「ADR を簡潔に書く基準にそろえて」「残りの ADR も同じように直して」などと言ったときに使う。決定 (Decision) と why は残し、コード/YAML/表の転記・他 ADR の要約再掲・同じ理由の繰り返し・what の散文を削る。設計判断そのものは変えない (Supersede ではなく表現の整理)。"
 argument-hint: "[対象 ADR のファイル名・テーマ、または『残り全部』など (任意)]"
 allowed-tools:
