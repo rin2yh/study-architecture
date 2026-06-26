@@ -1,4 +1,6 @@
-package httpx
+// Package resilience は外向き HTTP 呼び出しに timeout / リトライ / サーキットブレーカを
+// 被せる耐障害クライアントを提供する (ADR-[[202606261210]])。
+package resilience
 
 import (
 	"context"
