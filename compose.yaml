@@ -318,11 +318,10 @@ services:
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
     volumes:
       - ./infra/o11y/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./infra/o11y/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./infra/o11y/dashboards:/var/lib/grafana/dashboards:ro
       # (ADR-[[202606261100]])
       - ./infra/o11y/alerting:/etc/grafana/provisioning/alerting:ro
-      # ダッシュボードを手動作成に依存させずリポジトリの JSON を単一情報源にするため provisioning する。
-      - ./infra/o11y/dashboards/provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml:ro
-      - ./infra/o11y/dashboards:/var/lib/grafana/dashboards:ro
     ports: ["3000:3000"]
     networks: [observability]
     depends_on: [tempo, loki, prometheus]

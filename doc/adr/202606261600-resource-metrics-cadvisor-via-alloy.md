@@ -30,7 +30,7 @@ ADR にする (`.claude/rules/adr.md`)。
   テレメトリ収集役のみ・本番運用ではない学習スタックなので許容する (compose にコメントで明示)。
 - cAdvisor はメトリクスが多い。サービス別 4 系統 (CPU/mem/disk/net) に絞って出し、不要ラベルは relabel で畳む。
 - **CI / 入れ子 docker サンドボックスでは cAdvisor がコンテナ名を解決できず** (storage driver 由来で `name`
-  ラベルが付かない)、サービス別にならない。検証スクショは OrbStack / 通常 docker 前提にする (runbook)。
+  ラベルが付かない)、サービス別にならない。検証スクショは OrbStack / 通常 docker 前提にする (doc/ops/dashboards.md)。
 
 ## Alternatives considered
 

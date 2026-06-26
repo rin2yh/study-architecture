@@ -1,11 +1,10 @@
 {
-  "uid": "ec-resources",
-  "title": "Resources (CPU / Memory / Disk / Network)",
-  "tags": ["ec", "resources"],
+  "uid": "resources",
+  "title": "Resources — サービス別 CPU / Memory / Disk / Network",
+  "tags": ["o11y", "resources"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
-  "editable": false,
   "refresh": "30s",
   "time": { "from": "now-30m", "to": "now" },
   "templating": {
@@ -15,7 +14,7 @@
         "label": "service",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": { "query": "label_values(container_cpu_usage_seconds_total, service)", "refId": "service" },
+        "query": { "qryType": 1, "query": "label_values(container_cpu_usage_seconds_total, service)", "refId": "StandardVariableQuery" },
         "refresh": 2,
         "sort": 1,
         "multi": true,

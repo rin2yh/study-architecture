@@ -1,8 +1,8 @@
 # 運用ランブック
 
-アラート発火時など、運用で参照する手順を集約する。役割分担: 設計判断は [ADR](adr/README.md)、
-プロジェクト概要は [README](../README.md)、既知の不具合は [known-issues](known-issues.md)。
-各 Step で運用に効くものが出たらここへ追記する。
+アラート発火時など、運用で参照する手順を集約する。役割分担: 設計判断は [ADR](../adr/README.md)、
+プロジェクト概要は [README](../../README.md)、既知の不具合は [known-issues](../known-issues.md)、
+ダッシュボードの見方は [dashboards](dashboards.md)。各 Step で運用に効くものが出たらここへ追記する。
 
 ## アラート
 
@@ -26,19 +26,3 @@ ADR-[[202606261100]])。`mise up:obs` 後、Grafana の `EC Service Alerts > RED
   支配的かを見る。DB プールは pgxpool の acquire 待ち / idle / total を確認する (#71)。
 - よくある原因: DB プール枯渇、下流レイテンシ、想定外のクエリ件数。
 - 対処: ボトルネックのホップに応じてプール上限・クエリ・下流を調整する。
-
-## ダッシュボード
-
-`mise up:obs` 後、Grafana (anonymous Admin, :3000) の `EC Service Dashboards` フォルダで見る。JSON は
-`infra/o11y/dashboards/` を単一情報源に provisioning される (手動作成に依存しない)。
-
-### Resources (CPU / Memory / Disk / Network)
-
-- 用途: cAdvisor 由来のリソースメトリクスをサービス別に追う (ADR-[[202606261600]])。「どのサービスが
-  CPU / メモリを食っているか」を `$service` 変数で絞って見る。
-- 経路: cAdvisor → Alloy (`prometheus.exporter.cadvisor` → OTLP ブリッジ) → Prometheus。コンテナ名は
-  compose のサービス名へ relabel 済みで、ログ側の `service` と軸が揃う。
-- 取得 (実 Grafana スクショ): **OrbStack / 通常 docker 前提**。CI / 入れ子 docker では cAdvisor が
-  コンテナ名を解決できず `service` ラベルが付かないため、サービス別にならない (ADR-[[202606261600]])。
-  手順: `mise up` でアプリを起動 → `mise up:obs` → store で checkout を数回流す → `:3000` の
-  `EC Service Dashboards > Resources` を開き、`$service` を切り替えて CPU / メモリ / ディスク / ネットワークを確認。
