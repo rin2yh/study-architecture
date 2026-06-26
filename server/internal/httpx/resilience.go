@@ -49,18 +49,29 @@ type ResilientTransport struct {
 	breaker *gobreaker.CircuitBreaker[*http.Response]
 	retry   RetryPolicy
 	timeout time.Duration
+	// 呼び出し先が冪等なら非冪等メソッド (POST) もリトライ対象に含める (ADR-[[202606261214]])。
+	retryNonIdempotent bool
 }
 
 var _ http.RoundTripper = (*ResilientTransport)(nil)
 
-// otelhttp 計装を共用しないとサービス間呼び出しでトレースが切れる。リトライをその外側に置くことで、
-// 各試行が独立した span として観測できる。
-func NewResilientClient(name string) *http.Client {
-	base := otelhttp.NewTransport(http.DefaultTransport)
-	return &http.Client{Transport: newResilientTransport(name, base, DefaultResilienceConfig())}
+// Option は ResilientTransport の任意設定。
+type Option func(*ResilientTransport)
+
+// RetryNonIdempotent は POST など非冪等メソッドのリトライを許可する。冪等性を担保した
+// 呼び出し先 (例: idempotency key を持つ order→payment) だけに付ける (ADR-[[202606261214]])。
+func RetryNonIdempotent() Option {
+	return func(t *ResilientTransport) { t.retryNonIdempotent = true }
 }
 
-func newResilientTransport(name string, base http.RoundTripper, cfg ResilienceConfig) *ResilientTransport {
+// otelhttp 計装を共用しないとサービス間呼び出しでトレースが切れる。リトライをその外側に置くことで、
+// 各試行が独立した span として観測できる。
+func NewResilientClient(name string, opts ...Option) *http.Client {
+	base := otelhttp.NewTransport(http.DefaultTransport)
+	return &http.Client{Transport: newResilientTransport(name, base, DefaultResilienceConfig(), opts...)}
+}
+
+func newResilientTransport(name string, base http.RoundTripper, cfg ResilienceConfig, opts ...Option) *ResilientTransport {
 	breaker := gobreaker.NewCircuitBreaker[*http.Response](gobreaker.Settings{
 		Name:        name,
 		MaxRequests: 1,
@@ -72,7 +83,11 @@ func newResilientTransport(name string, base http.RoundTripper, cfg ResilienceCo
 			slog.Warn("circuit breaker state changed", "breaker", name, "from", from.String(), "to", to.String())
 		},
 	})
-	return &ResilientTransport{base: base, breaker: breaker, retry: cfg.Retry, timeout: cfg.AttemptTimeout}
+	t := &ResilientTransport{base: base, breaker: breaker, retry: cfg.Retry, timeout: cfg.AttemptTimeout}
+	for _, opt := range opts {
+		opt(t)
+	}
+	return t
 }
 
 func (t *ResilientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -83,9 +98,9 @@ func (t *ResilientTransport) RoundTrip(req *http.Request) (*http.Response, error
 
 func (t *ResilientTransport) roundTripWithRetry(req *http.Request) (*http.Response, error) {
 	attempts := 1
-	// 非冪等な POST を素朴にリトライすると二重決済を生むため、冪等性 (ADR-[[202606261214]]) が
-	// 入るまではリトライを安全なメソッドに限る (ADR-[[202606261210]])。
-	if safeToRetry(req.Method) {
+	// 素朴な POST リトライは二重決済を生むため、安全なメソッドか、冪等性を担保した呼び出し先
+	// (RetryNonIdempotent) かつ body を巻き戻せる場合に限る (ADR-[[202606261210]], ADR-[[202606261214]])。
+	if safeToRetry(req.Method) || (t.retryNonIdempotent && rewindable(req)) {
 		attempts = t.retry.MaxAttempts
 	}
 
@@ -96,6 +111,9 @@ func (t *ResilientTransport) roundTripWithRetry(req *http.Request) (*http.Respon
 			case <-time.After(t.backoff(i)):
 			case <-req.Context().Done():
 				return nil, req.Context().Err()
+			}
+			if err := rewindBody(req); err != nil {
+				return nil, err
 			}
 		}
 		resp, err := t.attempt(req)
@@ -135,6 +153,23 @@ func (t *ResilientTransport) backoff(retry int) time.Duration {
 	}
 	// 一斉リトライによる thundering herd を避けるため。
 	return time.Duration(rand.Float64() * float64(d))
+}
+
+// GetBody が無い body は再送で復元できず、リトライすると空ボディを送ってしまう。
+func rewindable(req *http.Request) bool {
+	return req.Body == nil || req.GetBody != nil
+}
+
+func rewindBody(req *http.Request) error {
+	if req.Body == nil || req.GetBody == nil {
+		return nil
+	}
+	body, err := req.GetBody()
+	if err != nil {
+		return err
+	}
+	req.Body = body
+	return nil
 }
 
 func safeToRetry(method string) bool {

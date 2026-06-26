@@ -151,7 +151,7 @@ components:
           format: date-time
     CreatePaymentRequest:
       type: object
-      required: [orderId, amountCents, method, status]
+      required: [orderId, amountCents, method, status, idempotencyKey]
       properties:
         orderId:
           type: integer
@@ -167,6 +167,11 @@ components:
             binding: required
         status:
           type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        idempotencyKey:
+          type: string
+          description: order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。
           x-oapi-codegen-extra-tags:
             binding: required
     UpdatePaymentRequest:

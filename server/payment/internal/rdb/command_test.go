@@ -14,15 +14,39 @@ func TestCreatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentCommand(pool)
-	seedPayments(t, pool)
 
-	got, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid"})
-	if err != nil {
-		t.Fatalf("CreatePayment: %v", err)
-	}
-	if got.ID == 0 || got.OrderID != 20 {
-		t.Fatalf("unexpected row: %+v", got)
-	}
+	t.Run("正常系 新規作成で行が返る", func(t *testing.T) {
+		seedPayments(t, pool)
+		got, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid", IdempotencyKey: "k-20"})
+		if err != nil {
+			t.Fatalf("CreatePayment: %v", err)
+		}
+		if got.ID == 0 || got.OrderID != 20 {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+
+	t.Run("準正常系 同一 idempotency key の再送は既存を冪等に返す", func(t *testing.T) {
+		seedPayments(t, pool)
+		first, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending", IdempotencyKey: "k-30"})
+		if err != nil {
+			t.Fatalf("first CreatePayment: %v", err)
+		}
+		second, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending", IdempotencyKey: "k-30"})
+		if err != nil {
+			t.Fatalf("second CreatePayment: %v", err)
+		}
+		if second.ID != first.ID {
+			t.Fatalf("second id = %d, want same as first %d", second.ID, first.ID)
+		}
+		rows, err := r.q.ListPayments(t.Context())
+		if err != nil {
+			t.Fatalf("ListPayments: %v", err)
+		}
+		if len(rows) != 1 {
+			t.Fatalf("rows = %d, want 1 (no duplicate insert)", len(rows))
+		}
+	})
 }
 
 func TestUpdatePayment(t *testing.T) {

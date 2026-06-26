@@ -6,9 +6,15 @@ ORDER BY id;
 SELECT * FROM payment.payments
 WHERE id = $1;
 
+-- name: GetPaymentByIdempotencyKey :one
+SELECT * FROM payment.payments
+WHERE idempotency_key = $1;
+
+-- ADR-[[202606261214]]
 -- name: CreatePayment :one
-INSERT INTO payment.payments (order_id, amount_cents, method, status)
-VALUES ($1, $2, $3, $4)
+INSERT INTO payment.payments (order_id, amount_cents, method, status, idempotency_key)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (idempotency_key) WHERE idempotency_key <> '' DO NOTHING
 RETURNING *;
 
 -- name: UpdatePayment :one

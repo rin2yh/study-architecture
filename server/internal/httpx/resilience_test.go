@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -93,6 +94,68 @@ func TestResilientTransportRetry(t *testing.T) {
 			}
 			if got := hits.Load(); got != tt.want.hits {
 				t.Fatalf("hits = %d, want %d", got, tt.want.hits)
+			}
+		})
+	}
+}
+
+func TestResilientTransportRetryNonIdempotent(t *testing.T) {
+	const payload = `{"orderId":1}`
+	type args struct {
+		opts []Option
+		body io.Reader
+	}
+	type want struct {
+		hits int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 opt-in POST は body を巻き戻して MaxAttempts まで再送", args{[]Option{RetryNonIdempotent()}, strings.NewReader(payload)}, want{hits: 3}},
+		// GetBody が無い body は再送で空になるため、opt-in でもリトライさせない。
+		{"準正常系 opt-in でも GetBody 無し body はリトライしない", args{[]Option{RetryNonIdempotent()}, struct{ io.Reader }{strings.NewReader(payload)}}, want{hits: 1}},
+		{"準正常系 opt-in 無し POST はリトライしない", args{nil, strings.NewReader(payload)}, want{hits: 1}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var bodies []string
+			var hits atomic.Int64
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				b, _ := io.ReadAll(r.Body)
+				mu.Lock()
+				bodies = append(bodies, string(b))
+				mu.Unlock()
+				hits.Add(1)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte(`{}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			tr := newResilientTransport(tt.name, http.DefaultTransport, fastConfig(), tt.args.opts...)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, tt.args.body)
+			if err != nil {
+				t.Fatalf("NewRequest: %v", err)
+			}
+			resp, err := tr.RoundTrip(req)
+			if resp != nil {
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
+			}
+			if err == nil {
+				t.Fatal("err = nil, want error (all attempts 503)")
+			}
+			if got := hits.Load(); got != tt.want.hits {
+				t.Fatalf("hits = %d, want %d", got, tt.want.hits)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for i, b := range bodies {
+				if b != payload {
+					t.Fatalf("attempt %d body = %q, want %q (rewind failed)", i, b, payload)
+				}
 			}
 		})
 	}

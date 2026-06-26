@@ -29,7 +29,7 @@ type ProductPort interface {
 }
 
 type PaymentPort interface {
-	CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error)
+	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error)
 }
 
 type ProductClient struct {
@@ -75,19 +75,21 @@ func NewPaymentClient() (*PaymentClient, error) {
 	if base == "" {
 		return nil, errors.New("PAYMENT_API_URL is required")
 	}
-	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(httpx.NewResilientClient("order->payment")))
+	// 決済作成は idempotency key で冪等なので POST リトライを解禁する (ADR-[[202606261214]])。
+	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(httpx.NewResilientClient("order->payment", httpx.RetryNonIdempotent())))
 	if err != nil {
 		return nil, err
 	}
 	return &PaymentClient{c: c}, nil
 }
 
-func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error) {
+func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error) {
 	res, err := p.c.CreatePaymentWithResponse(ctx, payment.CreatePaymentJSONRequestBody{
-		OrderId:     orderID,
-		AmountCents: amountCents,
-		Method:      method,
-		Status:      "pending",
+		OrderId:        orderID,
+		AmountCents:    amountCents,
+		Method:         method,
+		Status:         "pending",
+		IdempotencyKey: idempotencyKey,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("%w: create payment for order %d: %v", ErrUpstream, orderID, err)

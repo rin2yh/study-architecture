@@ -10,24 +10,28 @@ import (
 )
 
 const createPayment = `-- name: CreatePayment :one
-INSERT INTO payment.payments (order_id, amount_cents, method, status)
-VALUES ($1, $2, $3, $4)
-RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at
+INSERT INTO payment.payments (order_id, amount_cents, method, status, idempotency_key)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (idempotency_key) WHERE idempotency_key <> '' DO NOTHING
+RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key
 `
 
 type CreatePaymentParams struct {
-	OrderID     int64  `json:"orderId"`
-	AmountCents int64  `json:"amountCents"`
-	Method      string `json:"method"`
-	Status      string `json:"status"`
+	OrderID        int64  `json:"orderId"`
+	AmountCents    int64  `json:"amountCents"`
+	Method         string `json:"method"`
+	Status         string `json:"status"`
+	IdempotencyKey string `json:"idempotencyKey"`
 }
 
+// ADR-[[202606261214]]
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (PaymentPayment, error) {
 	row := q.db.QueryRow(ctx, createPayment,
 		arg.OrderID,
 		arg.AmountCents,
 		arg.Method,
 		arg.Status,
+		arg.IdempotencyKey,
 	)
 	var i PaymentPayment
 	err := row.Scan(
@@ -40,12 +44,13 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		&i.SettledEventPending,
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
+		&i.IdempotencyKey,
 	)
 	return i, err
 }
 
 const getPayment = `-- name: GetPayment :one
-SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key FROM payment.payments
 WHERE id = $1
 `
 
@@ -62,12 +67,36 @@ func (q *Queries) GetPayment(ctx context.Context, id int64) (PaymentPayment, err
 		&i.SettledEventPending,
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
+		&i.IdempotencyKey,
+	)
+	return i, err
+}
+
+const getPaymentByIdempotencyKey = `-- name: GetPaymentByIdempotencyKey :one
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key FROM payment.payments
+WHERE idempotency_key = $1
+`
+
+func (q *Queries) GetPaymentByIdempotencyKey(ctx context.Context, idempotencyKey string) (PaymentPayment, error) {
+	row := q.db.QueryRow(ctx, getPaymentByIdempotencyKey, idempotencyKey)
+	var i PaymentPayment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.AmountCents,
+		&i.Method,
+		&i.Status,
+		&i.CreatedAt,
+		&i.SettledEventPending,
+		&i.SettledEventTraceparent,
+		&i.SettledEventPublishedAt,
+		&i.IdempotencyKey,
 	)
 	return i, err
 }
 
 const listPayments = `-- name: ListPayments :many
-SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key FROM payment.payments
 ORDER BY id
 `
 
@@ -90,6 +119,7 @@ func (q *Queries) ListPayments(ctx context.Context) ([]PaymentPayment, error) {
 			&i.SettledEventPending,
 			&i.SettledEventTraceparent,
 			&i.SettledEventPublishedAt,
+			&i.IdempotencyKey,
 		); err != nil {
 			return nil, err
 		}
@@ -158,7 +188,7 @@ SET status                    = $1,
     settled_event_pending     = settled_event_pending OR $2,
     settled_event_traceparent = CASE WHEN $2 THEN $3 ELSE settled_event_traceparent END
 WHERE id = $4
-RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at
+RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key
 `
 
 type UpdatePaymentParams struct {
@@ -186,6 +216,7 @@ func (q *Queries) UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (P
 		&i.SettledEventPending,
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
+		&i.IdempotencyKey,
 	)
 	return i, err
 }
