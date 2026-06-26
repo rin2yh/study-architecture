@@ -12,7 +12,7 @@ import (
 const createPayment = `-- name: CreatePayment :one
 INSERT INTO payment.payments (order_id, amount_cents, method, status)
 VALUES ($1, $2, $3, $4)
-RETURNING id, order_id, amount_cents, method, status, created_at
+RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at
 `
 
 type CreatePaymentParams struct {
@@ -37,13 +37,15 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		&i.Method,
 		&i.Status,
 		&i.CreatedAt,
+		&i.SettledEventPending,
+		&i.SettledEventTraceparent,
+		&i.SettledEventPublishedAt,
 	)
 	return i, err
 }
 
 const getPayment = `-- name: GetPayment :one
-SELECT id, order_id, amount_cents, method, status, created_at
-FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at FROM payment.payments
 WHERE id = $1
 `
 
@@ -57,13 +59,15 @@ func (q *Queries) GetPayment(ctx context.Context, id int64) (PaymentPayment, err
 		&i.Method,
 		&i.Status,
 		&i.CreatedAt,
+		&i.SettledEventPending,
+		&i.SettledEventTraceparent,
+		&i.SettledEventPublishedAt,
 	)
 	return i, err
 }
 
 const listPayments = `-- name: ListPayments :many
-SELECT id, order_id, amount_cents, method, status, created_at
-FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at FROM payment.payments
 ORDER BY id
 `
 
@@ -83,6 +87,9 @@ func (q *Queries) ListPayments(ctx context.Context) ([]PaymentPayment, error) {
 			&i.Method,
 			&i.Status,
 			&i.CreatedAt,
+			&i.SettledEventPending,
+			&i.SettledEventTraceparent,
+			&i.SettledEventPublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -94,20 +101,80 @@ func (q *Queries) ListPayments(ctx context.Context) ([]PaymentPayment, error) {
 	return items, nil
 }
 
+const listUnpublishedSettledEvents = `-- name: ListUnpublishedSettledEvents :many
+SELECT id, order_id, amount_cents, settled_event_traceparent
+FROM payment.payments
+WHERE settled_event_pending
+ORDER BY id
+LIMIT $1
+`
+
+type ListUnpublishedSettledEventsRow struct {
+	ID                      int64  `json:"id"`
+	OrderID                 int64  `json:"orderId"`
+	AmountCents             int64  `json:"amountCents"`
+	SettledEventTraceparent string `json:"settledEventTraceparent"`
+}
+
+func (q *Queries) ListUnpublishedSettledEvents(ctx context.Context, limit int32) ([]ListUnpublishedSettledEventsRow, error) {
+	rows, err := q.db.Query(ctx, listUnpublishedSettledEvents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnpublishedSettledEventsRow{}
+	for rows.Next() {
+		var i ListUnpublishedSettledEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.AmountCents,
+			&i.SettledEventTraceparent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markSettledEventPublished = `-- name: MarkSettledEventPublished :exec
+UPDATE payment.payments
+SET settled_event_pending = false, settled_event_published_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) MarkSettledEventPublished(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markSettledEventPublished, id)
+	return err
+}
+
 const updatePayment = `-- name: UpdatePayment :one
 UPDATE payment.payments
-SET status = $2
-WHERE id = $1
-RETURNING id, order_id, amount_cents, method, status, created_at
+SET status                    = $1,
+    settled_event_pending     = settled_event_pending OR $2,
+    settled_event_traceparent = CASE WHEN $2 THEN $3 ELSE settled_event_traceparent END
+WHERE id = $4
+RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at
 `
 
 type UpdatePaymentParams struct {
-	ID     int64  `json:"id"`
-	Status string `json:"status"`
+	Status      string `json:"status"`
+	MarkSettled bool   `json:"markSettled"`
+	Traceparent string `json:"traceparent"`
+	ID          int64  `json:"id"`
 }
 
 func (q *Queries) UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (PaymentPayment, error) {
-	row := q.db.QueryRow(ctx, updatePayment, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updatePayment,
+		arg.Status,
+		arg.MarkSettled,
+		arg.Traceparent,
+		arg.ID,
+	)
 	var i PaymentPayment
 	err := row.Scan(
 		&i.ID,
@@ -116,6 +183,9 @@ func (q *Queries) UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (P
 		&i.Method,
 		&i.Status,
 		&i.CreatedAt,
+		&i.SettledEventPending,
+		&i.SettledEventTraceparent,
+		&i.SettledEventPublishedAt,
 	)
 	return i, err
 }

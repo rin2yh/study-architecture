@@ -9,10 +9,13 @@ import (
 )
 
 type PaymentPayment struct {
-	ID          int64              `json:"id"`
-	OrderID     int64              `json:"orderId"`
-	AmountCents int64              `json:"amountCents"`
-	Method      string             `json:"method"`
-	Status      string             `json:"status"`
-	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	ID                      int64              `json:"id"`
+	OrderID                 int64              `json:"orderId"`
+	AmountCents             int64              `json:"amountCents"`
+	Method                  string             `json:"method"`
+	Status                  string             `json:"status"`
+	CreatedAt               pgtype.Timestamptz `json:"createdAt"`
+	SettledEventPending     bool               `json:"settledEventPending"`
+	SettledEventTraceparent string             `json:"settledEventTraceparent"`
+	SettledEventPublishedAt pgtype.Timestamptz `json:"settledEventPublishedAt"`
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -34,13 +35,20 @@ func run(ctx context.Context, addr string) error {
 	}
 	defer shutdown()
 
-	h, err := di.InitHandler(ctx)
+	app, err := di.InitApp(ctx)
 	if err != nil {
 		return err
 	}
 
+	// 決済確定イベントの送出は outbox リレーをプロセス内で回して後追いする (ADR-[[202606261212]])。
+	go func() {
+		if err := app.Relay.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			slog.Error("outbox relay terminated", "error", err)
+		}
+	}()
+
 	engine := httpx.NewEngine()
-	api.RegisterHandlers(engine, h)
+	api.RegisterHandlers(engine, app.Handler)
 
 	slog.Info("payment service listening", "addr", addr)
 	return httpx.Serve(ctx, addr, engine)

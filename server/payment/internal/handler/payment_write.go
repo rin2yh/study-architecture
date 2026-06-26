@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -44,9 +43,17 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
+	// 確定イベントの送出は後段のリレーに分離する (ADR-[[202606261212]])。
+	settled := event.IsSettled(req.Status)
+	var traceparent string
+	if settled {
+		traceparent = paymentevent.Traceparent(c.Request.Context())
+	}
 	row, err := h.command.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
-		ID:     id,
-		Status: req.Status,
+		ID:          id,
+		Status:      req.Status,
+		MarkSettled: settled,
+		Traceparent: traceparent,
 	})
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
@@ -55,17 +62,6 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		}
 		_ = c.Error(err)
 		return
-	}
-
-	if event.IsSettled(row.Status) {
-		if err := h.publisher.PublishPaymentSettled(c.Request.Context(), paymentevent.Settled{
-			PaymentID:   row.ID,
-			OrderID:     row.OrderID,
-			AmountCents: row.AmountCents,
-		}); err != nil {
-			// 決済確定は確定済みで、outbox の無い Step 0 ではイベントを再送できない (ADR-[[202606211200]] の結果整合の宿題)。
-			slog.ErrorContext(c.Request.Context(), "publish payment.settled failed", "paymentId", row.ID, "orderId", row.OrderID, "error", err)
-		}
 	}
 
 	c.JSON(http.StatusOK, toAPIPayment(row))

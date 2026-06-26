@@ -5,26 +5,30 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
-	"github.com/rin2yh/study-architecture/server/payment/internal/event"
+	"github.com/rin2yh/study-architecture/server/internal/outbox"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
 
-func InitHandler(ctx context.Context) (*handler.Handler, error) {
+func InitApp(ctx context.Context) (*App, error) {
 	var err error
-	redisPublisher, err := kessoku.Bind[event.Publisher](kessoku.Provide(event.NewRedisPublisher)).Fn()()
+	client, err := kessoku.Provide(redisx.NewClient).Fn()()
 	if err != nil {
-		var zero *handler.Handler
+		var zero *App
 		return zero, err
 	}
 	var err0 error
 	pool, err0 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
 	if err0 != nil {
-		var zero *handler.Handler
+		var zero *App
 		return zero, err0
 	}
 	paymentQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewPaymentQuery)).Fn()(pool)
 	paymentCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewPaymentCommand)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, paymentCommand, redisPublisher)
-	return handler0, nil
+	outboxStore := kessoku.Bind[outbox.Store](kessoku.Provide(rdb.NewOutboxStore)).Fn()(pool)
+	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, paymentCommand)
+	relay := kessoku.Provide(outbox.NewRelay).Fn()(client, outboxStore)
+	app := kessoku.Provide(NewApp).Fn()(handler0, relay)
+	return app, nil
 }
