@@ -11,6 +11,12 @@
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/exporter-trace-otlp-grpc": "catalog:",
+    "@opentelemetry/instrumentation-http": "catalog:",
+    "@opentelemetry/instrumentation-undici": "catalog:",
+    "@opentelemetry/sdk-node": "catalog:",
+    "@opentelemetry/semantic-conventions": "catalog:",
     "@react-router/node": "catalog:",
     "@react-router/serve": "catalog:",
     "@tailwindcss/vite": "catalog:",

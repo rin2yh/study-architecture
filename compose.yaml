@@ -223,6 +223,8 @@ services:
       args:
         APP: store
     environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: store
       PORT: "5173"
       HOST: "0.0.0.0"
       NODE_ENV: production
@@ -234,7 +236,8 @@ services:
     depends_on:
       edge-proxy:
         condition: service_healthy
-    networks: [external-public]
+    # observability はテレメトリ送出専用の経路。app の private 網には載せず Alloy だけに届かせる。
+    networks: [external-public, observability]
 
   # マルチホーム接続で「社内 → 社外 OK」経路を表現する admin gateway。
   backoffice:
