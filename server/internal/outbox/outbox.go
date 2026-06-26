@@ -41,7 +41,7 @@ func (r *Relay) Run(ctx context.Context) error {
 	t := time.NewTicker(r.interval)
 	defer t.Stop()
 	for {
-		// 起動直後に 1 回流して再起動で取り残された未送信を即拾い、以降は interval ごとに走査する。
+		// 再起動で取り残された未送信を interval 待ちなしで送るため、tick より先に流す。
 		if err := r.drain(ctx); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -57,7 +57,6 @@ func (r *Relay) Run(ctx context.Context) error {
 	}
 }
 
-// drain は未送信が尽きるまで batch 単位で送出する。1 件でも失敗したらそこで打ち切り次の tick に委ねる。
 func (r *Relay) drain(ctx context.Context) error {
 	for {
 		msgs, err := r.store.FetchUnpublished(ctx, r.batch)
@@ -73,6 +72,7 @@ func (r *Relay) drain(ctx context.Context) error {
 				return err
 			}
 		}
+		// 滞留時に送出が tick 間隔ぶん遅れないよう、未送信が尽きるまで続けて引く。
 		if len(msgs) < r.batch {
 			return nil
 		}

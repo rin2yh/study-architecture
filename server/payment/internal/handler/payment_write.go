@@ -43,8 +43,7 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	// 決済確定への更新は、status と outbox の未送信マークを同一 UPDATE で確定する (dual-write 解消。ADR-[[202606261212]])。
-	// 送出は payment 内のリレーが後追いするため、発行時点の traceparent を送信行に残す (ADR-[[202606250159]])。
+	// 確定イベントの送出は後段のリレーに分離する (ADR-[[202606261212]])。
 	settled := event.IsSettled(req.Status)
 	var traceparent string
 	if settled {
