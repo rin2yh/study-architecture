@@ -108,7 +108,6 @@ func TestRelayDrain(t *testing.T) {
 		})
 	}
 
-	// 2 回 drain する異質ケースで、1 回で完結する上の table とは shape が違うため別に分ける ([[test.md]])。
 	t.Run("準正常系 MarkPublished 失敗後の再 drain で再送する (at-least-once)", func(t *testing.T) {
 		store := &fakeStore{pending: []Message{{ID: 1, Stream: "payment.events", Values: map[string]any{"id": int64(1)}}}, markErr: errors.New("mark down")}
 		r, rc := newTestRelay(t, store)
