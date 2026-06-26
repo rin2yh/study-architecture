@@ -1,0 +1,11 @@
+apiVersion: 1
+
+# ダッシュボードは手動編集でなくリポジトリの JSON を単一情報源にする (#72)。
+providers:
+  - name: o11y
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

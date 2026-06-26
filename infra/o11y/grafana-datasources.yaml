@@ -32,3 +32,7 @@ datasources:
     uid: prometheus
     access: proxy
     url: http://prometheus:9090
+    jsonData:
+      # 取り込みは scrape でなくアプリの OTLP push (既定 60s 間隔, ADR-202606251000)。これを伝えないと
+      # Grafana は 15s scrape を仮定し $__rate_interval が短すぎて rate() が 2 サンプルを跨げず空になる。
+      timeInterval: "60s"
