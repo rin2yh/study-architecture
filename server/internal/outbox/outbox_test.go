@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func (s *fakeStore) FetchUnpublished(_ context.Context, limit int) ([]Message, e
 	}
 	out := []Message{}
 	for _, m := range s.pending {
-		if slicesContains(s.published, m.ID) {
+		if slices.Contains(s.published, m.ID) {
 			continue
 		}
 		out = append(out, m)
@@ -40,15 +41,6 @@ func (s *fakeStore) MarkPublished(_ context.Context, id int64) error {
 	}
 	s.published = append(s.published, id)
 	return nil
-}
-
-func slicesContains(xs []int64, x int64) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }
 
 func newTestRelay(t *testing.T, store Store) (*Relay, *redis.Client) {
