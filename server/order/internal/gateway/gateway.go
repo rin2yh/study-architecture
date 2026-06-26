@@ -43,7 +43,7 @@ func NewProductClient() (*ProductClient, error) {
 	if base == "" {
 		return nil, errors.New("PRODUCT_API_URL is required")
 	}
-	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(resilience.NewResilientClient("order->product")))
+	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(resilience.NewClient("order->product")))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func NewPaymentClient() (*PaymentClient, error) {
 		return nil, errors.New("PAYMENT_API_URL is required")
 	}
 	// 決済作成は idempotency key で冪等なので POST リトライを解禁する (ADR-[[202606261214]])。
-	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(resilience.NewResilientClient("order->payment", resilience.RetryNonIdempotent())))
+	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(resilience.NewClient("order->payment", resilience.RetryNonIdempotent())))
 	if err != nil {
 		return nil, err
 	}
