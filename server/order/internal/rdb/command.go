@@ -37,6 +37,11 @@ func (r *OrderCommand) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams
 	return row, nil
 }
 
+// DeleteOrder は予約失敗時の補償で注文を取り消す。order_items は ON DELETE CASCADE で連れて消える。
+func (r *OrderCommand) DeleteOrder(ctx context.Context, id int64) error {
+	return r.q.DeleteOrder(ctx, id)
+}
+
 func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

@@ -24,13 +24,19 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 		return zero, err0
 	}
 	var err1 error
-	pool, err1 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	inventoryClient, err1 := kessoku.Bind[gateway.InventoryPort](kessoku.Provide(gateway.NewInventoryClient)).Fn()()
 	if err1 != nil {
 		var zero *handler.Handler
 		return zero, err1
 	}
+	var err2 error
+	pool, err2 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	if err2 != nil {
+		var zero *handler.Handler
+		return zero, err2
+	}
 	orderQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewOrderQuery)).Fn()(pool)
 	orderCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewOrderCommand)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, paymentClient)
+	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, paymentClient, inventoryClient)
 	return handler0, nil
 }

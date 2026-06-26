@@ -8,6 +8,7 @@ on:
     paths: &trigger-paths
       - "server/product/**"
       - "server/shipping/**"
+      - "server/inventory/**"
       - "client/app/backoffice/**"
       - "client/e2e/**"
       - "server/internal/**"
@@ -133,11 +134,11 @@ jobs:
       - uses: ./.github/actions/setup-goose
 
       - name: start db
-        run: docker compose up -d --wait db-product db-shipping
+        run: docker compose up -d --wait db-product db-shipping db-inventory
 
       - name: migrate
         run: |
-          for svc in product shipping; do
+          for svc in product shipping inventory; do
             ./scripts/migrate.sh "$svc"
           done
 
@@ -147,8 +148,9 @@ jobs:
         env:
           DATABASE_URL_PRODUCT: postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable
           DATABASE_URL_SHIPPING: postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable
+          DATABASE_URL_INVENTORY: postgres://ec:ec_pass@localhost:5437/ec_inventory?sslmode=disable
         run: |
-          target="./server/product/... ./server/shipping/... ./server/internal/..."
+          target="./server/product/... ./server/shipping/... ./server/inventory/... ./server/internal/..."
           pkgs=$(go run ./server/tools/coverpkg $target)
           go test $target -count=1 -coverprofile=cover.out -covermode=atomic -coverpkg="$pkgs"
           echo "total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')" >> "$GITHUB_OUTPUT"

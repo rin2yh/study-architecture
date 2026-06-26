@@ -35,3 +35,7 @@ SELECT id, order_id, product_id, product_name, unit_price_cents, quantity, creat
 FROM "order".order_items
 WHERE order_id = $1
 ORDER BY id;
+
+-- name: DeleteOrder :exec
+DELETE FROM "order".orders
+WHERE id = $1;

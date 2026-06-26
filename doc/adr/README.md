@@ -45,6 +45,7 @@
 | [202606261214](202606261214-idempotency-checkout-and-shipping.md) | Accepted | checkout と shipping を DB ユニーク制約で冪等にする |
 | [202606261216](202606261216-graceful-degradation-policy.md) | Accepted | 依存を「致命 / 縮退可」で分類しグレースフルデグラデーション方針を定める |
 | [202606261600](202606261600-resource-metrics-cadvisor-via-alloy.md) | Accepted | リソースメトリクスは cAdvisor を Alloy で収集し既存 OTLP 経路へ相乗りさせる |
-| [202606261700](202606261700-inventory-two-phase-reservation-ledger.md) | Accepted | 在庫を append-only の在庫変動台帳で持ち、予約→確定の2フェーズで引き当てる |
+| [202606261700](202606261700-inventory-two-phase-reservation-ledger.md) | Superseded | 在庫を append-only の在庫変動台帳で持ち、予約→確定の2フェーズで引き当てる |
 | [202606261702](202606261702-order-cancel-event-driven-compensation.md) | Accepted | 注文キャンセルの補償をイベント駆動 (order.cancelled) で各サービスに分散する |
 | [202606261704](202606261704-shipping-address-book-and-order-snapshot.md) | Accepted | 配送先住所は member の住所帳で持ち、注文時に order/shipment へスナップショットする |
+| [202606262000](202606262000-inventory-as-independent-service.md) | Accepted | 在庫を独立サービス (独自 DB・量子) として切り出す |

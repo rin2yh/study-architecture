@@ -23,6 +23,7 @@ type Command interface {
 	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
 	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
 	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error)
+	DeleteOrder(ctx context.Context, id int64) error
 }
 
 type readHandler struct {
@@ -30,9 +31,10 @@ type readHandler struct {
 }
 
 type writeHandler struct {
-	command Command
-	product gateway.ProductPort
-	payment gateway.PaymentPort
+	command   Command
+	product   gateway.ProductPort
+	payment   gateway.PaymentPort
+	inventory gateway.InventoryPort
 }
 
 type Handler struct {
@@ -42,10 +44,10 @@ type Handler struct {
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(query Query, command Command, product gateway.ProductPort, payment gateway.PaymentPort) *Handler {
+func New(query Query, command Command, product gateway.ProductPort, payment gateway.PaymentPort, inventory gateway.InventoryPort) *Handler {
 	return &Handler{
 		readHandler:  &readHandler{query: query},
-		writeHandler: &writeHandler{command: command, product: product, payment: payment},
+		writeHandler: &writeHandler{command: command, product: product, payment: payment, inventory: inventory},
 	}
 }
 

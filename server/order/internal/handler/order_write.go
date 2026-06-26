@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -65,6 +66,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	}
 
 	lines := make([]rdb.CheckoutLine, 0, len(req.Items))
+	reserveLines := make([]gateway.ReserveLine, 0, len(req.Items))
 	var totalCents int64
 	for _, item := range req.Items {
 		snap, err := h.product.FetchProduct(c.Request.Context(), item.ProductId)
@@ -82,6 +84,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 			UnitPriceCents: snap.UnitPriceCents,
 			Quantity:       int32(item.Quantity),
 		})
+		reserveLines = append(reserveLines, gateway.ReserveLine{ProductID: snap.ID, Quantity: int32(item.Quantity)})
 		totalCents += snap.UnitPriceCents * int64(item.Quantity)
 	}
 
@@ -91,8 +94,28 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 		return
 	}
 
+	// (ADR-[[202606262000]])
+	if err := h.inventory.Reserve(c.Request.Context(), order.ID, reserveLines); err != nil {
+		if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
+			slog.ErrorContext(c.Request.Context(), "checkout: compensate delete order failed", "orderId", order.ID, "error", derr)
+		}
+		if errors.Is(err, gateway.ErrInsufficientStock) {
+			_ = c.Error(middleware.Conflict("insufficient stock"))
+			return
+		}
+		_ = c.Error(middleware.BadGateway("inventory service unavailable"))
+		return
+	}
+
 	// ADR-[[202606190900]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod); err != nil {
+		// 決済の無い注文と取り置き在庫を残さないよう (ADR-[[202606262000]])。
+		if rerr := h.inventory.Release(c.Request.Context(), order.ID); rerr != nil {
+			slog.ErrorContext(c.Request.Context(), "checkout: compensate release reservation failed", "orderId", order.ID, "error", rerr)
+		}
+		if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
+			slog.ErrorContext(c.Request.Context(), "checkout: compensate delete order failed", "orderId", order.ID, "error", derr)
+		}
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
 	}

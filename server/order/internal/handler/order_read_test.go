@@ -18,7 +18,7 @@ import (
 )
 
 func newReadServer(query handler.Query) http.Handler {
-	return newServer(handler.New(query, nil, nil, nil))
+	return newServer(handler.New(query, nil, nil, nil, nil))
 }
 
 func TestListOrders(t *testing.T) {

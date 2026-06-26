@@ -9,11 +9,12 @@ import (
 )
 
 type OrderStub struct {
-	Orders   []db.OrderOrder
-	ByMember []db.OrderOrder
-	Order    db.OrderOrder
-	Items    []db.OrderOrderItem
-	Err      error
+	Orders    []db.OrderOrder
+	ByMember  []db.OrderOrder
+	Order     db.OrderOrder
+	Items     []db.OrderOrderItem
+	Err       error
+	DeleteErr error
 }
 
 func (s OrderStub) ListOrders(context.Context) ([]db.OrderOrder, error) {
@@ -42,6 +43,10 @@ func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderO
 
 func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
 	return s.Order, s.Items, s.Err
+}
+
+func (s OrderStub) DeleteOrder(context.Context, int64) error {
+	return s.DeleteErr
 }
 
 type Product struct {
@@ -74,4 +79,17 @@ type Payment struct {
 
 func (s Payment) CreatePayment(context.Context, int64, int64, string) (int64, error) {
 	return s.ID, s.Err
+}
+
+type Inventory struct {
+	ReserveErr error
+	ReleaseErr error
+}
+
+func (s Inventory) Reserve(context.Context, int64, []gateway.ReserveLine) error {
+	return s.ReserveErr
+}
+
+func (s Inventory) Release(context.Context, int64) error {
+	return s.ReleaseErr
 }
