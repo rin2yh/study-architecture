@@ -12,6 +12,8 @@ type Querier interface {
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (PaymentPayment, error)
 	GetPayment(ctx context.Context, id int64) (PaymentPayment, error)
 	ListPayments(ctx context.Context) ([]PaymentPayment, error)
+	ListUnpublishedSettledEvents(ctx context.Context, limit int32) ([]ListUnpublishedSettledEventsRow, error)
+	MarkSettledEventPublished(ctx context.Context, id int64) error
 	UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (PaymentPayment, error)
 }
 

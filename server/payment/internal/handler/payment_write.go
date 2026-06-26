@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -44,9 +43,18 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
+	// 決済確定への更新は、status と outbox の未送信マークを同一 UPDATE で確定する (dual-write 解消。ADR-[[202606261212]])。
+	// 送出は payment 内のリレーが後追いするため、発行時点の traceparent を送信行に残す (ADR-[[202606250159]])。
+	settled := event.IsSettled(req.Status)
+	var traceparent string
+	if settled {
+		traceparent = paymentevent.Traceparent(c.Request.Context())
+	}
 	row, err := h.command.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
-		ID:     id,
-		Status: req.Status,
+		ID:          id,
+		Status:      req.Status,
+		MarkSettled: settled,
+		Traceparent: traceparent,
 	})
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
@@ -55,17 +63,6 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		}
 		_ = c.Error(err)
 		return
-	}
-
-	if event.IsSettled(row.Status) {
-		if err := h.publisher.PublishPaymentSettled(c.Request.Context(), paymentevent.Settled{
-			PaymentID:   row.ID,
-			OrderID:     row.OrderID,
-			AmountCents: row.AmountCents,
-		}); err != nil {
-			// 決済確定は確定済みで、outbox の無い Step 0 ではイベントを再送できない (ADR-[[202606211200]] の結果整合の宿題)。
-			slog.ErrorContext(c.Request.Context(), "publish payment.settled failed", "paymentId", row.ID, "orderId", row.OrderID, "error", err)
-		}
 	}
 
 	c.JSON(http.StatusOK, toAPIPayment(row))

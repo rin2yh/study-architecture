@@ -41,11 +41,17 @@ func (s Settled) Values() map[string]any {
 	}
 }
 
-// Inject は producer 側で現在の trace を values に載せる。これが consumer 側の span link の起点になる。
-func Inject(ctx context.Context, values map[string]any) {
+// Traceparent は現在の trace の W3C traceparent を返す。計装オフ等で trace が無ければ空文字。
+// outbox は送出を後追いするため、発行時点の traceparent をこれで取り出し送信行に保持する。
+func Traceparent(ctx context.Context) string {
 	carrier := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, carrier)
-	if tp := carrier.Get(FieldTraceparent); tp != "" {
+	return carrier.Get(FieldTraceparent)
+}
+
+// Inject は producer 側で現在の trace を values に載せる。これが consumer 側の span link の起点になる。
+func Inject(ctx context.Context, values map[string]any) {
+	if tp := Traceparent(ctx); tp != "" {
 		values[FieldTraceparent] = tp
 	}
 }
