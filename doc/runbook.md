@@ -16,8 +16,7 @@ ADR-[[202606261100]])。`mise up:obs` 後、Grafana の `EC Service Alerts > RED
 - 調べ方: 該当 `job` のエラー span を Tempo で開き、`trace_id` でログ (Loki) を辿る (#61)。
   DB 起因が疑わしければ pgxpool メトリクス (#71) と DB ログを確認する。
 - よくある原因: 下流 (DB / payment 同期呼び出し) の障害、デプロイ直後の不整合。
-- 切り分け: `db-product` を停止すると product の 5xx を再現できる
-  (発火例のスクショ: `doc/o11y/step4-7-alerts/error-rate-firing.png`)。
+- 切り分け: `db-product` を停止すると product の 5xx を再現でき、本アラートの発火を確認できる。
 - 対処: 原因のホップ (下流サービス / DB) を復旧する。
 
 ### HTTP p95 latency high
