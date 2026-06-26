@@ -43,7 +43,7 @@ func NewProductClient() (*ProductClient, error) {
 	if base == "" {
 		return nil, errors.New("PRODUCT_API_URL is required")
 	}
-	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(httpx.NewHTTPClient()))
+	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(httpx.NewResilientClient("order->product")))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func NewPaymentClient() (*PaymentClient, error) {
 	if base == "" {
 		return nil, errors.New("PAYMENT_API_URL is required")
 	}
-	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(httpx.NewHTTPClient()))
+	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(httpx.NewResilientClient("order->payment")))
 	if err != nil {
 		return nil, err
 	}
