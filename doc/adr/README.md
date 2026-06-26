@@ -39,3 +39,4 @@
 | [202606250141](202606250141-telemetry-sensitive-data-masking.md) | Accepted | テレメトリの秘匿情報は計装段と Alloy 段の二重でマスキングする |
 | [202606250159](202606250159-trace-async-redis-streams-with-span-link.md) | Accepted | Redis Streams の非同期イベントは traceparent + span link でトレースをつなぐ |
 | [202606251000](202606251000-metrics-alloy-push-to-prometheus-otlp.md) | Accepted | メトリクスは Alloy から Prometheus へ OTLP で push する |
+| [202606261100](202606261100-alerts-grafana-managed-provisioned.md) | Accepted | アラートは Grafana-managed alerting で provisioning する |

@@ -312,6 +312,8 @@ services:
       - ./infra/o11y/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
       - ./infra/o11y/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
       - ./infra/o11y/dashboards:/var/lib/grafana/dashboards:ro
+      # (ADR-[[202606261100]])
+      - ./infra/o11y/alerting:/etc/grafana/provisioning/alerting:ro
     ports: ["3000:3000"]
     networks: [observability]
     depends_on: [tempo, loki, prometheus]
