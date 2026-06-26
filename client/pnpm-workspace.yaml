@@ -7,8 +7,16 @@ minimumReleaseAge: 10080
 # esbuild の postinstall は optionalDependencies のプリビルドバイナリで足りるか検証中(deny)
 allowBuilds:
   esbuild: false
+  # grpc exporter 経由の transitive dep。postinstall は任意の最適化で必須でないため deny。
+  protobufjs: false
 
 catalog:
+  "@opentelemetry/api": 1.9.1
+  "@opentelemetry/sdk-node": 0.219.0
+  "@opentelemetry/exporter-trace-otlp-grpc": 0.219.0
+  "@opentelemetry/instrumentation-http": 0.219.0
+  "@opentelemetry/instrumentation-undici": 0.29.0
+  "@opentelemetry/semantic-conventions": 1.41.1
   "@react-router/dev": 7.17.0
   "@react-router/node": 7.17.0
   "@react-router/serve": 7.17.0

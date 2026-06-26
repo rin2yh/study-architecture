@@ -27,6 +27,10 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /repo/app/${APP}/build ./build
+# OTel 計装はアプリ本体より先に読ませる必要があるため preload する (#64)。OTLP 宛先 env が無い
+# 構成 (backoffice 等) では instrument.mjs が OTel を一切 import せず no-op になる。
+COPY --from=build /repo/instrument.mjs ./instrument.mjs
+ENV NODE_OPTIONS=--import=file:///app/instrument.mjs
 USER node
 EXPOSE 3000
 CMD ["node_modules/.bin/react-router-serve", "./build/server/index.js"]
