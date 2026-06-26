@@ -8,7 +8,7 @@
 
 ADR-[[202606170904]] で TanStack Start を採用したが、Docker 本番ビルドで Nitro が混在させる
 Vite-dev 用 SSR fallback (`fetch(req, {viteEnv:"ssr"})`) によりブラウザ要求が
-self-fetch デッドロックする問題が顕在化した (詳細は doc/known-issues.md)。
+self-fetch デッドロックする問題が顕在化した。
 
 回避策として薄い Node http サーバ (`client/start-server.mjs`) を自前で実装したが、
 「SSR フレームワークを使っているのに `start-server` を自前で持つ必要がある」
