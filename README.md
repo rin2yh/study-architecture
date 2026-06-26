@@ -72,6 +72,9 @@ mise up
 mise up:obs     # Grafana: http://localhost:3000 で 1 リクエストを 1 トレースとして追え、trace_id でログと相互に辿れ、RED メトリクスも見られる
 ```
 
+RED のエラー率 / p95 レイテンシは Grafana-managed alert として provisioning 済み（`infra/o11y/alerting/`。ADR-[[202606261100]]）。
+`EC Service Alerts > RED` フォルダで閾値超過を firing として検知できる（発火例は [doc/o11y/step4-7-alerts](doc/o11y/step4-7-alerts/README.md)）。
+
 可観測性スタックは `observability` profile に隔離してあり、`mise up` / e2e では起動しない。
 未起動でもアプリは graceful degradation で動く。
 
