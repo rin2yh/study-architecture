@@ -3,6 +3,7 @@ package rdb
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 
 	"github.com/exaring/otelpgx"
@@ -19,5 +20,13 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
-	return pgxpool.NewWithConfig(ctx, cfg)
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	// プール統計の計装失敗はサービス起動を妨げない (ADR-[[202606241356]])
+	if err := otelpgx.RecordStats(pool); err != nil {
+		slog.Warn("otelpgx record stats failed", "error", err)
+	}
+	return pool, nil
 }
