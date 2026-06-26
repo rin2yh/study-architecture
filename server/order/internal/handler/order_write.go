@@ -74,6 +74,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 				_ = c.Error(middleware.Unprocessable(err.Error()))
 				return
 			}
+			// ADR-[[202606261216]]
 			_ = c.Error(middleware.BadGateway("product service unavailable"))
 			return
 		}
@@ -98,6 +99,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 
 	// ADR-[[202606190900]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey); err != nil {
+		// ADR-[[202606261216]]
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
 	}
