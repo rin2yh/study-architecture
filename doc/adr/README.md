@@ -44,3 +44,4 @@
 | [202606261212](202606261212-transactional-outbox-payment-settled.md) | Accepted | 決済確定イベントを Transactional Outbox (集約列 + プロセス内リレー) で確実に発行する |
 | [202606261214](202606261214-idempotency-checkout-and-shipping.md) | Accepted | checkout と shipping を DB ユニーク制約で冪等にする |
 | [202606261216](202606261216-graceful-degradation-policy.md) | Accepted | 依存を「致命 / 縮退可」で分類しグレースフルデグラデーション方針を定める |
+| [202606261600](202606261600-resource-metrics-cadvisor-via-alloy.md) | Accepted | リソースメトリクスは cAdvisor を Alloy で収集し既存 OTLP 経路へ相乗りさせる |

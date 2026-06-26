@@ -54,6 +54,49 @@ otelcol.exporter.otlphttp "prometheus" {
 	}
 }
 
+// リソースメトリクス (CPU/メモリ/ディスク/ネットワーク) を cAdvisor で収集し、OTLP に寄せて既存の
+// masking → Prometheus 経路へ相乗りさせる (ADR-[[202606261600]])。Prometheus への入口を OTLP 1 つに保つ。
+prometheus.exporter.cadvisor "containers" {
+	docker_only = true
+}
+
+prometheus.scrape "cadvisor" {
+	targets         = prometheus.exporter.cadvisor.containers.targets
+	scrape_interval = "15s"
+	forward_to      = [prometheus.relabel.cadvisor.receiver]
+}
+
+prometheus.relabel "cadvisor" {
+	// 他 compose プロジェクトのコンテナを巻き込まない。
+	rule {
+		source_labels = ["name"]
+		regex         = "ec-service-based-.*"
+		action        = "keep"
+	}
+
+	// 生のコンテナ名はカーディナリティが高いので compose のサービス名を service にする (ログ側と軸を合わせる)。
+	rule {
+		source_labels = ["name"]
+		regex         = "ec-service-based-(.+)-[0-9]+"
+		target_label  = "service"
+		replacement   = "$1"
+	}
+
+	// 生のコンテナ ID/name/image は高カーディナリティな識別子なので落とす (ADR-[[202606250141]])。
+	rule {
+		regex  = "id|name|image"
+		action = "labeldrop"
+	}
+
+	forward_to = [otelcol.receiver.prometheus.cadvisor.receiver]
+}
+
+otelcol.receiver.prometheus "cadvisor" {
+	output {
+		metrics = [otelcol.processor.attributes.masking.input]
+	}
+}
+
 // ログは stdout の JSON を Docker 経由で収集して Loki へ (ADR-[[202606241356]])。アプリにログ送信は
 // 持たせない。trace_id は slog が行内に埋め、相関は Grafana 側で行う (#61)。
 discovery.docker "containers" {

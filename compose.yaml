@@ -270,6 +270,14 @@ services:
       - ./infra/o11y/config.alloy:/etc/alloy/config.alloy:ro
       # stdout の JSON ログを Docker から直接読むため socket を渡す (ADR-[[202606241356]])。
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # cAdvisor がコンテナのリソースを読むためのホスト経路 (ADR-[[202606261600]])。テレメトリ収集役の
+      # alloy のみに与える学習スタックの設定で、本番運用ではない。
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run:/var/run:ro
+    # cAdvisor が cgroup / ホスト経路を読むため privileged が要る (ADR-[[202606261600]])。alloy だけに与える。
+    privileged: true
     # 計装対象が external-private と internal-private に分かれており、両方へ到達する必要があるため。
     networks: [external-private, internal-private, observability]
     depends_on: [tempo, loki]
@@ -312,6 +320,9 @@ services:
       - ./infra/o11y/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
       # (ADR-[[202606261100]])
       - ./infra/o11y/alerting:/etc/grafana/provisioning/alerting:ro
+      # ダッシュボードを手動作成に依存させずリポジトリの JSON を単一情報源にするため provisioning する。
+      - ./infra/o11y/dashboards/provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml:ro
+      - ./infra/o11y/dashboards:/var/lib/grafana/dashboards:ro
     ports: ["3000:3000"]
     networks: [observability]
     depends_on: [tempo, loki, prometheus]
