@@ -39,6 +39,7 @@
 | [202606250141](202606250141-telemetry-sensitive-data-masking.md) | Accepted | テレメトリの秘匿情報は計装段と Alloy 段の二重でマスキングする |
 | [202606250159](202606250159-trace-async-redis-streams-with-span-link.md) | Accepted | Redis Streams の非同期イベントは traceparent + span link でトレースをつなぐ |
 | [202606251000](202606251000-metrics-alloy-push-to-prometheus-otlp.md) | Accepted | メトリクスは Alloy から Prometheus へ OTLP で push する |
+| [202606261100](202606261100-alerts-grafana-managed-provisioned.md) | Accepted | アラートは Grafana-managed alerting で provisioning する |
 | [202606261210](202606261210-sync-call-resilience-policy.md) | Accepted | order の同期呼び出しに timeout・リトライ・サーキットブレーカを入れる |
 | [202606261212](202606261212-transactional-outbox-payment-settled.md) | Accepted | 決済確定イベントを Transactional Outbox (集約列 + プロセス内リレー) で確実に発行する |
 | [202606261214](202606261214-idempotency-checkout-and-shipping.md) | Accepted | checkout と shipping を DB ユニーク制約で冪等にする |
