@@ -1,0 +1,166 @@
+{
+  "uid": "db-pool",
+  "title": "DB プール — pgxpool 統計",
+  "tags": ["o11y", "db"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "qryType": 1, "query": "label_values(pgxpool_total_connections, job)", "refId": "StandardVariableQuery" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "text": ["All"], "value": ["$__all"] },
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "コネクション数 — total / acquired / idle",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "pgxpool_total_connections{job=~\"$service\"}",
+          "legendFormat": "{{job}} total",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "pgxpool_acquired_connections{job=~\"$service\"}",
+          "legendFormat": "{{job}} acquired",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "pgxpool_idle_connections{job=~\"$service\"}",
+          "legendFormat": "{{job}} idle",
+          "range": true
+        },
+        {
+          "refId": "D",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "pgxpool_max_connections{job=~\"$service\"}",
+          "legendFormat": "{{job}} max",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "取得レート — acquires/s",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (job) (rate(pgxpool_acquires_total{job=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{job}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "空プール待ち — empty-pool acquires/s (飽和の兆候)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "プールが空で解放/新規構築を待った取得の発生率。継続的に出るならプールが小さい。",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 } ] } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (job) (rate(pgxpool_empty_acquire_total{job=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{job}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "空プール平均待ち時間 (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (job) (rate(pgxpool_empty_acquire_wait_time_nanoseconds_total{job=~\"$service\"}[$__rate_interval])) / clamp_min(sum by (job) (rate(pgxpool_empty_acquire_total{job=~\"$service\"}[$__rate_interval])), 1) / 1e9",
+          "legendFormat": "{{job}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "平均取得所要時間 (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (job) (rate(pgxpool_acquire_duration_nanoseconds_total{job=~\"$service\"}[$__rate_interval])) / clamp_min(sum by (job) (rate(pgxpool_acquires_total{job=~\"$service\"}[$__rate_interval])), 1) / 1e9",
+          "legendFormat": "{{job}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "新規接続 / キャンセル取得 レート",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (job) (rate(pgxpool_new_connections_total{job=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{job}} new",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (job) (rate(pgxpool_canceled_acquires_total{job=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{job}} canceled",
+          "range": true
+        }
+      ]
+    }
+  ]
+}
