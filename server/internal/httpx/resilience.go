@@ -133,7 +133,7 @@ func (t *ResilientTransport) backoff(retry int) time.Duration {
 	if d > t.retry.MaxDelay {
 		d = t.retry.MaxDelay
 	}
-	// 一斉リトライによる thundering herd を散らすためジッタを入れる。
+	// 一斉リトライによる thundering herd を避けるため。
 	return time.Duration(rand.Float64() * float64(d))
 }
 
