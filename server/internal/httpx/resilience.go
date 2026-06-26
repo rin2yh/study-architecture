@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"math/rand/v2"
 	"net/http"
 	"time"
@@ -54,14 +53,11 @@ type ResilientTransport struct {
 
 var _ http.RoundTripper = (*ResilientTransport)(nil)
 
-// 各サービス間呼び出しは otelhttp 計装したクライアントを共用しないとトレースが切れるため、base に
-// otelhttp transport を据える。リトライをその外側に置くことで、各試行が独立した span として観測できる。
+// otelhttp 計装を共用しないとサービス間呼び出しでトレースが切れる。リトライをその外側に置くことで、
+// 各試行が独立した span として観測できる。
 func NewResilientClient(name string) *http.Client {
-	return newResilientClient(name, otelhttp.NewTransport(http.DefaultTransport), DefaultResilienceConfig())
-}
-
-func newResilientClient(name string, base http.RoundTripper, cfg ResilienceConfig) *http.Client {
-	return &http.Client{Transport: newResilientTransport(name, base, cfg)}
+	base := otelhttp.NewTransport(http.DefaultTransport)
+	return &http.Client{Transport: newResilientTransport(name, base, DefaultResilienceConfig())}
 }
 
 func newResilientTransport(name string, base http.RoundTripper, cfg ResilienceConfig) *ResilientTransport {
@@ -117,7 +113,7 @@ func (t *ResilientTransport) roundTripWithRetry(req *http.Request) (*http.Respon
 
 func (t *ResilientTransport) attempt(req *http.Request) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(req.Context(), t.timeout)
-	resp, err := t.base.RoundTrip(req.Clone(ctx))
+	resp, err := t.base.RoundTrip(req.WithContext(ctx))
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("%w: %v", errRetryable, err)
@@ -133,10 +129,12 @@ func (t *ResilientTransport) attempt(req *http.Request) (*http.Response, error) 
 }
 
 func (t *ResilientTransport) backoff(retry int) time.Duration {
-	d := float64(t.retry.BaseDelay) * math.Pow(2, float64(retry-1))
-	d = math.Min(d, float64(t.retry.MaxDelay))
-	// フルジッタ [0, d): 一斉リトライによる thundering herd を散らす。
-	return time.Duration(rand.Float64() * d)
+	d := t.retry.BaseDelay << (retry - 1)
+	if d > t.retry.MaxDelay {
+		d = t.retry.MaxDelay
+	}
+	// 一斉リトライによる thundering herd を散らすためジッタを入れる。
+	return time.Duration(rand.Float64() * float64(d))
 }
 
 func safeToRetry(method string) bool {
