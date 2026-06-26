@@ -14,11 +14,11 @@
 
 在庫を独立サービス (独自 DB `ec_inventory` / ロール `inventory_svc` / internal-private 量子) として切り出す。配置以外の在庫設計 (台帳・2 フェーズ・原子的拒否) は ADR-[[202606261700]] の判断を引き継ぐ。
 
-- **append-only の在庫変動台帳 (`inventory.movements`) を単一情報源にする**。入庫 (stock_in) / 予約 (reserve) / 確定 (confirm) / 解放 (release) を 1 行ずつ追記し、在庫数カラムを持たず利用可能在庫は集計で導く。
+- **append-only の在庫変動台帳を単一情報源にする**。入庫 (`stock_ins`) / 予約 (`reservations`) / 確定 (`confirmations`) / 解放 (`releases`) を**種別ごとのテーブルに追記**し (判別列 `kind` を持たない)、在庫数カラムも持たず利用可能在庫は集計で導く。
 - **引当は予約→確定の2フェーズ**。checkout が `POST /reservations` で TTL 付き予約 → 決済確定 (payment.settled を購読。ADR-[[202606211200]]) で worker が確定へ昇格 → キャンセル/期限切れで解放。
 - **超過販売は DB で原子的に防ぐ**。予約時に `pg_advisory_xact_lock(product_id)` で同一商品の同時予約を直列化し、台帳集計で利用可能在庫を算出してから予約行を追記する。在庫不足は致命 (ADR-[[202606261216]]) で checkout を 409 にする。
 - **checkout はサービス境界越しに予約する** (order→inventory、edge-proxy 経由)。在庫不足時に注文・決済を残さないため、order は予約失敗で注文を補償取消し、決済手配失敗で予約を解放する (saga)。
-- **確定/解放の冪等性は DB 制約に委ねる** (ADR-[[202606261214]] と同型)。予約 1 行につき確定・解放を高々 1 行に部分ユニークインデックスで制限し、payment.settled の再配信を `ON CONFLICT DO NOTHING` で吸収する。
+- **確定/解放の冪等性は DB 制約に委ねる** (ADR-[[202606261214]] と同型)。`confirmations` / `releases` の `reservation_id` 主キーで予約 1 件につき高々 1 行に制限し、payment.settled の再配信を `ON CONFLICT DO NOTHING` で吸収する。
 
 ## Consequences
 

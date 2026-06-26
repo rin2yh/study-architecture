@@ -8,13 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type InventoryMovement struct {
-	ID            int64              `json:"id"`
-	ProductID     int64              `json:"productId"`
-	Kind          string             `json:"kind"`
-	Quantity      int32              `json:"quantity"`
-	OrderID       pgtype.Int8        `json:"orderId"`
-	ReservationID pgtype.Int8        `json:"reservationId"`
-	ExpiresAt     pgtype.Timestamptz `json:"expiresAt"`
-	CreatedAt     pgtype.Timestamptz `json:"createdAt"`
+type InventoryStockIn struct {
+	ID        int64              `json:"id"`
+	ProductID int64              `json:"productId"`
+	Quantity  int32              `json:"quantity"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
 }

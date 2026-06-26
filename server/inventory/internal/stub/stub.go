@@ -10,7 +10,7 @@ import (
 
 type InventoryStub struct {
 	AvailableQty int64
-	Movement     db.InventoryMovement
+	StockInRow   db.InventoryStockIn
 	ReserveErr   error
 	Err          error
 }
@@ -19,8 +19,8 @@ func (s InventoryStub) Available(context.Context, int64) (int64, error) {
 	return s.AvailableQty, s.Err
 }
 
-func (s InventoryStub) StockIn(context.Context, int64, int32) (db.InventoryMovement, error) {
-	return s.Movement, s.Err
+func (s InventoryStub) StockIn(context.Context, int64, int32) (db.InventoryStockIn, error) {
+	return s.StockInRow, s.Err
 }
 
 func (s InventoryStub) Reserve(context.Context, int64, []rdb.ReserveLine, int32) error {

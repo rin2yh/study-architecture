@@ -7,25 +7,29 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const availableQty = `-- name: AvailableQty :one
-SELECT (
-    COALESCE(SUM(m.quantity) FILTER (WHERE m.kind = 'stock_in'), 0)
-  - COALESCE(SUM(m.quantity) FILTER (WHERE m.kind = 'confirm'), 0)
-  - COALESCE(SUM(m.quantity) FILTER (
-        WHERE m.kind = 'reserve'
-          AND m.expires_at > now()
-          AND NOT EXISTS (SELECT 1 FROM inventory.movements c WHERE c.kind = 'confirm' AND c.reservation_id = m.id)
-          AND NOT EXISTS (SELECT 1 FROM inventory.movements x WHERE x.kind = 'release' AND x.reservation_id = m.id)
-    ), 0)
-)::bigint AS available
-FROM inventory.movements m
-WHERE m.product_id = $1
+SELECT COALESCE(SUM(d.delta), 0)::bigint AS available
+FROM (
+    SELECT s.quantity::bigint AS delta
+    FROM inventory.stock_ins s
+    WHERE s.product_id = $1
+  UNION ALL
+    SELECT -r.quantity::bigint
+    FROM inventory.reservations r
+    JOIN inventory.confirmations c ON c.reservation_id = r.id
+    WHERE r.product_id = $1
+  UNION ALL
+    SELECT -r.quantity::bigint
+    FROM inventory.reservations r
+    WHERE r.product_id = $1 AND r.expires_at > now()
+      AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
+      AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+) d
 `
 
+// 利用可能在庫 = 入庫(+) と、確定・未確定で生きている予約(-) の符号付き合計。
 func (q *Queries) AvailableQty(ctx context.Context, productID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, availableQty, productID)
 	var available int64
@@ -34,38 +38,37 @@ func (q *Queries) AvailableQty(ctx context.Context, productID int64) (int64, err
 }
 
 const confirmReservationsByOrder = `-- name: ConfirmReservationsByOrder :exec
-INSERT INTO inventory.movements (product_id, kind, quantity, order_id, reservation_id)
-SELECT r.product_id, 'confirm', r.quantity, r.order_id, r.id
-FROM inventory.movements r
-WHERE r.kind = 'reserve' AND r.order_id = $1
-  AND NOT EXISTS (SELECT 1 FROM inventory.movements x WHERE x.kind = 'release' AND x.reservation_id = r.id)
-ON CONFLICT (reservation_id) WHERE kind = 'confirm' DO NOTHING
+INSERT INTO inventory.confirmations (reservation_id)
+SELECT r.id FROM inventory.reservations r
+WHERE r.order_id = $1
+  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+ON CONFLICT (reservation_id) DO NOTHING
 `
 
-// 予約→確定の昇格。payment.settled 再配信は部分ユニークインデックスで吸収する (ADR-[[202606261214]])。
-func (q *Queries) ConfirmReservationsByOrder(ctx context.Context, orderID pgtype.Int8) error {
+// payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。
+func (q *Queries) ConfirmReservationsByOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, confirmReservationsByOrder, orderID)
 	return err
 }
 
 const insertReservation = `-- name: InsertReservation :one
-INSERT INTO inventory.movements (product_id, kind, quantity, order_id, expires_at)
-VALUES ($1, 'reserve', $2, $3, now() + ($4::int * interval '1 second'))
+INSERT INTO inventory.reservations (product_id, order_id, quantity, expires_at)
+VALUES ($1, $2, $3, now() + ($4::int * interval '1 second'))
 RETURNING id
 `
 
 type InsertReservationParams struct {
-	ProductID int64       `json:"productId"`
-	Quantity  int32       `json:"quantity"`
-	OrderID   pgtype.Int8 `json:"orderId"`
-	Column4   int32       `json:"column4"`
+	ProductID int64 `json:"productId"`
+	OrderID   int64 `json:"orderId"`
+	Quantity  int32 `json:"quantity"`
+	Column4   int32 `json:"column4"`
 }
 
 func (q *Queries) InsertReservation(ctx context.Context, arg InsertReservationParams) (int64, error) {
 	row := q.db.QueryRow(ctx, insertReservation,
 		arg.ProductID,
-		arg.Quantity,
 		arg.OrderID,
+		arg.Quantity,
 		arg.Column4,
 	)
 	var id int64
@@ -84,40 +87,38 @@ func (q *Queries) LockProduct(ctx context.Context, dollar_1 int64) error {
 }
 
 const releaseExpiredReservations = `-- name: ReleaseExpiredReservations :exec
-INSERT INTO inventory.movements (product_id, kind, quantity, order_id, reservation_id)
-SELECT r.product_id, 'release', r.quantity, r.order_id, r.id
-FROM inventory.movements r
-WHERE r.kind = 'reserve' AND r.expires_at <= now()
-  AND NOT EXISTS (SELECT 1 FROM inventory.movements c WHERE c.kind = 'confirm' AND c.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.movements x WHERE x.kind = 'release' AND x.reservation_id = r.id)
-ON CONFLICT (reservation_id) WHERE kind = 'release' DO NOTHING
+INSERT INTO inventory.releases (reservation_id)
+SELECT r.id FROM inventory.reservations r
+WHERE r.expires_at <= now()
+  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+ON CONFLICT (reservation_id) DO NOTHING
 `
 
-// TTL 切れ予約の遅延回収。worker が定期実行し台帳に解放を追記する (ADR-[[202606262000]])。
+// (ADR-[[202606262000]])
 func (q *Queries) ReleaseExpiredReservations(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, releaseExpiredReservations)
 	return err
 }
 
 const releaseReservationsByOrder = `-- name: ReleaseReservationsByOrder :exec
-INSERT INTO inventory.movements (product_id, kind, quantity, order_id, reservation_id)
-SELECT r.product_id, 'release', r.quantity, r.order_id, r.id
-FROM inventory.movements r
-WHERE r.kind = 'reserve' AND r.order_id = $1
-  AND NOT EXISTS (SELECT 1 FROM inventory.movements c WHERE c.kind = 'confirm' AND c.reservation_id = r.id)
-ON CONFLICT (reservation_id) WHERE kind = 'release' DO NOTHING
+INSERT INTO inventory.releases (reservation_id)
+SELECT r.id FROM inventory.reservations r
+WHERE r.order_id = $1
+  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
+ON CONFLICT (reservation_id) DO NOTHING
 `
 
-// 補償/キャンセル時の解放。未確定の予約だけを反対仕訳で戻す (#88 のフック)。
-func (q *Queries) ReleaseReservationsByOrder(ctx context.Context, orderID pgtype.Int8) error {
+// 補償/キャンセル時の解放 (#88 のフック)。
+func (q *Queries) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, releaseReservationsByOrder, orderID)
 	return err
 }
 
 const stockIn = `-- name: StockIn :one
-INSERT INTO inventory.movements (product_id, kind, quantity)
-VALUES ($1, 'stock_in', $2)
-RETURNING id, product_id, kind, quantity, order_id, reservation_id, expires_at, created_at
+INSERT INTO inventory.stock_ins (product_id, quantity)
+VALUES ($1, $2)
+RETURNING id, product_id, quantity, created_at
 `
 
 type StockInParams struct {
@@ -125,17 +126,13 @@ type StockInParams struct {
 	Quantity  int32 `json:"quantity"`
 }
 
-func (q *Queries) StockIn(ctx context.Context, arg StockInParams) (InventoryMovement, error) {
+func (q *Queries) StockIn(ctx context.Context, arg StockInParams) (InventoryStockIn, error) {
 	row := q.db.QueryRow(ctx, stockIn, arg.ProductID, arg.Quantity)
-	var i InventoryMovement
+	var i InventoryStockIn
 	err := row.Scan(
 		&i.ID,
 		&i.ProductID,
-		&i.Kind,
 		&i.Quantity,
-		&i.OrderID,
-		&i.ReservationID,
-		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err

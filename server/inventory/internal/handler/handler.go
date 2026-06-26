@@ -19,7 +19,7 @@ type Query interface {
 }
 
 type Command interface {
-	StockIn(ctx context.Context, productID int64, quantity int32) (db.InventoryMovement, error)
+	StockIn(ctx context.Context, productID int64, quantity int32) (db.InventoryStockIn, error)
 	Reserve(ctx context.Context, orderID int64, lines []rdb.ReserveLine, ttlSeconds int32) error
 	ReleaseReservationsByOrder(ctx context.Context, orderID int64) error
 }
@@ -50,11 +50,10 @@ func (h *Handler) GetHealthz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func toAPIMovement(r db.InventoryMovement) api.Movement {
-	return api.Movement{
+func toAPIStockIn(r db.InventoryStockIn) api.StockIn {
+	return api.StockIn{
 		Id:        r.ID,
 		ProductId: r.ProductID,
-		Kind:      r.Kind,
 		Quantity:  int(r.Quantity),
 	}
 }

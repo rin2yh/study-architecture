@@ -37,7 +37,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Movement"
+                $ref: "#/components/schemas/StockIn"
         default:
           $ref: "#/components/responses/Error"
   /reservations:
@@ -145,9 +145,9 @@ components:
           type: integer
           x-oapi-codegen-extra-tags:
             binding: required,gt=0
-    Movement:
+    StockIn:
       type: object
-      required: [id, productId, kind, quantity]
+      required: [id, productId, quantity]
       properties:
         id:
           type: integer
@@ -155,8 +155,6 @@ components:
         productId:
           type: integer
           format: int64
-        kind:
-          type: string
         quantity:
           type: integer
     ReserveLine:

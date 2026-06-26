@@ -22,7 +22,7 @@ func (h *writeHandler) StockIn(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusCreated, toAPIMovement(row))
+	c.JSON(http.StatusCreated, toAPIStockIn(row))
 }
 
 func (h *writeHandler) Reserve(c *gin.Context) {

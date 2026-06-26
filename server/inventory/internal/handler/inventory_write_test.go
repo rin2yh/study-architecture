@@ -29,16 +29,16 @@ func post(command handler.Command, path, body string) *httptest.ResponseRecorder
 }
 
 func TestStockIn(t *testing.T) {
-	fake := stub.InventoryStub{Movement: db.InventoryMovement{ID: 1, ProductID: 100, Kind: "stock_in", Quantity: 50}}
+	fake := stub.InventoryStub{StockInRow: db.InventoryStockIn{ID: 1, ProductID: 100, Quantity: 50}}
 	rec := post(fake, "/stock-ins", `{"productId":100,"quantity":50}`)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())
 	}
-	var got api.Movement
+	var got api.StockIn
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	assert.DeepEqual(t, api.Movement{Id: 1, ProductId: 100, Kind: "stock_in", Quantity: 50}, got)
+	assert.DeepEqual(t, api.StockIn{Id: 1, ProductId: 100, Quantity: 50}, got)
 }
 
 func TestStockInError(t *testing.T) {

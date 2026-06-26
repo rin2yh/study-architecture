@@ -34,14 +34,6 @@ type Health struct {
 	Status string `json:"status"`
 }
 
-// Movement defines model for Movement.
-type Movement struct {
-	Id        int64  `json:"id"`
-	Kind      string `json:"kind"`
-	ProductId int64  `json:"productId"`
-	Quantity  int    `json:"quantity"`
-}
-
 // ReservationResult defines model for ReservationResult.
 type ReservationResult struct {
 	OrderId int64 `json:"orderId"`
@@ -60,6 +52,13 @@ type ReserveRequest struct {
 
 	// TtlSeconds 予約の有効期間 (秒)。省略時はサービス既定値。
 	TtlSeconds *int `json:"ttlSeconds,omitempty"`
+}
+
+// StockIn defines model for StockIn.
+type StockIn struct {
+	Id        int64 `json:"id"`
+	ProductId int64 `json:"productId"`
+	Quantity  int   `json:"quantity"`
 }
 
 // StockInRequest defines model for StockInRequest.
@@ -621,7 +620,7 @@ func (r ReleaseReservationResponse) ContentType() string {
 type StockInResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *Movement
+	JSON201      *StockIn
 	JSONDefault  *Error
 }
 
@@ -850,7 +849,7 @@ func ParseStockInResponse(rsp *http.Response) (*StockInResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Movement
+		var dest StockIn
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
