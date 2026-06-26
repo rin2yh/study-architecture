@@ -1,0 +1,116 @@
+# ADR-[[202606261100]]
+#
+# RED の Error / Duration を Prometheus で評価する Grafana-managed alert。メトリクス名・ラベルは
+# Prometheus OTLP 変換後 (UnderscoreEscapingWithSuffixes) の実体を計測して確定:
+#   http_server_request_duration_seconds_{count,bucket}, サービス識別は job, ステータスは
+#   http_response_status_code (otelgin / semconv stable)。job 別に集計し PII / 高カーディナリティ
+#   ラベル (会員 ID 等) は載せない (ADR-[[202606250141]])。
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: RED
+    folder: EC Service Alerts
+    interval: 30s
+    rules:
+      # 分母が 0 (無トラフィック) のとき NaN になるため noDataState は OK にし、トラフィックが
+      # 無いだけで鳴らさない。
+      - uid: red-http-5xx-error-rate
+        title: HTTP 5xx error rate high
+        condition: C
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} の 5xx エラー率が 5% を超過 (現在 {{ humanizePercentage $values.B.Value }})"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: false
+              range: true
+              intervalMs: 15000
+              maxDataPoints: 43200
+              expr: |
+                sum by (job) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+                  / sum by (job) (rate(http_server_request_duration_seconds_count[5m]))
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              reducer: last
+              expression: A
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.05]
+
+      # ヒストグラムの分位計算には各 le ごとの粒度が必要 (le を潰すと推定できない)。
+      - uid: red-http-latency-p95
+        title: HTTP p95 latency high
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} の p95 レイテンシが 0.5s を超過 (現在 {{ humanizeDuration $values.B.Value }})"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: false
+              range: true
+              intervalMs: 15000
+              maxDataPoints: 43200
+              expr: |
+                histogram_quantile(0.95, sum by (job, le) (rate(http_server_request_duration_seconds_bucket[5m])))
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              reducer: last
+              expression: A
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.5]
