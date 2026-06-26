@@ -1,8 +1,8 @@
 # 運用ランブック
 
 アラート発火時など、運用で参照する手順を集約する。役割分担: 設計判断は [ADR](../adr/README.md)、
-プロジェクト概要は [README](../../README.md)、既知の不具合は [known-issues](../known-issues.md)、
-ダッシュボードの見方は [dashboards](dashboards.md)。各 Step で運用に効くものが出たらここへ追記する。
+プロジェクト概要は [README](../../README.md)、ダッシュボードの見方は [dashboards](dashboards.md)。
+各 Step で運用に効くものが出たらここへ追記する。
 
 ## アラート
 
