@@ -30,7 +30,7 @@ func TestCreatePayment(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/payments", bytes.NewReader([]byte(`{"orderId":20,"amountCents":2980,"method":"card","status":"paid"}`)))
+	req := httptest.NewRequest(http.MethodPost, "/payments", bytes.NewReader([]byte(`{"orderId":20,"amountCents":2980,"method":"card","status":"paid","idempotencyKey":"key-1"}`)))
 	req.Header.Set("Content-Type", "application/json")
 	newWriteServer(rdb.NewPaymentCommand(pool)).ServeHTTP(rec, req)
 
@@ -59,10 +59,11 @@ func TestCreatePaymentError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"準正常系 method 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":2980,"status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"準正常系 orderId 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"amountCents":2980,"method":"card","status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"準正常系 amountCents 負値は 422 unprocessable_entity", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":-1,"method":"card","status":"paid"}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
-		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, `{"orderId":20,"amountCents":2980,"method":"card","status":"paid"}`}, want{http.StatusInternalServerError, "internal"}},
+		{"準正常系 method 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":2980,"status":"paid","idempotencyKey":"k"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 orderId 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"amountCents":2980,"method":"card","status":"paid","idempotencyKey":"k"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 idempotencyKey 欠落は 400 bad_request", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":2980,"method":"card","status":"paid"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 amountCents 負値は 422 unprocessable_entity", args{stub.PaymentStub{}, `{"orderId":20,"amountCents":-1,"method":"card","status":"paid","idempotencyKey":"k"}`}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
+		{"異常系 DB エラーは 500 internal", args{stub.PaymentStub{Err: errors.New("db failure")}, `{"orderId":20,"amountCents":2980,"method":"card","status":"paid","idempotencyKey":"k"}`}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/rin2yh/study-architecture/server/internal/httpx"
+	"github.com/rin2yh/study-architecture/server/internal/httpx/resilience"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
 )
@@ -29,7 +29,7 @@ type ProductPort interface {
 }
 
 type PaymentPort interface {
-	CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error)
+	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error)
 }
 
 type ProductClient struct {
@@ -43,7 +43,7 @@ func NewProductClient() (*ProductClient, error) {
 	if base == "" {
 		return nil, errors.New("PRODUCT_API_URL is required")
 	}
-	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(httpx.NewResilientClient("order->product")))
+	c, err := product.NewClientWithResponses(base, product.WithHTTPClient(resilience.NewClient("order->product")))
 	if err != nil {
 		return nil, err
 	}
@@ -75,19 +75,21 @@ func NewPaymentClient() (*PaymentClient, error) {
 	if base == "" {
 		return nil, errors.New("PAYMENT_API_URL is required")
 	}
-	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(httpx.NewResilientClient("order->payment")))
+	// 決済作成は idempotency key で冪等なので POST リトライを解禁する (ADR-[[202606261214]])。
+	c, err := payment.NewClientWithResponses(base, payment.WithHTTPClient(resilience.NewClient("order->payment", resilience.RetryNonIdempotent())))
 	if err != nil {
 		return nil, err
 	}
 	return &PaymentClient{c: c}, nil
 }
 
-func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method string) (int64, error) {
+func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error) {
 	res, err := p.c.CreatePaymentWithResponse(ctx, payment.CreatePaymentJSONRequestBody{
-		OrderId:     orderID,
-		AmountCents: amountCents,
-		Method:      method,
-		Status:      "pending",
+		OrderId:        orderID,
+		AmountCents:    amountCents,
+		Method:         method,
+		Status:         "pending",
+		IdempotencyKey: idempotencyKey,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("%w: create payment for order %d: %v", ErrUpstream, orderID, err)

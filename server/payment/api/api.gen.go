@@ -14,10 +14,13 @@ import (
 
 // CreatePaymentRequest defines model for CreatePaymentRequest.
 type CreatePaymentRequest struct {
-	AmountCents int64  `json:"amountCents"`
-	Method      string `binding:"required" json:"method"`
-	OrderId     int64  `binding:"required,gt=0" json:"orderId"`
-	Status      string `binding:"required" json:"status"`
+	AmountCents int64 `json:"amountCents"`
+
+	// IdempotencyKey order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。
+	IdempotencyKey string `binding:"required" json:"idempotencyKey"`
+	Method         string `binding:"required" json:"method"`
+	OrderId        int64  `binding:"required,gt=0" json:"orderId"`
+	Status         string `binding:"required" json:"status"`
 }
 
 // Error defines model for Error.
