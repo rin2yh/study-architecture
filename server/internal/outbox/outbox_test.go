@@ -107,34 +107,37 @@ func TestRelayDrain(t *testing.T) {
 			}
 		})
 	}
+
+	// 2 回 drain する異質ケースで、1 回で完結する上の table とは shape が違うため別に分ける ([[test.md]])。
+	t.Run("準正常系 MarkPublished 失敗後の再 drain で再送する (at-least-once)", func(t *testing.T) {
+		store := &fakeStore{pending: []Message{{ID: 1, Stream: "payment.events", Values: map[string]any{"id": int64(1)}}}, markErr: errors.New("mark down")}
+		r, rc := newTestRelay(t, store)
+
+		if err := r.drain(t.Context()); err == nil {
+			t.Fatal("drain(): want error from MarkPublished")
+		}
+		store.markErr = nil
+		if err := r.drain(t.Context()); err != nil {
+			t.Fatalf("drain() retry = %v, want nil", err)
+		}
+
+		n, err := rc.XLen(t.Context(), "payment.events").Result()
+		if err != nil {
+			t.Fatalf("XLen: %v", err)
+		}
+		if n != 2 {
+			t.Fatalf("stream length = %d, want 2 (再送で重複送出される)", n)
+		}
+	})
 }
 
-func TestRelayDrainMarkFailureResendsAtLeastOnce(t *testing.T) {
-	store := &fakeStore{pending: []Message{{ID: 1, Stream: "payment.events", Values: map[string]any{"id": int64(1)}}}, markErr: errors.New("mark down")}
-	r, rc := newTestRelay(t, store)
-
-	if err := r.drain(t.Context()); err == nil {
-		t.Fatal("drain(): want error from MarkPublished")
-	}
-	store.markErr = nil
-	if err := r.drain(t.Context()); err != nil {
-		t.Fatalf("drain() retry = %v, want nil", err)
-	}
-
-	n, err := rc.XLen(t.Context(), "payment.events").Result()
-	if err != nil {
-		t.Fatalf("XLen: %v", err)
-	}
-	if n != 2 {
-		t.Fatalf("stream length = %d, want 2 (再送で重複送出される)", n)
-	}
-}
-
-func TestRelayRunStopsOnContextCancel(t *testing.T) {
-	r, _ := newTestRelay(t, &fakeStore{})
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := r.Run(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() = %v, want context.Canceled", err)
-	}
+func TestRelayRun(t *testing.T) {
+	t.Run("準正常系 ctx キャンセルで context.Canceled を返して停止する", func(t *testing.T) {
+		r, _ := newTestRelay(t, &fakeStore{})
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		if err := r.Run(ctx); !errors.Is(err, context.Canceled) {
+			t.Fatalf("Run() = %v, want context.Canceled", err)
+		}
+	})
 }
