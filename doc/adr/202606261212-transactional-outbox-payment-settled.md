@@ -14,7 +14,7 @@ Transactional Outbox でイベント発行を確実にする。
 
 - **専用テーブルを作らず payments 集約に送信状態列 (`published_at` 等) を足す**。「settled への更新」と「未送信状態」を同一トランザクションで確定し、DB とイベントの整合をローカルに閉じる。イベントは決済確定 1 種で汎用 payload が不要なため集約列で足りる。
 - **リレーは payment プロセス内の goroutine**。未送信 (settled かつ未 published) 行をポーリングして `XAdd` → `published_at` を埋める。落ちても次回拾い直すので at-least-once で必ず届く。
-- リレーロジックは `server/internal/outbox` に共有実装として置く。発行サービスが増えても各サービスが自DBに対し呼ぶだけ。DB-per-domain (ADR-[[202606240522]]) では中央 worker が全DBを再結合してしまうのを避け、in-process が分散・コンテナ増なしで素直。worker へ移すのも共有コードがあるので容易。
+- リレーロジックは `server/internal/outbox` に共有実装として置く。各サービスが自DBに対し呼ぶだけで、発行サービスが増えても in-process のまま分散できる (DB-per-domain (ADR-[[202606240522]]) と素直にかみ合いコンテナも増えない)。
 - `traceparent` は送信行に保持し (ADR-[[202606250159]] の span link 用)、リレー送出時に inject してトレースを切らさない。
 
 ## Consequences
