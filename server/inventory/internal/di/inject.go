@@ -28,7 +28,7 @@ var _ = kessoku.Inject[*worker.Worker](
 	kessoku.Provide(redisx.NewClient),
 	kessoku.Provide(rdb.NewInventoryCommand),
 	kessoku.Provide(func(c *rdb.InventoryCommand) consumer.ReservationConfirmer { return c }),
-	kessoku.Provide(func(c *rdb.InventoryCommand) reaper.ExpiredReleaser { return c }),
+	kessoku.Provide(func(c *rdb.InventoryCommand) reaper.ReservationExpirer { return c }),
 	kessoku.Provide(consumer.New),
 	kessoku.Provide(reaper.New),
 	kessoku.Provide(worker.New),

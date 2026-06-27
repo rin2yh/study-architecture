@@ -118,7 +118,7 @@ func TestReserveConfirmRelease(t *testing.T) {
 	})
 }
 
-func TestReleaseExpiredReservations(t *testing.T) {
+func TestExpireReservations(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	cmd := NewInventoryCommand(pool)
@@ -132,15 +132,23 @@ func TestReleaseExpiredReservations(t *testing.T) {
 		t.Fatalf("Reserve expired: %v", err)
 	}
 
-	if err := cmd.ReleaseExpiredReservations(ctx); err != nil {
-		t.Fatalf("ReleaseExpiredReservations: %v", err)
+	if err := cmd.ExpireReservations(ctx); err != nil {
+		t.Fatalf("ExpireReservations: %v", err)
 	}
-	// 二重実行しても部分ユニークインデックスで二重解放しない。
-	if err := cmd.ReleaseExpiredReservations(ctx); err != nil {
-		t.Fatalf("ReleaseExpiredReservations again: %v", err)
+	// 主キー衝突で二重に期限切れ記録しない。
+	if err := cmd.ExpireReservations(ctx); err != nil {
+		t.Fatalf("ExpireReservations again: %v", err)
 	}
 	if got := mustAvail(t, q, ctx, 100); got != 10 {
 		t.Fatalf("available = %d, want 10", got)
+	}
+
+	// 期限切れ済みは確定できない (終端状態は相互排他)。確定しても available は戻らない。
+	if err := cmd.ConfirmReservationsByOrder(ctx, 1); err != nil {
+		t.Fatalf("Confirm after expire: %v", err)
+	}
+	if got := mustAvail(t, q, ctx, 100); got != 10 {
+		t.Fatalf("available after confirm-of-expired = %d, want 10 (not confirmed)", got)
 	}
 }
 

@@ -7,17 +7,17 @@ import (
 	"time"
 )
 
-type ExpiredReleaser interface {
-	ReleaseExpiredReservations(ctx context.Context) error
+type ReservationExpirer interface {
+	ExpireReservations(ctx context.Context) error
 }
 
 type Reaper struct {
-	releaser ExpiredReleaser
+	expirer  ReservationExpirer
 	interval time.Duration
 }
 
-func New(releaser ExpiredReleaser) *Reaper {
-	return &Reaper{releaser: releaser, interval: time.Minute}
+func New(expirer ReservationExpirer) *Reaper {
+	return &Reaper{expirer: expirer, interval: time.Minute}
 }
 
 func (r *Reaper) Run(ctx context.Context) error {
@@ -25,12 +25,12 @@ func (r *Reaper) Run(ctx context.Context) error {
 	t := time.NewTicker(r.interval)
 	defer t.Stop()
 	for {
-		if err := r.releaser.ReleaseExpiredReservations(ctx); err != nil {
+		if err := r.expirer.ExpireReservations(ctx); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 			// 集計は expires_at で既に在庫を除外済みなので、台帳追記が遅れても売り越しはしない。
-			slog.Warn("inventory reaper: release expired failed", "error", err)
+			slog.Warn("inventory reaper: expire reservations failed", "error", err)
 		}
 		select {
 		case <-ctx.Done():

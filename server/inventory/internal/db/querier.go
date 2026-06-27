@@ -11,14 +11,14 @@ import (
 type Querier interface {
 	// 利用可能在庫 = 入庫(+) と、確定・未確定で生きている予約(-) の符号付き合計。
 	AvailableQty(ctx context.Context, productID int64) (int64, error)
-	// payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。
+	// payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。終端済み (解放/期限切れ) は確定しない。
 	ConfirmReservationsByOrder(ctx context.Context, orderID int64) error
+	// TTL 期限切れの回収。意図的な解放 (releases) と区別して expirations に記録する (ADR-[[202606262000]])。
+	ExpireReservations(ctx context.Context) error
 	InsertReservation(ctx context.Context, arg InsertReservationParams) (int64, error)
 	// 同一商品の同時予約を直列化する。tx 終了まで保持され売り越しを DB で防ぐ (ADR-[[202606262000]])。
 	LockProduct(ctx context.Context, dollar_1 int64) error
-	// (ADR-[[202606262000]])
-	ReleaseExpiredReservations(ctx context.Context) error
-	// 補償/キャンセル時の解放 (#88 のフック)。
+	// 補償/キャンセル時の解放 (#88 のフック)。終端済み (確定/期限切れ) は解放しない。
 	ReleaseReservationsByOrder(ctx context.Context, orderID int64) error
 	StockIn(ctx context.Context, arg StockInParams) (InventoryStockIn, error)
 }

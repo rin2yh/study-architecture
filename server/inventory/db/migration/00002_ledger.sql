@@ -23,17 +23,25 @@ CREATE INDEX reservations_product_idx ON inventory.reservations (product_id);
 CREATE INDEX reservations_order_idx ON inventory.reservations (order_id);
 
 -- 予約の終端状態。reservation_id を主キーにすることで、再配信や二重適用を DB が原子的に弾く
--- (ADR-[[202606261214]])。確定と解放は予約 1 件につき相互排他で高々 1 行。
+-- (ADR-[[202606261214]])。確定・解放・期限切れは予約 1 件につき相互排他で各テーブル高々 1 行。
+-- 種別ごとにテーブルを分け、判別列 (reason 等の enum) を持ち込まない (ADR-[[202606262000]])。
 CREATE TABLE inventory.confirmations (
     reservation_id bigint PRIMARY KEY REFERENCES inventory.reservations(id),
     created_at     timestamptz NOT NULL DEFAULT now()
 );
+-- 意図的な解放 (補償・キャンセル #88)。
 CREATE TABLE inventory.releases (
+    reservation_id bigint PRIMARY KEY REFERENCES inventory.reservations(id),
+    created_at     timestamptz NOT NULL DEFAULT now()
+);
+-- (ADR-[[202606262000]])
+CREATE TABLE inventory.expirations (
     reservation_id bigint PRIMARY KEY REFERENCES inventory.reservations(id),
     created_at     timestamptz NOT NULL DEFAULT now()
 );
 
 -- +goose Down
+DROP TABLE inventory.expirations;
 DROP TABLE inventory.releases;
 DROP TABLE inventory.confirmations;
 DROP TABLE inventory.reservations;

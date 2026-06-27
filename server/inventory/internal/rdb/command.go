@@ -75,6 +75,6 @@ func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, order
 	return r.q.ReleaseReservationsByOrder(ctx, orderID)
 }
 
-func (r *InventoryCommand) ReleaseExpiredReservations(ctx context.Context) error {
-	return r.q.ReleaseExpiredReservations(ctx)
+func (r *InventoryCommand) ExpireReservations(ctx context.Context) error {
+	return r.q.ExpireReservations(ctx)
 }

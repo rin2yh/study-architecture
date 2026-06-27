@@ -42,12 +42,28 @@ INSERT INTO inventory.confirmations (reservation_id)
 SELECT r.id FROM inventory.reservations r
 WHERE r.order_id = $1
   AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
 ON CONFLICT (reservation_id) DO NOTHING
 `
 
-// payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。
+// payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。終端済み (解放/期限切れ) は確定しない。
 func (q *Queries) ConfirmReservationsByOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, confirmReservationsByOrder, orderID)
+	return err
+}
+
+const expireReservations = `-- name: ExpireReservations :exec
+INSERT INTO inventory.expirations (reservation_id)
+SELECT r.id FROM inventory.reservations r
+WHERE r.expires_at <= now()
+  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+ON CONFLICT (reservation_id) DO NOTHING
+`
+
+// TTL 期限切れの回収。意図的な解放 (releases) と区別して expirations に記録する (ADR-[[202606262000]])。
+func (q *Queries) ExpireReservations(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, expireReservations)
 	return err
 }
 
@@ -86,30 +102,16 @@ func (q *Queries) LockProduct(ctx context.Context, dollar_1 int64) error {
 	return err
 }
 
-const releaseExpiredReservations = `-- name: ReleaseExpiredReservations :exec
-INSERT INTO inventory.releases (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.expires_at <= now()
-  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING
-`
-
-// (ADR-[[202606262000]])
-func (q *Queries) ReleaseExpiredReservations(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, releaseExpiredReservations)
-	return err
-}
-
 const releaseReservationsByOrder = `-- name: ReleaseReservationsByOrder :exec
 INSERT INTO inventory.releases (reservation_id)
 SELECT r.id FROM inventory.reservations r
 WHERE r.order_id = $1
   AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
 ON CONFLICT (reservation_id) DO NOTHING
 `
 
-// 補償/キャンセル時の解放 (#88 のフック)。
+// 補償/キャンセル時の解放 (#88 のフック)。終端済み (確定/期限切れ) は解放しない。
 func (q *Queries) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, releaseReservationsByOrder, orderID)
 	return err

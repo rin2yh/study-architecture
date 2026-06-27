@@ -33,24 +33,26 @@ VALUES ($1, $2, $3, now() + ($4::int * interval '1 second'))
 RETURNING id;
 
 -- name: ConfirmReservationsByOrder :exec
--- payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。
+-- payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。終端済み (解放/期限切れ) は確定しない。
 INSERT INTO inventory.confirmations (reservation_id)
 SELECT r.id FROM inventory.reservations r
 WHERE r.order_id = $1
   AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
 ON CONFLICT (reservation_id) DO NOTHING;
 
 -- name: ReleaseReservationsByOrder :exec
--- 補償/キャンセル時の解放 (#88 のフック)。
+-- 補償/キャンセル時の解放 (#88 のフック)。終端済み (確定/期限切れ) は解放しない。
 INSERT INTO inventory.releases (reservation_id)
 SELECT r.id FROM inventory.reservations r
 WHERE r.order_id = $1
   AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
 ON CONFLICT (reservation_id) DO NOTHING;
 
--- name: ReleaseExpiredReservations :exec
--- (ADR-[[202606262000]])
-INSERT INTO inventory.releases (reservation_id)
+-- name: ExpireReservations :exec
+-- TTL 期限切れの回収。意図的な解放 (releases) と区別して expirations に記録する (ADR-[[202606262000]])。
+INSERT INTO inventory.expirations (reservation_id)
 SELECT r.id FROM inventory.reservations r
 WHERE r.expires_at <= now()
   AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
