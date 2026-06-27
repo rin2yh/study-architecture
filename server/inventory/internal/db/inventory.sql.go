@@ -18,18 +18,17 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    JOIN inventory.confirmations c ON c.reservation_id = r.id
-    WHERE r.product_id = $1
+    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.created_at + inventory.reservation_ttl() > now()
-      AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-      AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+    WHERE r.product_id = $1
+      AND r.confirmed_at IS NULL AND r.released_at IS NULL AND r.expired_at IS NULL
+      AND r.created_at + inventory.reservation_ttl() > now()
 ) d
 `
 
-// 利用可能在庫 = 入庫(+) と、確定・未確定で生きている予約(-) の符号付き合計。
+// 利用可能在庫 = 入庫(+) と、確定・取り置き中の予約(-) の符号付き合計。
 func (q *Queries) AvailableQty(ctx context.Context, productID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, availableQty, productID)
 	var available int64
@@ -38,30 +37,25 @@ func (q *Queries) AvailableQty(ctx context.Context, productID int64) (int64, err
 }
 
 const confirmReservationsByOrder = `-- name: ConfirmReservationsByOrder :exec
-INSERT INTO inventory.confirmations (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.order_id = $1
-  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING
+UPDATE inventory.reservations
+SET confirmed_at = now()
+WHERE order_id = $1 AND confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
 `
 
-// payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。終端済み (解放/期限切れ) は確定しない。
+// 終端 *_at が未設定の予約だけ確定する。payment.settled 再配信は 0 行更新で吸収 (ADR-[[202606261214]])。
 func (q *Queries) ConfirmReservationsByOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, confirmReservationsByOrder, orderID)
 	return err
 }
 
 const expireReservations = `-- name: ExpireReservations :exec
-INSERT INTO inventory.expirations (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.created_at + inventory.reservation_ttl() <= now()
-  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING
+UPDATE inventory.reservations
+SET expired_at = now()
+WHERE confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
+  AND created_at + inventory.reservation_ttl() <= now()
 `
 
-// TTL 期限切れの回収。意図的な解放 (releases) と区別して expirations に記録する (ADR-[[202606262000]])。
+// (ADR-[[202606262000]])
 func (q *Queries) ExpireReservations(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, expireReservations)
 	return err
@@ -97,15 +91,12 @@ func (q *Queries) LockProduct(ctx context.Context, dollar_1 int64) error {
 }
 
 const releaseReservationsByOrder = `-- name: ReleaseReservationsByOrder :exec
-INSERT INTO inventory.releases (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.order_id = $1
-  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING
+UPDATE inventory.reservations
+SET released_at = now()
+WHERE order_id = $1 AND confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
 `
 
-// 補償/キャンセル時の解放 (#88 のフック)。終端済み (確定/期限切れ) は解放しない。
+// 補償/キャンセル時の解放 (#88 のフック)。
 func (q *Queries) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, releaseReservationsByOrder, orderID)
 	return err

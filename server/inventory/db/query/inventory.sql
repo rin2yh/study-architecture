@@ -8,7 +8,7 @@ RETURNING id, product_id, quantity, created_at;
 SELECT pg_advisory_xact_lock($1::bigint);
 
 -- name: AvailableQty :one
--- 利用可能在庫 = 入庫(+) と、確定・未確定で生きている予約(-) の符号付き合計。
+-- 在庫数を保存せず集計で導く (ADR-[[202606262000]])。
 SELECT COALESCE(SUM(d.delta), 0)::bigint AS available
 FROM (
     SELECT s.quantity::bigint AS delta
@@ -17,14 +17,13 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    JOIN inventory.confirmations c ON c.reservation_id = r.id
-    WHERE r.product_id = $1
+    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.created_at + inventory.reservation_ttl() > now()
-      AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-      AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
+    WHERE r.product_id = $1
+      AND r.confirmed_at IS NULL AND r.released_at IS NULL AND r.expired_at IS NULL
+      AND r.created_at + inventory.reservation_ttl() > now()
 ) d;
 
 -- name: InsertReservation :one
@@ -33,28 +32,20 @@ VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: ConfirmReservationsByOrder :exec
--- payment.settled 再配信は主キー衝突で吸収する (ADR-[[202606261214]])。終端済み (解放/期限切れ) は確定しない。
-INSERT INTO inventory.confirmations (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.order_id = $1
-  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING;
+-- 終端 *_at が未設定の予約だけ確定する。payment.settled 再配信は 0 行更新で吸収 (ADR-[[202606261214]])。
+UPDATE inventory.reservations
+SET confirmed_at = now()
+WHERE order_id = $1 AND confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL;
 
 -- name: ReleaseReservationsByOrder :exec
--- 補償/キャンセル時の解放 (#88 のフック)。終端済み (確定/期限切れ) は解放しない。
-INSERT INTO inventory.releases (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.order_id = $1
-  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.expirations e WHERE e.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING;
+-- 補償/キャンセル時の解放 (#88 のフック)。
+UPDATE inventory.reservations
+SET released_at = now()
+WHERE order_id = $1 AND confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL;
 
 -- name: ExpireReservations :exec
--- TTL 期限切れの回収。意図的な解放 (releases) と区別して expirations に記録する (ADR-[[202606262000]])。
-INSERT INTO inventory.expirations (reservation_id)
-SELECT r.id FROM inventory.reservations r
-WHERE r.created_at + inventory.reservation_ttl() <= now()
-  AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
-  AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
-ON CONFLICT (reservation_id) DO NOTHING;
+-- (ADR-[[202606262000]])
+UPDATE inventory.reservations
+SET expired_at = now()
+WHERE confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
+  AND created_at + inventory.reservation_ttl() <= now();
