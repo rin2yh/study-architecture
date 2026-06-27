@@ -98,7 +98,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	// (ADR-[[202606262000]])
 	if err := h.inventory.Reserve(c.Request.Context(), order.ID, reserveLines); err != nil {
 		if errors.Is(err, gateway.ErrInsufficientStock) {
-			// 予約は不成立 (在庫不足で tx rollback) なので解放は要らない。
+			// rollback で確保が残らないため解放は不要。
 			if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
 				_ = c.Error(derr)
 				return
