@@ -44,9 +44,6 @@ type ReserveLine struct {
 type ReserveRequest struct {
 	Lines   []ReserveLine `binding:"required,min=1,dive" json:"lines"`
 	OrderId int64         `binding:"required,gt=0" json:"orderId"`
-
-	// TtlSeconds 予約の有効期間 (秒)。省略時はサービス既定値。
-	TtlSeconds *int `json:"ttlSeconds,omitempty"`
 }
 
 // StockIn defines model for StockIn.

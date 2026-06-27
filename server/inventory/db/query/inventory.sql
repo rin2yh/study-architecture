@@ -22,14 +22,14 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.expires_at > now()
+    WHERE r.product_id = $1 AND r.created_at + inventory.reservation_ttl() > now()
       AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
       AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
 ) d;
 
 -- name: InsertReservation :one
-INSERT INTO inventory.reservations (product_id, order_id, quantity, expires_at)
-VALUES ($1, $2, $3, now() + ($4::int * interval '1 second'))
+INSERT INTO inventory.reservations (product_id, order_id, quantity)
+VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: ConfirmReservationsByOrder :exec
@@ -54,7 +54,7 @@ ON CONFLICT (reservation_id) DO NOTHING;
 -- TTL 期限切れの回収。意図的な解放 (releases) と区別して expirations に記録する (ADR-[[202606262000]])。
 INSERT INTO inventory.expirations (reservation_id)
 SELECT r.id FROM inventory.reservations r
-WHERE r.expires_at <= now()
+WHERE r.created_at + inventory.reservation_ttl() <= now()
   AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
   AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
 ON CONFLICT (reservation_id) DO NOTHING;

@@ -23,7 +23,7 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.expires_at > now()
+    WHERE r.product_id = $1 AND r.created_at + inventory.reservation_ttl() > now()
       AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
       AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
 ) d
@@ -55,7 +55,7 @@ func (q *Queries) ConfirmReservationsByOrder(ctx context.Context, orderID int64)
 const expireReservations = `-- name: ExpireReservations :exec
 INSERT INTO inventory.expirations (reservation_id)
 SELECT r.id FROM inventory.reservations r
-WHERE r.expires_at <= now()
+WHERE r.created_at + inventory.reservation_ttl() <= now()
   AND NOT EXISTS (SELECT 1 FROM inventory.confirmations c WHERE c.reservation_id = r.id)
   AND NOT EXISTS (SELECT 1 FROM inventory.releases x WHERE x.reservation_id = r.id)
 ON CONFLICT (reservation_id) DO NOTHING
@@ -68,8 +68,8 @@ func (q *Queries) ExpireReservations(ctx context.Context) error {
 }
 
 const insertReservation = `-- name: InsertReservation :one
-INSERT INTO inventory.reservations (product_id, order_id, quantity, expires_at)
-VALUES ($1, $2, $3, now() + ($4::int * interval '1 second'))
+INSERT INTO inventory.reservations (product_id, order_id, quantity)
+VALUES ($1, $2, $3)
 RETURNING id
 `
 
@@ -77,16 +77,10 @@ type InsertReservationParams struct {
 	ProductID int64 `json:"productId"`
 	OrderID   int64 `json:"orderId"`
 	Quantity  int32 `json:"quantity"`
-	Column4   int32 `json:"column4"`
 }
 
 func (q *Queries) InsertReservation(ctx context.Context, arg InsertReservationParams) (int64, error) {
-	row := q.db.QueryRow(ctx, insertReservation,
-		arg.ProductID,
-		arg.OrderID,
-		arg.Quantity,
-		arg.Column4,
-	)
+	row := q.db.QueryRow(ctx, insertReservation, arg.ProductID, arg.OrderID, arg.Quantity)
 	var id int64
 	err := row.Scan(&id)
 	return id, err

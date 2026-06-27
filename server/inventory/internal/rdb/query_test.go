@@ -24,13 +24,13 @@ func TestAvailable(t *testing.T) {
 		if _, err := cmd.StockIn(ctx, 300, 10); err != nil {
 			t.Fatalf("StockIn: %v", err)
 		}
-		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 300, Quantity: 3}}, 900); err != nil {
+		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 300, Quantity: 3}}); err != nil {
 			t.Fatalf("Reserve active: %v", err)
 		}
-		// 負の TTL で即時に期限切れの予約を作る。
-		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 300, Quantity: 5}}, -1); err != nil {
+		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 300, Quantity: 5}}); err != nil {
 			t.Fatalf("Reserve expired: %v", err)
 		}
+		expire(t, pool, 2)
 		if got := mustAvail(t, q, ctx, 300); got != 7 {
 			t.Fatalf("available = %d, want 7 (expired excluded)", got)
 		}

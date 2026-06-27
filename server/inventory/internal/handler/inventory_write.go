@@ -35,11 +35,7 @@ func (h *writeHandler) Reserve(c *gin.Context) {
 	for _, l := range req.Lines {
 		lines = append(lines, rdb.ReserveLine{ProductID: l.ProductId, Quantity: int32(l.Quantity)})
 	}
-	ttl := int32(defaultReserveTTLSeconds)
-	if req.TtlSeconds != nil && *req.TtlSeconds > 0 {
-		ttl = int32(*req.TtlSeconds)
-	}
-	if err := h.command.Reserve(c.Request.Context(), req.OrderId, lines, ttl); err != nil {
+	if err := h.command.Reserve(c.Request.Context(), req.OrderId, lines); err != nil {
 		if errors.Is(err, rdb.ErrInsufficientStock) {
 			_ = c.Error(middleware.Conflict("insufficient stock"))
 			return

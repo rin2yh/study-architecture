@@ -36,7 +36,7 @@ func (r *InventoryCommand) StockIn(ctx context.Context, productID int64, quantit
 }
 
 // (ADR-[[202606262000]])
-func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []ReserveLine, ttlSeconds int32) error {
+func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []ReserveLine) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -59,7 +59,6 @@ func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []R
 			ProductID: l.ProductID,
 			OrderID:   orderID,
 			Quantity:  l.Quantity,
-			Column4:   ttlSeconds,
 		}); err != nil {
 			return dberr.FromWrite(err)
 		}

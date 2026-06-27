@@ -23,7 +23,7 @@ func (s InventoryStub) StockIn(context.Context, int64, int32) (db.InventoryStock
 	return s.StockInRow, s.Err
 }
 
-func (s InventoryStub) Reserve(context.Context, int64, []rdb.ReserveLine, int32) error {
+func (s InventoryStub) Reserve(context.Context, int64, []rdb.ReserveLine) error {
 	return s.ReserveErr
 }
 

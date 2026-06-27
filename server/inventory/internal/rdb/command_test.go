@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 )
@@ -21,6 +23,15 @@ func mustAvail(t *testing.T, q *InventoryQuery, ctx context.Context, productID i
 	return got
 }
 
+// expires_at 列を持たず created_at + TTL で期限を導出するため (時間経過の代わり)。
+func expire(t *testing.T, pool *pgxpool.Pool, orderID int64) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE inventory.reservations SET created_at = now() - interval '1 hour' WHERE order_id = $1`, orderID); err != nil {
+		t.Fatalf("backdate reservation %d: %v", orderID, err)
+	}
+}
+
 func TestReserve(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
@@ -33,7 +44,7 @@ func TestReserve(t *testing.T) {
 	}
 
 	t.Run("正常系 在庫内の予約は成功し available が減る", func(t *testing.T) {
-		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 3}}, 900); err != nil {
+		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 3}}); err != nil {
 			t.Fatalf("Reserve: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 7 {
@@ -42,7 +53,7 @@ func TestReserve(t *testing.T) {
 	})
 
 	t.Run("準正常系 在庫超過の予約は ErrInsufficientStock で台帳を変えない", func(t *testing.T) {
-		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 8}}, 900); !errors.Is(err, ErrInsufficientStock) {
+		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 8}}); !errors.Is(err, ErrInsufficientStock) {
 			t.Fatalf("Reserve over stock err = %v, want ErrInsufficientStock", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 7 {
@@ -66,7 +77,7 @@ func TestReserveMultiLineRollback(t *testing.T) {
 	}
 
 	// 2 明細のうち 1 つでも不足なら tx ごと巻き戻り、先行明細の予約も残らない。
-	err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 3}, {ProductID: 200, Quantity: 9}}, 900)
+	err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 3}, {ProductID: 200, Quantity: 9}})
 	if !errors.Is(err, ErrInsufficientStock) {
 		t.Fatalf("Reserve err = %v, want ErrInsufficientStock", err)
 	}
@@ -87,7 +98,7 @@ func TestReserveConfirmRelease(t *testing.T) {
 	}
 
 	t.Run("正常系 解放で利用可能在庫が戻る", func(t *testing.T) {
-		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 4}}, 900); err != nil {
+		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
 			t.Fatalf("Reserve: %v", err)
 		}
 		if err := cmd.ReleaseReservationsByOrder(ctx, 1); err != nil {
@@ -99,7 +110,7 @@ func TestReserveConfirmRelease(t *testing.T) {
 	})
 
 	t.Run("正常系 確定後は利用可能在庫を戻さず解放も効かない", func(t *testing.T) {
-		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 4}}, 900); err != nil {
+		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
 			t.Fatalf("Reserve: %v", err)
 		}
 		if err := cmd.ConfirmReservationsByOrder(ctx, 2); err != nil {
@@ -128,9 +139,10 @@ func TestExpireReservations(t *testing.T) {
 	if _, err := cmd.StockIn(ctx, 100, 10); err != nil {
 		t.Fatalf("StockIn: %v", err)
 	}
-	if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 4}}, -1); err != nil {
-		t.Fatalf("Reserve expired: %v", err)
+	if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
+		t.Fatalf("Reserve: %v", err)
 	}
+	expire(t, pool, 1)
 
 	if err := cmd.ExpireReservations(ctx); err != nil {
 		t.Fatalf("ExpireReservations: %v", err)
@@ -173,7 +185,7 @@ func TestReserveConcurrentNoOversell(t *testing.T) {
 		wg.Add(1)
 		go func(orderID int64) {
 			defer wg.Done()
-			err := cmd.Reserve(ctx, orderID, []ReserveLine{{ProductID: 100, Quantity: 1}}, 900)
+			err := cmd.Reserve(ctx, orderID, []ReserveLine{{ProductID: 100, Quantity: 1}})
 			mu.Lock()
 			defer mu.Unlock()
 			switch {

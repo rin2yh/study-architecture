@@ -179,9 +179,6 @@ components:
           format: int64
           x-oapi-codegen-extra-tags:
             binding: required,gt=0
-        ttlSeconds:
-          type: integer
-          description: 予約の有効期間 (秒)。省略時はサービス既定値。
         lines:
           type: array
           items:

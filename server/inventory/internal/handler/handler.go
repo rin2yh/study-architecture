@@ -11,16 +11,13 @@ import (
 	"github.com/rin2yh/study-architecture/server/inventory/internal/rdb"
 )
 
-// カート確定から決済確定までの取り置き時間 (ADR-[[202606262000]])。
-const defaultReserveTTLSeconds = 900
-
 type Query interface {
 	Available(ctx context.Context, productID int64) (int64, error)
 }
 
 type Command interface {
 	StockIn(ctx context.Context, productID int64, quantity int32) (db.InventoryStockIn, error)
-	Reserve(ctx context.Context, orderID int64, lines []rdb.ReserveLine, ttlSeconds int32) error
+	Reserve(ctx context.Context, orderID int64, lines []rdb.ReserveLine) error
 	ReleaseReservationsByOrder(ctx context.Context, orderID int64) error
 }
 
