@@ -143,7 +143,7 @@ func TestExpireReservations(t *testing.T) {
 		t.Fatalf("available = %d, want 10", got)
 	}
 
-	// 期限切れ済みは確定できない (終端状態は相互排他)。確定しても available は戻らない。
+	// 終端状態は相互排他 (期限切れ済みは確定できない)。
 	if err := cmd.ConfirmReservationsByOrder(ctx, 1); err != nil {
 		t.Fatalf("Confirm after expire: %v", err)
 	}
