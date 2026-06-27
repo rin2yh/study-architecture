@@ -213,6 +213,8 @@ func TestCheckoutError(t *testing.T) {
 		{"異常系 inventory 呼び出し失敗は 502 bad_gateway", args{okOrder, stub.TwoProducts(), stub.Payment{}, stub.Inventory{ReserveErr: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
 		{"異常系 注文書き込み失敗は 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, valid}, want{http.StatusInternalServerError, "internal"}},
 		{"異常系 payment 失敗は 502 bad_gateway", args{okOrder, stub.TwoProducts(), stub.Payment{Err: errors.New("boom")}, stub.Inventory{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
+		{"異常系 在庫不足だが注文の補償取消も失敗は 500 internal", args{stub.OrderStub{Order: db.OrderOrder{ID: 7}, DeleteErr: errors.New("db down")}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{ReserveErr: gateway.ErrInsufficientStock}, valid}, want{http.StatusInternalServerError, "internal"}},
+		{"異常系 payment 失敗かつ予約解放の補償も失敗は 500 internal", args{okOrder, stub.TwoProducts(), stub.Payment{Err: errors.New("boom")}, stub.Inventory{ReleaseErr: errors.New("inv down")}, valid}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

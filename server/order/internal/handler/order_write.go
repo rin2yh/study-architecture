@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"context"
 	"errors"
-	"log/slog"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -96,8 +97,9 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 
 	// (ADR-[[202606262000]])
 	if err := h.inventory.Reserve(c.Request.Context(), order.ID, reserveLines); err != nil {
-		if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
-			slog.ErrorContext(c.Request.Context(), "checkout: compensate delete order failed", "orderId", order.ID, "error", derr)
+		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
+			_ = c.Error(cerr)
+			return
 		}
 		if errors.Is(err, gateway.ErrInsufficientStock) {
 			_ = c.Error(middleware.Conflict("insufficient stock"))
@@ -109,16 +111,25 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 
 	// ADR-[[202606190900]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod); err != nil {
-		// 決済の無い注文と取り置き在庫を残さないよう (ADR-[[202606262000]])。
-		if rerr := h.inventory.Release(c.Request.Context(), order.ID); rerr != nil {
-			slog.ErrorContext(c.Request.Context(), "checkout: compensate release reservation failed", "orderId", order.ID, "error", rerr)
-		}
-		if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
-			slog.ErrorContext(c.Request.Context(), "checkout: compensate delete order failed", "orderId", order.ID, "error", derr)
+		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
+			_ = c.Error(cerr)
+			return
 		}
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
 	}
 
 	c.JSON(http.StatusCreated, toAPIOrderWithItems(order, items))
+}
+
+// abandonCheckout は確定前に失敗した checkout の巻き戻しを 1 箇所に集約する。予約解放と注文削除は
+// どちらも冪等で、失敗は握り潰さず呼び出し元へ返す (不整合を嘘の成功にしない。[[error-handling.md]])。
+func (h *writeHandler) abandonCheckout(ctx context.Context, orderID int64) error {
+	if err := h.inventory.Release(ctx, orderID); err != nil {
+		return fmt.Errorf("abandon checkout: release reservation for order %d: %w", orderID, err)
+	}
+	if err := h.command.DeleteOrder(ctx, orderID); err != nil {
+		return fmt.Errorf("abandon checkout: delete order %d: %w", orderID, err)
+	}
+	return nil
 }
