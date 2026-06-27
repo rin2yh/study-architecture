@@ -97,12 +97,18 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 
 	// (ADR-[[202606262000]])
 	if err := h.inventory.Reserve(c.Request.Context(), order.ID, reserveLines); err != nil {
-		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
-			_ = c.Error(cerr)
+		if errors.Is(err, gateway.ErrInsufficientStock) {
+			// 予約は不成立 (在庫不足で tx rollback) なので解放は要らず、注文だけ取り消す。
+			if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
+				_ = c.Error(derr)
+				return
+			}
+			_ = c.Error(middleware.Conflict("insufficient stock"))
 			return
 		}
-		if errors.Is(err, gateway.ErrInsufficientStock) {
-			_ = c.Error(middleware.Conflict("insufficient stock"))
+		// 上流不調は予約成否が不明なため、解放も含めて巻き戻す。
+		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
+			_ = c.Error(cerr)
 			return
 		}
 		_ = c.Error(middleware.BadGateway("inventory service unavailable"))

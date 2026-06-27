@@ -7,5 +7,8 @@ END $$;
 GRANT USAGE ON SCHEMA inventory TO inventory_svc;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES    IN SCHEMA inventory TO inventory_svc;
 GRANT USAGE, SELECT                  ON ALL SEQUENCES IN SCHEMA inventory TO inventory_svc;
+-- 関数 EXECUTE は PUBLIC 既定に依存せず明示する。
+GRANT EXECUTE                        ON ALL FUNCTIONS IN SCHEMA inventory TO inventory_svc;
 ALTER DEFAULT PRIVILEGES FOR ROLE ec IN SCHEMA inventory GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES    TO inventory_svc;
 ALTER DEFAULT PRIVILEGES FOR ROLE ec IN SCHEMA inventory GRANT USAGE, SELECT                  ON SEQUENCES TO inventory_svc;
+ALTER DEFAULT PRIVILEGES FOR ROLE ec IN SCHEMA inventory GRANT EXECUTE                        ON FUNCTIONS TO inventory_svc;
