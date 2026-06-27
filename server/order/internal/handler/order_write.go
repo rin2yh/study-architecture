@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
@@ -76,6 +77,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 				_ = c.Error(middleware.Unprocessable(err.Error()))
 				return
 			}
+			// ADR-[[202606261216]]
 			_ = c.Error(middleware.BadGateway("product service unavailable"))
 			return
 		}
@@ -115,8 +117,13 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 		return
 	}
 
+	// order→payment POST のリトライを二重決済なく安全にするため、checkout 受付ごとに
+	// 1 つ発番して payment へ渡す (ADR-[[202606261214]])。
+	idempotencyKey := uuid.NewString()
+
 	// ADR-[[202606190900]]
-	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod); err != nil {
+	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey); err != nil {
+		// ADR-[[202606261216]]
 		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
 			_ = c.Error(cerr)
 			return

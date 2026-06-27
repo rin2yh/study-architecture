@@ -1,10 +1,11 @@
-package httpx
+package resilience
 
 import (
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -38,7 +39,7 @@ func fastConfig() ResilienceConfig {
 	}
 }
 
-func doRoundTrip(t *testing.T, tr *ResilientTransport, method, url string) (*http.Response, error) {
+func doRoundTrip(t *testing.T, tr *Transport, method, url string) (*http.Response, error) {
 	t.Helper()
 	req, err := http.NewRequestWithContext(t.Context(), method, url, nil)
 	if err != nil {
@@ -52,7 +53,7 @@ func doRoundTrip(t *testing.T, tr *ResilientTransport, method, url string) (*htt
 	return resp, err
 }
 
-func TestResilientTransportRetry(t *testing.T) {
+func TestRetry(t *testing.T) {
 	type want struct {
 		status  int
 		hits    int64
@@ -73,7 +74,7 @@ func TestResilientTransportRetry(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv, hits := scriptedServer(t, tt.statuses...)
-			tr := newResilientTransport(tt.name, http.DefaultTransport, fastConfig())
+			tr := newTransport(tt.name, http.DefaultTransport, fastConfig())
 
 			resp, err := doRoundTrip(t, tr, tt.method, srv.URL)
 			if tt.want.wantErr {
@@ -98,11 +99,73 @@ func TestResilientTransportRetry(t *testing.T) {
 	}
 }
 
-func TestResilientTransportCircuitBreaker(t *testing.T) {
+func TestRetryNonIdempotent(t *testing.T) {
+	const payload = `{"orderId":1}`
+	type args struct {
+		opts []Option
+		body io.Reader
+	}
+	type want struct {
+		hits int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 opt-in POST は body を巻き戻して MaxAttempts まで再送", args{[]Option{RetryNonIdempotent()}, strings.NewReader(payload)}, want{hits: 3}},
+		// GetBody が無い body は再送で空になるため、opt-in でもリトライさせない。
+		{"準正常系 opt-in でも GetBody 無し body はリトライしない", args{[]Option{RetryNonIdempotent()}, struct{ io.Reader }{strings.NewReader(payload)}}, want{hits: 1}},
+		{"準正常系 opt-in 無し POST はリトライしない", args{nil, strings.NewReader(payload)}, want{hits: 1}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var bodies []string
+			var hits atomic.Int64
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				b, _ := io.ReadAll(r.Body)
+				mu.Lock()
+				bodies = append(bodies, string(b))
+				mu.Unlock()
+				hits.Add(1)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte(`{}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			tr := newTransport(tt.name, http.DefaultTransport, fastConfig(), tt.args.opts...)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, tt.args.body)
+			if err != nil {
+				t.Fatalf("NewRequest: %v", err)
+			}
+			resp, err := tr.RoundTrip(req)
+			if resp != nil {
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
+			}
+			if err == nil {
+				t.Fatal("err = nil, want error (all attempts 503)")
+			}
+			if got := hits.Load(); got != tt.want.hits {
+				t.Fatalf("hits = %d, want %d", got, tt.want.hits)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for i, b := range bodies {
+				if b != payload {
+					t.Fatalf("attempt %d body = %q, want %q (rewind failed)", i, b, payload)
+				}
+			}
+		})
+	}
+}
+
+func TestCircuitBreaker(t *testing.T) {
 	cfg := fastConfig()
 	cfg.Retry.MaxAttempts = 1 // 論理失敗とサーバ被弾を 1:1 にして閾値を読みやすくする
 	srv, hits := scriptedServer(t, http.StatusServiceUnavailable)
-	tr := newResilientTransport("cb", http.DefaultTransport, cfg)
+	tr := newTransport("cb", http.DefaultTransport, cfg)
 
 	for range int(cfg.BreakerThreshold) {
 		if _, err := doRoundTrip(t, tr, http.MethodGet, srv.URL); err == nil {
@@ -129,9 +192,9 @@ func TestResilientTransportCircuitBreaker(t *testing.T) {
 	}
 }
 
-func TestResilientTransportConcurrent(t *testing.T) {
+func TestConcurrent(t *testing.T) {
 	srv, _ := scriptedServer(t, http.StatusOK)
-	tr := newResilientTransport("concurrent", http.DefaultTransport, fastConfig())
+	tr := newTransport("concurrent", http.DefaultTransport, fastConfig())
 
 	var wg sync.WaitGroup
 	for range 50 {

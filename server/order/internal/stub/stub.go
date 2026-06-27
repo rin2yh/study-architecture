@@ -77,7 +77,7 @@ type Payment struct {
 	Err error
 }
 
-func (s Payment) CreatePayment(context.Context, int64, int64, string) (int64, error) {
+func (s Payment) CreatePayment(context.Context, int64, int64, string, string) (int64, error) {
 	return s.ID, s.Err
 }
 

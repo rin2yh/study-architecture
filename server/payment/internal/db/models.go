@@ -18,4 +18,5 @@ type PaymentPayment struct {
 	SettledEventPending     bool               `json:"settledEventPending"`
 	SettledEventTraceparent string             `json:"settledEventTraceparent"`
 	SettledEventPublishedAt pgtype.Timestamptz `json:"settledEventPublishedAt"`
+	IdempotencyKey          string             `json:"idempotencyKey"`
 }

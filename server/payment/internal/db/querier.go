@@ -9,8 +9,10 @@ import (
 )
 
 type Querier interface {
+	// ADR-[[202606261214]]
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (PaymentPayment, error)
 	GetPayment(ctx context.Context, id int64) (PaymentPayment, error)
+	GetPaymentByIdempotencyKey(ctx context.Context, idempotencyKey string) (PaymentPayment, error)
 	ListPayments(ctx context.Context) ([]PaymentPayment, error)
 	ListUnpublishedSettledEvents(ctx context.Context, limit int32) ([]ListUnpublishedSettledEventsRow, error)
 	MarkSettledEventPublished(ctx context.Context, id int64) error

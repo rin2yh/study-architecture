@@ -19,15 +19,18 @@ import (
 
 // CreatePaymentRequest defines model for CreatePaymentRequest.
 type CreatePaymentRequest struct {
-	AmountCents int64  `json:"amountCents"`
-	Method      string `binding:"required" json:"method"`
-	OrderId     int64  `binding:"required,gt=0" json:"orderId"`
-	Status      string `binding:"required" json:"status"`
+	AmountCents int64 `json:"amountCents"`
+
+	// IdempotencyKey order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。
+	IdempotencyKey string `binding:"required" json:"idempotencyKey"`
+	Method         string `binding:"required" json:"method"`
+	OrderId        int64  `binding:"required,gt=0" json:"orderId"`
+	Status         string `binding:"required" json:"status"`
 }
 
 // Error defines model for Error.
 type Error struct {
-	// Code 機械可読なエラー種別。 bad_request (400) / not_found (404) / conflict (409) / unprocessable_entity (422) / internal (500) など。
+	// Code 機械可読なエラー種別 (snake_case)。取りうる値は共通ミドルウェア server/internal/middleware (ErrorJSON / AppError) を唯一の出所とする。
 	Code string `json:"code"`
 
 	// Message 人間可読なエラー説明 (内部詳細を含む 500 系は固定文言に伏せる)
