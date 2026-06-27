@@ -122,8 +122,8 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	c.JSON(http.StatusCreated, toAPIOrderWithItems(order, items))
 }
 
-// abandonCheckout は確定前に失敗した checkout の巻き戻しを 1 箇所に集約する。予約解放と注文削除は
-// どちらも冪等で、失敗は握り潰さず呼び出し元へ返す (不整合を嘘の成功にしない。[[error-handling.md]])。
+// abandonCheckout は確定前に失敗した checkout の巻き戻しを 1 箇所に集約する。各手順は冪等で、
+// 失敗は握り潰さず呼び出し元へ返す (不整合を嘘の成功にしない。[[error-handling.md]])。
 // 耐久・非同期の補償 (order.cancelled イベント駆動) は #88 (ADR-[[202606261702]])。
 func (h *writeHandler) abandonCheckout(ctx context.Context, orderID int64) error {
 	if err := h.inventory.Release(ctx, orderID); err != nil {
