@@ -16,11 +16,14 @@ import (
 type CreatePaymentRequest struct {
 	AmountCents int64 `json:"amountCents"`
 
-	// IdempotencyKey order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。
+	// IdempotencyKey ADR-[[202606261214]]
 	IdempotencyKey string `binding:"required" json:"idempotencyKey"`
 	Method         string `binding:"required" json:"method"`
 	OrderId        int64  `binding:"required,gt=0" json:"orderId"`
-	Status         string `binding:"required" json:"status"`
+
+	// ShippingAddress payment は解釈せず settled イベントへ中継する (ADR-[[202606261704]])。
+	ShippingAddress ShippingAddress `json:"shippingAddress"`
+	Status          string          `binding:"required" json:"status"`
 }
 
 // Error defines model for Error.
@@ -45,6 +48,15 @@ type Payment struct {
 	Method      string    `json:"method"`
 	OrderId     int64     `json:"orderId"`
 	Status      string    `json:"status"`
+}
+
+// ShippingAddress payment は解釈せず settled イベントへ中継する (ADR-[[202606261704]])。
+type ShippingAddress struct {
+	City       string `json:"city"`
+	Line1      string `json:"line1"`
+	PostalCode string `json:"postalCode"`
+	Prefecture string `json:"prefecture"`
+	Recipient  string `json:"recipient"`
 }
 
 // UpdatePaymentRequest defines model for UpdatePaymentRequest.

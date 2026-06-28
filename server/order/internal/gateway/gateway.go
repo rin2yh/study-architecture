@@ -11,11 +11,14 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/httpx/resilience"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/inventory"
+	"github.com/rin2yh/study-architecture/server/order/internal/client/member"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
 )
 
 var ErrProductNotFound = errors.New("product not found")
+
+var ErrAddressNotFound = errors.New("shipping address not found")
 
 // ErrInsufficientStock は予約が在庫不足で拒否された (409)。checkout は致命扱いで 409 を返す (ADR-[[202606262000]])。
 var ErrInsufficientStock = errors.New("insufficient stock")
@@ -32,8 +35,21 @@ type ProductPort interface {
 	FetchProduct(ctx context.Context, id int64) (ProductSnapshot, error)
 }
 
+// AddressSnapshot は注文時点で確定する配送先の値 (ADR-[[202606261704]])。
+type AddressSnapshot struct {
+	Recipient  string
+	PostalCode string
+	Prefecture string
+	City       string
+	Line1      string
+}
+
+type MemberPort interface {
+	FetchAddress(ctx context.Context, memberID, addressID int64) (AddressSnapshot, error)
+}
+
 type PaymentPort interface {
-	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error)
+	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string, dest AddressSnapshot) (int64, error)
 }
 
 type ReserveLine struct {
@@ -78,6 +94,44 @@ func (p *ProductClient) FetchProduct(ctx context.Context, id int64) (ProductSnap
 	return ProductSnapshot{ID: res.JSON200.Id, Name: res.JSON200.Name, UnitPriceCents: res.JSON200.PriceCents}, nil
 }
 
+type MemberClient struct {
+	c member.ClientWithResponsesInterface
+}
+
+var _ MemberPort = (*MemberClient)(nil)
+
+func NewMemberClient() (*MemberClient, error) {
+	base := os.Getenv("MEMBER_API_URL")
+	if base == "" {
+		return nil, errors.New("MEMBER_API_URL is required")
+	}
+	c, err := member.NewClientWithResponses(base, member.WithHTTPClient(resilience.NewClient("order->member")))
+	if err != nil {
+		return nil, err
+	}
+	return &MemberClient{c: c}, nil
+}
+
+func (m *MemberClient) FetchAddress(ctx context.Context, memberID, addressID int64) (AddressSnapshot, error) {
+	res, err := m.c.GetAddressWithResponse(ctx, memberID, addressID)
+	if err != nil {
+		return AddressSnapshot{}, fmt.Errorf("%w: get address %d for member %d: %v", ErrUpstream, addressID, memberID, err)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return AddressSnapshot{}, fmt.Errorf("%w: member %d address %d", ErrAddressNotFound, memberID, addressID)
+	}
+	if res.JSON200 == nil {
+		return AddressSnapshot{}, fmt.Errorf("%w: get address %d returned %d", ErrUpstream, addressID, res.StatusCode())
+	}
+	return AddressSnapshot{
+		Recipient:  res.JSON200.Recipient,
+		PostalCode: res.JSON200.PostalCode,
+		Prefecture: res.JSON200.Prefecture,
+		City:       res.JSON200.City,
+		Line1:      res.JSON200.Line1,
+	}, nil
+}
+
 type PaymentClient struct {
 	c payment.ClientWithResponsesInterface
 }
@@ -97,13 +151,20 @@ func NewPaymentClient() (*PaymentClient, error) {
 	return &PaymentClient{c: c}, nil
 }
 
-func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error) {
+func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string, dest AddressSnapshot) (int64, error) {
 	res, err := p.c.CreatePaymentWithResponse(ctx, payment.CreatePaymentJSONRequestBody{
 		OrderId:        orderID,
 		AmountCents:    amountCents,
 		Method:         method,
 		Status:         "pending",
 		IdempotencyKey: idempotencyKey,
+		ShippingAddress: payment.ShippingAddress{
+			Recipient:  dest.Recipient,
+			PostalCode: dest.PostalCode,
+			Prefecture: dest.Prefecture,
+			City:       dest.City,
+			Line1:      dest.Line1,
+		},
 	})
 	if err != nil {
 		return 0, fmt.Errorf("%w: create payment for order %d: %v", ErrUpstream, orderID, err)

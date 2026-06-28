@@ -21,23 +21,60 @@ const (
 	FieldPaymentID   = "paymentId"
 	FieldOrderID     = "orderId"
 	FieldAmountCents = "amountCents"
+	// 配送先スナップショット (ADR-[[202606261704]])。payment は中身を解釈せず traceparent と同様に
+	// 中継するだけで、shipment が settled 経由で宛先を受け取る (shipping→order の同期依存を作らない)。
+	FieldShipRecipient  = "shipRecipient"
+	FieldShipPostalCode = "shipPostalCode"
+	FieldShipPrefecture = "shipPrefecture"
+	FieldShipCity       = "shipCity"
+	FieldShipLine1      = "shipLine1"
 	// W3C propagator が使うキー。伝播フィールドは traceparent のみで秘匿情報は混ぜない
 	// (ADR-[[202606250159]] / ADR-[[202606250141]])。
 	FieldTraceparent = "traceparent"
 )
 
+// Destination は注文時に確定した配送先のスナップショット (ADR-[[202606261704]])。
+type Destination struct {
+	Recipient  string
+	PostalCode string
+	Prefecture string
+	City       string
+	Line1      string
+}
+
 type Settled struct {
 	PaymentID   int64
 	OrderID     int64
 	AmountCents int64
+	Destination Destination
 }
 
 func (s Settled) Values() map[string]any {
 	return map[string]any{
-		FieldEvent:       TypeSettled,
-		FieldPaymentID:   s.PaymentID,
-		FieldOrderID:     s.OrderID,
-		FieldAmountCents: s.AmountCents,
+		FieldEvent:          TypeSettled,
+		FieldPaymentID:      s.PaymentID,
+		FieldOrderID:        s.OrderID,
+		FieldAmountCents:    s.AmountCents,
+		FieldShipRecipient:  s.Destination.Recipient,
+		FieldShipPostalCode: s.Destination.PostalCode,
+		FieldShipPrefecture: s.Destination.Prefecture,
+		FieldShipCity:       s.Destination.City,
+		FieldShipLine1:      s.Destination.Line1,
+	}
+}
+
+// 欠落・型不一致は空文字に倒し、宛先未指定の古いイベントでも consumer を落とさない。
+func DestinationFrom(values map[string]any) Destination {
+	str := func(k string) string {
+		v, _ := values[k].(string)
+		return v
+	}
+	return Destination{
+		Recipient:  str(FieldShipRecipient),
+		PostalCode: str(FieldShipPostalCode),
+		Prefecture: str(FieldShipPrefecture),
+		City:       str(FieldShipCity),
+		Line1:      str(FieldShipLine1),
 	}
 }
 

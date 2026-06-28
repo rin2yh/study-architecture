@@ -9,14 +9,19 @@ import (
 )
 
 type PaymentPayment struct {
-	ID                      int64              `json:"id"`
-	OrderID                 int64              `json:"orderId"`
-	AmountCents             int64              `json:"amountCents"`
-	Method                  string             `json:"method"`
-	Status                  string             `json:"status"`
-	CreatedAt               pgtype.Timestamptz `json:"createdAt"`
-	SettledEventPending     bool               `json:"settledEventPending"`
-	SettledEventTraceparent string             `json:"settledEventTraceparent"`
-	SettledEventPublishedAt pgtype.Timestamptz `json:"settledEventPublishedAt"`
-	IdempotencyKey          string             `json:"idempotencyKey"`
+	ID                         int64              `json:"id"`
+	OrderID                    int64              `json:"orderId"`
+	AmountCents                int64              `json:"amountCents"`
+	Method                     string             `json:"method"`
+	Status                     string             `json:"status"`
+	CreatedAt                  pgtype.Timestamptz `json:"createdAt"`
+	SettledEventPending        bool               `json:"settledEventPending"`
+	SettledEventTraceparent    string             `json:"settledEventTraceparent"`
+	SettledEventPublishedAt    pgtype.Timestamptz `json:"settledEventPublishedAt"`
+	IdempotencyKey             string             `json:"idempotencyKey"`
+	SettledEventShipRecipient  string             `json:"settledEventShipRecipient"`
+	SettledEventShipPostalCode string             `json:"settledEventShipPostalCode"`
+	SettledEventShipPrefecture string             `json:"settledEventShipPrefecture"`
+	SettledEventShipCity       string             `json:"settledEventShipCity"`
+	SettledEventShipLine1      string             `json:"settledEventShipLine1"`
 }

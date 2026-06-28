@@ -41,7 +41,7 @@ func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderO
 	return s.Order, s.Err
 }
 
-func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine, rdb.CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error) {
 	return s.Order, s.Items, s.Err
 }
 
@@ -72,12 +72,25 @@ func TwoProducts() Product {
 	}}
 }
 
+type Member struct {
+	Address gateway.AddressSnapshot
+	Err     error
+}
+
+func (s Member) FetchAddress(context.Context, int64, int64) (gateway.AddressSnapshot, error) {
+	return s.Address, s.Err
+}
+
+func SampleAddress() gateway.AddressSnapshot {
+	return gateway.AddressSnapshot{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
+}
+
 type Payment struct {
 	ID  int64
 	Err error
 }
 
-func (s Payment) CreatePayment(context.Context, int64, int64, string, string) (int64, error) {
+func (s Payment) CreatePayment(context.Context, int64, int64, string, string, gateway.AddressSnapshot) (int64, error) {
 	return s.ID, s.Err
 }
 

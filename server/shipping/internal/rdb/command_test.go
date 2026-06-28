@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
@@ -31,17 +32,21 @@ func TestCreateShipmentForOrder(t *testing.T) {
 	r := NewShipmentCommand(pool)
 	seedShipments(t, pool)
 
-	t.Run("正常系 carrier/tracking 未指定の preparing 枠を作る", func(t *testing.T) {
-		got, err := r.CreateShipmentForOrder(t.Context(), 300)
+	dest := paymentevent.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
+	t.Run("正常系 carrier/tracking 未指定で宛先を持つ preparing 枠を作る", func(t *testing.T) {
+		got, err := r.CreateShipmentForOrder(t.Context(), 300, dest)
 		if err != nil {
 			t.Fatalf("CreateShipmentForOrder: %v", err)
 		}
 		if got.ID == 0 || got.OrderID != 300 || got.Status != "preparing" || got.Carrier != "" || got.TrackingNo != "" {
 			t.Fatalf("unexpected row: %+v", got)
 		}
+		if got.ShipRecipient != "山田太郎" || got.ShipCity != "渋谷区" || got.ShipLine1 != "神宮前1-2-3" {
+			t.Fatalf("destination not persisted: %+v", got)
+		}
 	})
 	t.Run("準正常系 同一 order の再手配は ErrConflict (冪等)", func(t *testing.T) {
-		if _, err := r.CreateShipmentForOrder(t.Context(), 300); !errors.Is(err, dberr.ErrConflict) {
+		if _, err := r.CreateShipmentForOrder(t.Context(), 300, dest); !errors.Is(err, dberr.ErrConflict) {
 			t.Fatalf("err = %v, want ErrConflict", err)
 		}
 	})

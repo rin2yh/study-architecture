@@ -105,7 +105,7 @@ func TestPaymentClientCreatePayment(t *testing.T) {
 				t.Fatalf("NewPaymentClient: %v", err)
 			}
 
-			id, err := c.CreatePayment(t.Context(), 7, 2500, "card", "idem-key")
+			id, err := c.CreatePayment(t.Context(), 7, 2500, "card", "idem-key", gateway.AddressSnapshot{Recipient: "山田太郎"})
 			if tt.wantErr {
 				if !errors.Is(err, gateway.ErrUpstream) {
 					t.Fatalf("err = %v, want ErrUpstream", err)

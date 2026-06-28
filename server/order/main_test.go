@@ -11,6 +11,7 @@ func TestStart(t *testing.T) {
 		// gateway は base URL の形式のみ検証するため到達不能 URL でよい。
 		t.Setenv("DATABASE_URL", "postgres://u:p@127.0.0.1:1/db?sslmode=disable")
 		t.Setenv("PRODUCT_API_URL", "http://127.0.0.1:1")
+		t.Setenv("MEMBER_API_URL", "http://127.0.0.1:1")
 		t.Setenv("PAYMENT_API_URL", "http://127.0.0.1:1")
 		t.Setenv("INVENTORY_API_URL", "http://127.0.0.1:1")
 		ctx, cancel := context.WithCancel(context.Background())

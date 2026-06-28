@@ -23,6 +23,9 @@ type CheckoutRequest struct {
 	Items         []CheckoutItem `binding:"required,min=1,dive" json:"items"`
 	MemberId      int64          `binding:"required,gt=0" json:"memberId"`
 	PaymentMethod string         `binding:"required" json:"paymentMethod"`
+
+	// ShippingAddressId 配送先に選ぶ住所帳 (member) の住所 id。注文時点の住所を order/shipment へスナップショットする (ADR-[[202606261704]])。
+	ShippingAddressId int64 `binding:"required,gt=0" json:"shippingAddressId"`
 }
 
 // CreateOrderRequest defines model for CreateOrderRequest.
@@ -48,12 +51,15 @@ type Health struct {
 
 // Order defines model for Order.
 type Order struct {
-	CreatedAt  time.Time    `json:"createdAt"`
-	Id         int64        `json:"id"`
-	Items      *[]OrderItem `json:"items,omitempty"`
-	MemberId   int64        `json:"memberId"`
-	Status     string       `json:"status"`
-	TotalCents int64        `json:"totalCents"`
+	CreatedAt time.Time    `json:"createdAt"`
+	Id        int64        `json:"id"`
+	Items     *[]OrderItem `json:"items,omitempty"`
+	MemberId  int64        `json:"memberId"`
+
+	// ShippingAddress 注文時点の配送先スナップショット (ADR-[[202606261704]])。
+	ShippingAddress *ShippingAddress `json:"shippingAddress,omitempty"`
+	Status          string           `json:"status"`
+	TotalCents      int64            `json:"totalCents"`
 }
 
 // OrderItem defines model for OrderItem.
@@ -62,6 +68,15 @@ type OrderItem struct {
 	ProductName    string `json:"productName"`
 	Quantity       int    `json:"quantity"`
 	UnitPriceCents int64  `json:"unitPriceCents"`
+}
+
+// ShippingAddress 注文時点の配送先スナップショット (ADR-[[202606261704]])。
+type ShippingAddress struct {
+	City       string `json:"city"`
+	Line1      string `json:"line1"`
+	PostalCode string `json:"postalCode"`
+	Prefecture string `json:"prefecture"`
+	Recipient  string `json:"recipient"`
 }
 
 // UpdateOrderRequest defines model for UpdateOrderRequest.

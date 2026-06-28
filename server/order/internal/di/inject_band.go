@@ -18,25 +18,31 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 		return zero, err
 	}
 	var err0 error
-	paymentClient, err0 := kessoku.Bind[gateway.PaymentPort](kessoku.Provide(gateway.NewPaymentClient)).Fn()()
+	memberClient, err0 := kessoku.Bind[gateway.MemberPort](kessoku.Provide(gateway.NewMemberClient)).Fn()()
 	if err0 != nil {
 		var zero *handler.Handler
 		return zero, err0
 	}
 	var err1 error
-	inventoryClient, err1 := kessoku.Bind[gateway.InventoryPort](kessoku.Provide(gateway.NewInventoryClient)).Fn()()
+	paymentClient, err1 := kessoku.Bind[gateway.PaymentPort](kessoku.Provide(gateway.NewPaymentClient)).Fn()()
 	if err1 != nil {
 		var zero *handler.Handler
 		return zero, err1
 	}
 	var err2 error
-	pool, err2 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	inventoryClient, err2 := kessoku.Bind[gateway.InventoryPort](kessoku.Provide(gateway.NewInventoryClient)).Fn()()
 	if err2 != nil {
 		var zero *handler.Handler
 		return zero, err2
 	}
+	var err3 error
+	pool, err3 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	if err3 != nil {
+		var zero *handler.Handler
+		return zero, err3
+	}
 	orderQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewOrderQuery)).Fn()(pool)
 	orderCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewOrderCommand)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, paymentClient, inventoryClient)
+	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, memberClient, paymentClient, inventoryClient)
 	return handler0, nil
 }

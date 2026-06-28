@@ -25,11 +25,16 @@ func (h *writeHandler) CreatePayment(c *gin.Context) {
 		return
 	}
 	row, err := h.command.CreatePayment(c.Request.Context(), db.CreatePaymentParams{
-		OrderID:        req.OrderId,
-		AmountCents:    req.AmountCents,
-		Method:         req.Method,
-		Status:         req.Status,
-		IdempotencyKey: req.IdempotencyKey,
+		OrderID:                    req.OrderId,
+		AmountCents:                req.AmountCents,
+		Method:                     req.Method,
+		Status:                     req.Status,
+		IdempotencyKey:             req.IdempotencyKey,
+		SettledEventShipRecipient:  req.ShippingAddress.Recipient,
+		SettledEventShipPostalCode: req.ShippingAddress.PostalCode,
+		SettledEventShipPrefecture: req.ShippingAddress.Prefecture,
+		SettledEventShipCity:       req.ShippingAddress.City,
+		SettledEventShipLine1:      req.ShippingAddress.Line1,
 	})
 	if err != nil {
 		_ = c.Error(err)

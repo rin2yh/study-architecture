@@ -30,7 +30,7 @@ const (
 var tracer = otel.Tracer("shipping-worker")
 
 type ShipmentCreator interface {
-	CreateShipmentForOrder(ctx context.Context, orderID int64) (db.ShippingShipment, error)
+	CreateShipmentForOrder(ctx context.Context, orderID int64, dest paymentevent.Destination) (db.ShippingShipment, error)
 }
 
 type Consumer struct {
@@ -139,7 +139,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "raw", raw, "error", err)
 		return nil
 	}
-	_, err = c.creator.CreateShipmentForOrder(ctx, orderID)
+	_, err = c.creator.CreateShipmentForOrder(ctx, orderID, paymentevent.DestinationFrom(values))
 	if errors.Is(err, dberr.ErrConflict) {
 		return nil
 	}

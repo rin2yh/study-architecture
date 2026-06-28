@@ -47,6 +47,39 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 	}
 }
 
+func TestDestinationRoundTrip(t *testing.T) {
+	type args struct {
+		values map[string]any
+	}
+	type want struct {
+		dest paymentevent.Destination
+	}
+	full := paymentevent.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			"正常系 Values で載せた宛先を DestinationFrom で復元する",
+			args{paymentevent.Settled{PaymentID: 1, OrderID: 2, AmountCents: 300, Destination: full}.Values()},
+			want{full},
+		},
+		{
+			"準正常系 宛先キーが無い古いイベントは空の宛先に倒す",
+			args{map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, paymentevent.FieldOrderID: "2"}},
+			want{paymentevent.Destination{}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := paymentevent.DestinationFrom(tt.args.values); got != tt.want.dest {
+				t.Fatalf("DestinationFrom = %#v, want %#v", got, tt.want.dest)
+			}
+		})
+	}
+}
+
 // 旧 producer や計装オフでは traceparent が載らないが、その場合も consumer は動き続ける。
 func TestLinkFromMissingTraceparent(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})

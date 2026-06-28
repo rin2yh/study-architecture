@@ -162,6 +162,7 @@ services:
       # (ADR 0008 / 0012)
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
+      MEMBER_API_URL: http://edge-proxy/member # ADR-[[202606261704]]
       INVENTORY_API_URL: http://edge-proxy/inventory # ADR-[[202606262000]]
     ports: ["8002:80"]
     depends_on:
