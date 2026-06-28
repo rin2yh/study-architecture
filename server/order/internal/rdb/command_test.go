@@ -48,6 +48,62 @@ func TestUpdateOrder(t *testing.T) {
 	})
 }
 
+func TestCancelOrder(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewOrderCommand(pool)
+
+	t.Run("正常系 未発送はキャンセルされ補償イベントが未送信になる", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 1980})
+		got, err := r.CancelOrder(t.Context(), 1, "tp-1")
+		if err != nil {
+			t.Fatalf("CancelOrder: %v", err)
+		}
+		if got.Status != "cancelled" {
+			t.Fatalf("status = %q, want cancelled", got.Status)
+		}
+		pending := NewOutboxStore(pool)
+		msgs, err := pending.FetchUnpublished(t.Context(), 10)
+		if err != nil {
+			t.Fatalf("FetchUnpublished: %v", err)
+		}
+		if len(msgs) != 1 || msgs[0].ID != 1 {
+			t.Fatalf("unpublished = %+v, want 1 event for order 1", msgs)
+		}
+	})
+
+	t.Run("正常系 既にキャンセル済みは冪等 (再送出を増やさない)", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 1980})
+		if _, err := r.CancelOrder(t.Context(), 1, "tp-1"); err != nil {
+			t.Fatalf("CancelOrder 1st: %v", err)
+		}
+		if _, err := r.CancelOrder(t.Context(), 1, "tp-2"); err != nil {
+			t.Fatalf("CancelOrder 2nd: %v", err)
+		}
+		msgs, err := NewOutboxStore(pool).FetchUnpublished(t.Context(), 10)
+		if err != nil {
+			t.Fatalf("FetchUnpublished: %v", err)
+		}
+		if len(msgs) != 1 {
+			t.Fatalf("unpublished = %d, want 1 (idempotent)", len(msgs))
+		}
+	})
+
+	t.Run("準正常系 発送済みは ErrNotCancellable", func(t *testing.T) {
+		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "shipped", TotalCents: 1980})
+		if _, err := r.CancelOrder(t.Context(), 1, "tp"); !errors.Is(err, ErrNotCancellable) {
+			t.Fatalf("err = %v, want ErrNotCancellable", err)
+		}
+	})
+
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
+		seedOrders(t, pool)
+		if _, err := r.CancelOrder(t.Context(), 9999, "tp"); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}
+
 func TestCheckout(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)

@@ -1,7 +1,7 @@
 -- name: StockIn :one
 INSERT INTO inventory.stock_ins (product_id, quantity)
 VALUES ($1, $2)
-RETURNING id, product_id, quantity, created_at;
+RETURNING *;
 
 -- name: LockProduct :exec
 -- 同一商品の同時予約を直列化する。tx 終了まで保持され売り越しを DB で防ぐ (ADR-[[202606262000]])。
@@ -49,3 +49,11 @@ UPDATE inventory.reservations
 SET expired_at = now()
 WHERE confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
   AND created_at + inventory.reservation_ttl() <= now();
+
+-- (ADR-[[202606281000]])
+-- name: RestockConfirmedReservationsByOrder :exec
+INSERT INTO inventory.stock_ins (product_id, quantity, reservation_id)
+SELECT r.product_id, r.quantity, r.id
+FROM inventory.reservations r
+WHERE r.order_id = $1 AND r.confirmed_at IS NOT NULL
+ON CONFLICT (reservation_id) WHERE reservation_id IS NOT NULL DO NOTHING;

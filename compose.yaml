@@ -163,9 +163,12 @@ services:
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
       INVENTORY_API_URL: http://edge-proxy/inventory # ADR-[[202606262000]]
+      REDIS_URL: redis://broker:6379 # ADR-[[202606261702]]
     ports: ["8002:80"]
     depends_on:
       db-order:
+        condition: service_healthy
+      broker:
         condition: service_healthy
     networks: [external-private]
 

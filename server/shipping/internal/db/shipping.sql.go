@@ -9,6 +9,18 @@ import (
 	"context"
 )
 
+const cancelShipmentForOrder = `-- name: CancelShipmentForOrder :exec
+UPDATE shipping.shipments
+SET status = 'cancelled'
+WHERE order_id = $1 AND status = 'preparing'
+`
+
+// (ADR-[[202606261702]] / ADR-[[202606261214]])
+func (q *Queries) CancelShipmentForOrder(ctx context.Context, orderID int64) error {
+	_, err := q.db.Exec(ctx, cancelShipmentForOrder, orderID)
+	return err
+}
+
 const createShipment = `-- name: CreateShipment :one
 INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status)
 VALUES ($1, $2, $3, $4)

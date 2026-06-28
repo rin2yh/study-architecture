@@ -47,6 +47,55 @@ func TestCreateShipmentForOrder(t *testing.T) {
 	})
 }
 
+func TestCancelShipmentForOrder(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewShipmentCommand(pool)
+	seedShipments(t, pool,
+		db.ShippingShipment{OrderID: 200, Status: "preparing"},
+		db.ShippingShipment{OrderID: 300, Carrier: "佐川急便", TrackingNo: "TRK-10", Status: "shipped"},
+	)
+
+	statusOf := func(t *testing.T, id int64) string {
+		t.Helper()
+		s, err := r.q.GetShipment(t.Context(), id)
+		if err != nil {
+			t.Fatalf("GetShipment: %v", err)
+		}
+		return s.Status
+	}
+
+	t.Run("正常系 未発送は中止され再実行でも 1 回に収束", func(t *testing.T) {
+		if err := r.CancelShipmentForOrder(t.Context(), 200); err != nil {
+			t.Fatalf("CancelShipmentForOrder: %v", err)
+		}
+		if got := statusOf(t, 1); got != "cancelled" {
+			t.Fatalf("status = %q, want cancelled", got)
+		}
+		if err := r.CancelShipmentForOrder(t.Context(), 200); err != nil {
+			t.Fatalf("CancelShipmentForOrder again: %v", err)
+		}
+		if got := statusOf(t, 1); got != "cancelled" {
+			t.Fatalf("status after re-run = %q, want cancelled (idempotent)", got)
+		}
+	})
+
+	t.Run("準正常系 発送済みは中止しない", func(t *testing.T) {
+		if err := r.CancelShipmentForOrder(t.Context(), 300); err != nil {
+			t.Fatalf("CancelShipmentForOrder: %v", err)
+		}
+		if got := statusOf(t, 2); got != "shipped" {
+			t.Fatalf("status = %q, want shipped (unchanged)", got)
+		}
+	})
+
+	t.Run("準正常系 未作成は no-op", func(t *testing.T) {
+		if err := r.CancelShipmentForOrder(t.Context(), 999); err != nil {
+			t.Fatalf("CancelShipmentForOrder missing: %v", err)
+		}
+	})
+}
+
 func TestUpdateShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)

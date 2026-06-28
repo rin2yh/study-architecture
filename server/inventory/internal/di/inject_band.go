@@ -42,11 +42,15 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 	reservationConfirmer := kessoku.Provide(func(c *rdb.InventoryCommand) consumer.ReservationConfirmer {
 		return c
 	}).Fn()(inventoryCommand0)
+	reservationCompensator := kessoku.Provide(func(c *rdb.InventoryCommand) consumer.ReservationCompensator {
+		return c
+	}).Fn()(inventoryCommand0)
 	reservationExpirer := kessoku.Provide(func(c *rdb.InventoryCommand) reaper.ReservationExpirer {
 		return c
 	}).Fn()(inventoryCommand0)
 	consumer0 := kessoku.Provide(consumer.New).Fn()(client, reservationConfirmer)
+	cancelConsumer := kessoku.Provide(consumer.NewCancel).Fn()(client, reservationCompensator)
 	reaper0 := kessoku.Provide(reaper.New).Fn()(reservationExpirer)
-	worker0 := kessoku.Provide(worker.New).Fn()(consumer0, reaper0)
+	worker0 := kessoku.Provide(worker.New).Fn()(consumer0, cancelConsumer, reaper0)
 	return worker0, nil
 }

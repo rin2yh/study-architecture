@@ -75,6 +75,22 @@ paths:
                 $ref: "#/components/schemas/Order"
         default:
           $ref: "#/components/responses/Error"
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      summary: 注文をキャンセルする (未発送=可・発送済み=409。補償は order.cancelled で各サービスが実施)
+      tags: [order]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: キャンセルされた注文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        default:
+          $ref: "#/components/responses/Error"
   /orders/{id}:
     get:
       operationId: getOrder

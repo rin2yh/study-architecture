@@ -129,6 +129,67 @@ func TestReserveConfirmRelease(t *testing.T) {
 	})
 }
 
+func TestCompensateByOrder(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	cmd := NewInventoryCommand(pool)
+	q := NewInventoryQuery(pool)
+	ctx := t.Context()
+
+	if _, err := cmd.StockIn(ctx, 100, 10); err != nil {
+		t.Fatalf("StockIn 100: %v", err)
+	}
+	if _, err := cmd.StockIn(ctx, 200, 10); err != nil {
+		t.Fatalf("StockIn 200: %v", err)
+	}
+
+	t.Run("正常系 未確定予約は解放で在庫が戻り再実行でも収束", func(t *testing.T) {
+		if err := cmd.Reserve(ctx, 1, []ReserveLine{{ProductID: 200, Quantity: 4}}); err != nil {
+			t.Fatalf("Reserve: %v", err)
+		}
+		if got := mustAvail(t, q, ctx, 200); got != 6 {
+			t.Fatalf("available after reserve = %d, want 6", got)
+		}
+		if err := cmd.CompensateByOrder(ctx, 1); err != nil {
+			t.Fatalf("CompensateByOrder: %v", err)
+		}
+		if got := mustAvail(t, q, ctx, 200); got != 10 {
+			t.Fatalf("available after compensate = %d, want 10", got)
+		}
+		if err := cmd.CompensateByOrder(ctx, 1); err != nil {
+			t.Fatalf("CompensateByOrder again: %v", err)
+		}
+		if got := mustAvail(t, q, ctx, 200); got != 10 {
+			t.Fatalf("available after re-run = %d, want 10 (idempotent)", got)
+		}
+	})
+
+	t.Run("正常系 確定済み予約は補償 stock_in で戻り再実行でも 1 回に収束", func(t *testing.T) {
+		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
+			t.Fatalf("Reserve: %v", err)
+		}
+		if err := cmd.ConfirmReservationsByOrder(ctx, 2); err != nil {
+			t.Fatalf("Confirm: %v", err)
+		}
+		if got := mustAvail(t, q, ctx, 100); got != 6 {
+			t.Fatalf("available after confirm = %d, want 6", got)
+		}
+		if err := cmd.CompensateByOrder(ctx, 2); err != nil {
+			t.Fatalf("CompensateByOrder: %v", err)
+		}
+		if got := mustAvail(t, q, ctx, 100); got != 10 {
+			t.Fatalf("available after restock = %d, want 10", got)
+		}
+		// 再配信での二重戻しは reservation_id ユニークで弾く。
+		if err := cmd.CompensateByOrder(ctx, 2); err != nil {
+			t.Fatalf("CompensateByOrder again: %v", err)
+		}
+		if got := mustAvail(t, q, ctx, 100); got != 10 {
+			t.Fatalf("available after re-run = %d, want 10 (no double restock)", got)
+		}
+	})
+}
+
 func TestExpireReservations(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)

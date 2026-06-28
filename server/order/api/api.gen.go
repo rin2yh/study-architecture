@@ -110,6 +110,9 @@ type ServerInterface interface {
 	// 注文を更新
 	// (PUT /orders/{id})
 	UpdateOrder(c *gin.Context, id IdPath)
+	// 注文をキャンセルする (未発送=可・発送済み=409。補償は order.cancelled で各サービスが実施)
+	// (POST /orders/{id}/cancel)
+	CancelOrder(c *gin.Context, id IdPath)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -250,6 +253,31 @@ func (siw *ServerInterfaceWrapper) UpdateOrder(c *gin.Context) {
 	siw.Handler.UpdateOrder(c, id)
 }
 
+// CancelOrder operation middleware
+func (siw *ServerInterfaceWrapper) CancelOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CancelOrder(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -283,4 +311,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/orders", wrapper.CreateOrder)
 	router.GET(options.BaseURL+"/orders/:id", wrapper.GetOrder)
 	router.PUT(options.BaseURL+"/orders/:id", wrapper.UpdateOrder)
+	router.POST(options.BaseURL+"/orders/:id/cancel", wrapper.CancelOrder)
 }
