@@ -1,5 +1,7 @@
 export * from "./gen/member/member/member";
 export * from "./gen/member/member/member.zod";
+export * from "./gen/member/address/address";
+export * from "./gen/member/address/address.zod";
 export * from "./gen/member/session/session";
 export * from "./gen/member/session/session.zod";
 export * from "./gen/member/system/system";

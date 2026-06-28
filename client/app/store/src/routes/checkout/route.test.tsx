@@ -21,6 +21,19 @@ const order = {
 
 const seed: CartItem[] = [{ productId: 1, name: "りんご", priceCents: 12300, quantity: 2 }];
 
+const addresses = [
+  {
+    id: 5,
+    memberId: 1,
+    recipient: "山田太郎",
+    postalCode: "1500001",
+    prefecture: "東京都",
+    city: "渋谷区",
+    line1: "神宮前1-2-3",
+    createdAt: "2026-01-01T00:00:00Z",
+  },
+];
+
 function postRequest(fields: Record<string, string>) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) fd.set(k, v);
@@ -38,9 +51,14 @@ function callAction(fields: Record<string, string>) {
   });
 }
 
-function renderCheckout(actionResult?: unknown) {
+function renderCheckout(actionResult?: unknown, loaderAddresses = addresses) {
   const Stub = createRoutesStub([
-    { path: "/checkout", Component: Checkout, action: () => actionResult ?? null },
+    {
+      path: "/checkout",
+      Component: Checkout,
+      loader: () => ({ addresses: loaderAddresses }),
+      action: () => actionResult ?? null,
+    },
   ]);
   render(<Stub initialEntries={["/checkout"]} />);
 }
@@ -52,17 +70,19 @@ afterEach(() => {
 
 describe("action", () => {
   describe("正常系", () => {
-    it("カートと支払い方法を渡すと checkout を呼び注文を返す", async () => {
+    it("カート・配送先・支払い方法を渡すと checkout を呼び注文を返す", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(1);
       vi.mocked(checkout).mockResolvedValue({ data: order, status: 201, headers: new Headers() });
 
       const result = await callAction({
         items: JSON.stringify([{ productId: 1, quantity: 2 }]),
+        shippingAddressId: "5",
         paymentMethod: "card",
       });
 
       expect(checkout).toHaveBeenCalledWith({
         memberId: 1,
+        shippingAddressId: 5,
         paymentMethod: "card",
         items: [{ productId: 1, quantity: 2 }],
       });
@@ -73,9 +93,22 @@ describe("action", () => {
   describe("準正常系", () => {
     const oneItem = JSON.stringify([{ productId: 1, quantity: 1 }]);
     it.each([
-      ["カートが空", { items: "[]", paymentMethod: "card" }, "カートが空です。"],
-      ["支払い方法が未指定", { items: oneItem }, "支払い方法を選択してください。"],
-      ["未ログイン", { items: oneItem, paymentMethod: "card" }, "ログインが必要です。"],
+      [
+        "カートが空",
+        { items: "[]", paymentMethod: "card", shippingAddressId: "5" },
+        "カートが空です。",
+      ],
+      [
+        "支払い方法が未指定",
+        { items: oneItem, shippingAddressId: "5" },
+        "支払い方法を選択してください。",
+      ],
+      ["配送先が未選択", { items: oneItem, paymentMethod: "card" }, "配送先を選択してください。"],
+      [
+        "未ログイン",
+        { items: oneItem, paymentMethod: "card", shippingAddressId: "5" },
+        "ログインが必要です。",
+      ],
     ])("%s なら checkout を呼ばずエラーを返す", async (_name, fields, error) => {
       vi.mocked(currentMemberId).mockResolvedValue(null);
       const result = await callAction(fields);
@@ -90,6 +123,7 @@ describe("action", () => {
       vi.mocked(checkout).mockRejectedValue(new Error("boom"));
       const result = await callAction({
         items: JSON.stringify([{ productId: 1, quantity: 1 }]),
+        shippingAddressId: "5",
         paymentMethod: "card",
       });
       expect(result).toEqual({ ok: false, error: "boom" });
@@ -99,10 +133,11 @@ describe("action", () => {
 
 describe("Checkout 画面", () => {
   describe("正常系", () => {
-    it("カート明細と支払い方法フォームを描画する", async () => {
+    it("カート明細と配送先・支払い方法フォームを描画する", async () => {
       writeCart(seed);
       renderCheckout();
       expect(await screen.findByText("チェックアウト")).toBeDefined();
+      expect(screen.getByText("配送先")).toBeDefined();
       expect(screen.getByRole("button", { name: "注文を確定する" })).toBeDefined();
     });
 
@@ -121,6 +156,15 @@ describe("Checkout 画面", () => {
     it("カートが空なら空メッセージを描画する", async () => {
       renderCheckout();
       expect(await screen.findByText("カートが空です。")).toBeDefined();
+    });
+
+    it("配送先が未登録なら登録を促し確定ボタンを出さない", async () => {
+      writeCart(seed);
+      renderCheckout(undefined, []);
+      expect(
+        await screen.findByText("配送先が登録されていません。住所を登録してから注文してください。"),
+      ).toBeDefined();
+      expect(screen.queryByRole("button", { name: "注文を確定する" })).toBeNull();
     });
   });
 

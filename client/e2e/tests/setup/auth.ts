@@ -14,10 +14,26 @@ async function login(): Promise<Response> {
   });
 }
 
+export const MEMBER_ADDRESS = {
+  recipient: "E2E 太郎",
+  postalCode: "1500001",
+  prefecture: "東京都",
+  city: "渋谷区",
+  line1: "神宮前1-2-3",
+} as const;
+
+async function memberIdOf(loginRes: Response): Promise<number> {
+  const { memberId }: { memberId: number } = await loginRes.json();
+  return memberId;
+}
+
 export async function ensureMember(): Promise<void> {
   // 複数回実行でも冪等にするため。
   const existing = await login();
-  if (existing.ok) return;
+  if (existing.ok) {
+    await ensureAddress(await memberIdOf(existing));
+    return;
+  }
 
   const created = await fetch(`${MEMBER_API_URL}/members`, {
     method: "POST",
@@ -25,4 +41,22 @@ export async function ensureMember(): Promise<void> {
     body: JSON.stringify(MEMBER),
   });
   if (created.status !== 201) throw new Error(`seed member failed: ${created.status}`);
+  const { id }: { id: number } = await created.json();
+  await ensureAddress(id);
+}
+
+// checkout は配送先 (住所帳の1件) を要求する (ADR-[[202606261704]])。住所が無いと確定できないため
+// 会員に最低1件用意する。再実行で重複しないよう既存があればスキップする。
+async function ensureAddress(memberId: number): Promise<void> {
+  const list = await fetch(`${MEMBER_API_URL}/members/${memberId}/addresses`);
+  if (!list.ok) throw new Error(`list addresses failed: ${list.status}`);
+  const existing: unknown[] = await list.json();
+  if (existing.length > 0) return;
+
+  const created = await fetch(`${MEMBER_API_URL}/members/${memberId}/addresses`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(MEMBER_ADDRESS),
+  });
+  if (created.status !== 201) throw new Error(`seed address failed: ${created.status}`);
 }

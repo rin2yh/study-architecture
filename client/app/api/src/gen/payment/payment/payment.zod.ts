@@ -28,7 +28,15 @@ export const CreatePaymentBody = zod.object({
   "orderId": zod.number(),
   "amountCents": zod.number(),
   "method": zod.string(),
-  "status": zod.string()
+  "status": zod.string(),
+  "idempotencyKey": zod.string().describe('ADR-[[202606261214]]'),
+  "shippingAddress": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).describe('payment は解釈せず settled イベントへ中継する (ADR-[[202606261704]])。')
 })
 
 export const CreatePaymentResponse = zod.object({

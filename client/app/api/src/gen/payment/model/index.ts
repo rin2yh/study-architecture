@@ -11,4 +11,5 @@ export * from './error.ts';
 export * from './errorResponse.ts';
 export * from './health.ts';
 export * from './payment.ts';
+export * from './shippingAddress.ts';
 export * from './updatePaymentRequest.ts';
