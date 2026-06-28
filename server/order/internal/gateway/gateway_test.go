@@ -146,7 +146,7 @@ func TestMemberClientFetchAddressTransportError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewMemberClient: %v", err)
 	}
-	srv.Close() // 接続不能にしてから呼ぶ
+	srv.Close()
 
 	if _, err := c.FetchAddress(t.Context(), 20, 5); !errors.Is(err, gateway.ErrUpstream) {
 		t.Fatalf("err = %v, want ErrUpstream", err)
