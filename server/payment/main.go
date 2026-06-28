@@ -47,6 +47,14 @@ func run(ctx context.Context, addr string) error {
 		}
 	}()
 
+	// 返金は逆流イベント (order.cancelled) 受信なので発行リレーと同じくプロセス内に同居させる
+	// (ADR-[[202606261702]])。
+	go func() {
+		if err := app.Consumer.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			slog.Error("payment consumer terminated", "error", err)
+		}
+	}()
+
 	engine := httpx.NewEngine()
 	api.RegisterHandlers(engine, app.Handler)
 

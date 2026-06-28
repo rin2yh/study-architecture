@@ -49,6 +49,53 @@ func TestCreatePayment(t *testing.T) {
 	})
 }
 
+func TestRefundByOrder(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewPaymentCommand(pool)
+
+	statusOf := func(t *testing.T, orderID int64) string {
+		t.Helper()
+		rows, err := r.q.ListPayments(t.Context())
+		if err != nil {
+			t.Fatalf("ListPayments: %v", err)
+		}
+		for _, p := range rows {
+			if p.OrderID == orderID {
+				return p.Status
+			}
+		}
+		t.Fatalf("no payment for order %d", orderID)
+		return ""
+	}
+
+	t.Run("正常系 確定済みは返金され再実行でも 1 回に収束", func(t *testing.T) {
+		seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "settled"})
+		if err := r.RefundByOrder(t.Context(), 20); err != nil {
+			t.Fatalf("RefundByOrder: %v", err)
+		}
+		if got := statusOf(t, 20); got != "refunded" {
+			t.Fatalf("status = %q, want refunded", got)
+		}
+		if err := r.RefundByOrder(t.Context(), 20); err != nil {
+			t.Fatalf("RefundByOrder again: %v", err)
+		}
+		if got := statusOf(t, 20); got != "refunded" {
+			t.Fatalf("status after re-run = %q, want refunded (idempotent)", got)
+		}
+	})
+
+	t.Run("正常系 未確定 (入金前) はキャンセルへ倒す", func(t *testing.T) {
+		seedPayments(t, pool, db.PaymentPayment{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending"})
+		if err := r.RefundByOrder(t.Context(), 30); err != nil {
+			t.Fatalf("RefundByOrder: %v", err)
+		}
+		if got := statusOf(t, 30); got != "cancelled" {
+			t.Fatalf("status = %q, want cancelled", got)
+		}
+	})
+}
+
 func TestUpdatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)

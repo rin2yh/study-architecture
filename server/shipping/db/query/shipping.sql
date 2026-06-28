@@ -25,3 +25,9 @@ UPDATE shipping.shipments
 SET status = $2
 WHERE id = $1
 RETURNING id, order_id, carrier, tracking_no, status, created_at;
+
+-- (ADR-[[202606261702]] / ADR-[[202606261214]])
+-- name: CancelShipmentForOrder :exec
+UPDATE shipping.shipments
+SET status = 'cancelled'
+WHERE order_id = $1 AND status = 'preparing';
