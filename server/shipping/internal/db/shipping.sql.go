@@ -12,7 +12,7 @@ import (
 const createShipment = `-- name: CreateShipment :one
 INSERT INTO shipping.shipments (order_id, carrier, tracking_no, status)
 VALUES ($1, $2, $3, $4)
-RETURNING id, order_id, carrier, tracking_no, status, created_at
+RETURNING id, order_id, carrier, tracking_no, status, created_at, ship_recipient, ship_postal_code, ship_prefecture, ship_city, ship_line1
 `
 
 type CreateShipmentParams struct {
@@ -37,20 +37,41 @@ func (q *Queries) CreateShipment(ctx context.Context, arg CreateShipmentParams) 
 		&i.TrackingNo,
 		&i.Status,
 		&i.CreatedAt,
+		&i.ShipRecipient,
+		&i.ShipPostalCode,
+		&i.ShipPrefecture,
+		&i.ShipCity,
+		&i.ShipLine1,
 	)
 	return i, err
 }
 
 const createShipmentForOrder = `-- name: CreateShipmentForOrder :one
-INSERT INTO shipping.shipments (order_id)
-VALUES ($1)
+INSERT INTO shipping.shipments (order_id, ship_recipient, ship_postal_code, ship_prefecture, ship_city, ship_line1)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (order_id) DO NOTHING
-RETURNING id, order_id, carrier, tracking_no, status, created_at
+RETURNING id, order_id, carrier, tracking_no, status, created_at, ship_recipient, ship_postal_code, ship_prefecture, ship_city, ship_line1
 `
 
-// ADR-[[202606211200]]
-func (q *Queries) CreateShipmentForOrder(ctx context.Context, orderID int64) (ShippingShipment, error) {
-	row := q.db.QueryRow(ctx, createShipmentForOrder, orderID)
+type CreateShipmentForOrderParams struct {
+	OrderID        int64  `json:"orderId"`
+	ShipRecipient  string `json:"shipRecipient"`
+	ShipPostalCode string `json:"shipPostalCode"`
+	ShipPrefecture string `json:"shipPrefecture"`
+	ShipCity       string `json:"shipCity"`
+	ShipLine1      string `json:"shipLine1"`
+}
+
+// ADR-[[202606211200]] / ADR-[[202606261704]]
+func (q *Queries) CreateShipmentForOrder(ctx context.Context, arg CreateShipmentForOrderParams) (ShippingShipment, error) {
+	row := q.db.QueryRow(ctx, createShipmentForOrder,
+		arg.OrderID,
+		arg.ShipRecipient,
+		arg.ShipPostalCode,
+		arg.ShipPrefecture,
+		arg.ShipCity,
+		arg.ShipLine1,
+	)
 	var i ShippingShipment
 	err := row.Scan(
 		&i.ID,
@@ -59,12 +80,17 @@ func (q *Queries) CreateShipmentForOrder(ctx context.Context, orderID int64) (Sh
 		&i.TrackingNo,
 		&i.Status,
 		&i.CreatedAt,
+		&i.ShipRecipient,
+		&i.ShipPostalCode,
+		&i.ShipPrefecture,
+		&i.ShipCity,
+		&i.ShipLine1,
 	)
 	return i, err
 }
 
 const getShipment = `-- name: GetShipment :one
-SELECT id, order_id, carrier, tracking_no, status, created_at
+SELECT id, order_id, carrier, tracking_no, status, created_at, ship_recipient, ship_postal_code, ship_prefecture, ship_city, ship_line1
 FROM shipping.shipments
 WHERE id = $1
 `
@@ -79,12 +105,17 @@ func (q *Queries) GetShipment(ctx context.Context, id int64) (ShippingShipment, 
 		&i.TrackingNo,
 		&i.Status,
 		&i.CreatedAt,
+		&i.ShipRecipient,
+		&i.ShipPostalCode,
+		&i.ShipPrefecture,
+		&i.ShipCity,
+		&i.ShipLine1,
 	)
 	return i, err
 }
 
 const listShipments = `-- name: ListShipments :many
-SELECT id, order_id, carrier, tracking_no, status, created_at
+SELECT id, order_id, carrier, tracking_no, status, created_at, ship_recipient, ship_postal_code, ship_prefecture, ship_city, ship_line1
 FROM shipping.shipments
 ORDER BY id
 `
@@ -105,6 +136,11 @@ func (q *Queries) ListShipments(ctx context.Context) ([]ShippingShipment, error)
 			&i.TrackingNo,
 			&i.Status,
 			&i.CreatedAt,
+			&i.ShipRecipient,
+			&i.ShipPostalCode,
+			&i.ShipPrefecture,
+			&i.ShipCity,
+			&i.ShipLine1,
 		); err != nil {
 			return nil, err
 		}
@@ -120,7 +156,7 @@ const updateShipment = `-- name: UpdateShipment :one
 UPDATE shipping.shipments
 SET status = $2
 WHERE id = $1
-RETURNING id, order_id, carrier, tracking_no, status, created_at
+RETURNING id, order_id, carrier, tracking_no, status, created_at, ship_recipient, ship_postal_code, ship_prefecture, ship_city, ship_line1
 `
 
 type UpdateShipmentParams struct {
@@ -138,6 +174,11 @@ func (q *Queries) UpdateShipment(ctx context.Context, arg UpdateShipmentParams) 
 		&i.TrackingNo,
 		&i.Status,
 		&i.CreatedAt,
+		&i.ShipRecipient,
+		&i.ShipPostalCode,
+		&i.ShipPrefecture,
+		&i.ShipCity,
+		&i.ShipLine1,
 	)
 	return i, err
 }

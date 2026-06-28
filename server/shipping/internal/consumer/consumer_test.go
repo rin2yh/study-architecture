@@ -15,12 +15,14 @@ import (
 )
 
 type creatorStub struct {
-	got []int64
-	err error
+	got     []int64
+	gotDest []paymentevent.Destination
+	err     error
 }
 
-func (s *creatorStub) CreateShipmentForOrder(_ context.Context, orderID int64) (db.ShippingShipment, error) {
+func (s *creatorStub) CreateShipmentForOrder(_ context.Context, orderID int64, dest paymentevent.Destination) (db.ShippingShipment, error) {
 	s.got = append(s.got, orderID)
+	s.gotDest = append(s.gotDest, dest)
 	return db.ShippingShipment{OrderID: orderID}, s.err
 }
 
@@ -54,6 +56,7 @@ func TestReadAndProcess(t *testing.T) {
 	}
 	type want struct {
 		gotOrderIDs []int64
+		gotDest     paymentevent.Destination
 		pending     int64
 	}
 	tests := []struct {
@@ -62,29 +65,29 @@ func TestReadAndProcess(t *testing.T) {
 		want want
 	}{
 		{
-			"正常系 payment.settled で手配し ack する",
-			args{map[string]any{"event": "payment.settled", "orderId": "20"}, nil},
-			want{[]int64{20}, 0},
+			"正常系 payment.settled で宛先ごと手配し ack する",
+			args{map[string]any{"event": "payment.settled", "orderId": "20", "shipRecipient": "山田太郎", "shipPostalCode": "1500001", "shipPrefecture": "東京都", "shipCity": "渋谷区", "shipLine1": "神宮前1-2-3"}, nil},
+			want{[]int64{20}, paymentevent.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}, 0},
 		},
 		{
 			"準正常系 既に手配済み (ErrConflict) でも冪等に ack する",
 			args{map[string]any{"event": "payment.settled", "orderId": "20"}, dberr.ErrConflict},
-			want{[]int64{20}, 0},
+			want{[]int64{20}, paymentevent.Destination{}, 0},
 		},
 		{
 			"準正常系 関心外イベントは手配せず ack する",
 			args{map[string]any{"event": "payment.refunded", "orderId": "20"}, nil},
-			want{nil, 0},
+			want{nil, paymentevent.Destination{}, 0},
 		},
 		{
 			"準正常系 不正な orderId は手配せず ack する",
 			args{map[string]any{"event": "payment.settled", "orderId": "abc"}, nil},
-			want{nil, 0},
+			want{nil, paymentevent.Destination{}, 0},
 		},
 		{
 			"異常系 手配が他のエラーなら ack せず pending に残す",
 			args{map[string]any{"event": "payment.settled", "orderId": "20"}, errors.New("db down")},
-			want{[]int64{20}, 1},
+			want{[]int64{20}, paymentevent.Destination{}, 1},
 		},
 	}
 	for _, tt := range tests {
@@ -110,6 +113,9 @@ func TestReadAndProcess(t *testing.T) {
 				if creator.got[i] != id {
 					t.Fatalf("creator called with %v, want %v", creator.got, tt.want.gotOrderIDs)
 				}
+			}
+			if len(creator.gotDest) > 0 && creator.gotDest[0] != tt.want.gotDest {
+				t.Fatalf("creator dest = %#v, want %#v", creator.gotDest[0], tt.want.gotDest)
 			}
 			p, err := rc.XPending(ctx, paymentevent.Stream, consumerGroup).Result()
 			if err != nil {

@@ -22,7 +22,7 @@ type Query interface {
 type Command interface {
 	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
 	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
-	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error)
+	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine, addr rdb.CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error)
 	DeleteOrder(ctx context.Context, id int64) error
 }
 
@@ -33,6 +33,7 @@ type readHandler struct {
 type writeHandler struct {
 	command   Command
 	product   gateway.ProductPort
+	member    gateway.MemberPort
 	payment   gateway.PaymentPort
 	inventory gateway.InventoryPort
 }
@@ -44,10 +45,10 @@ type Handler struct {
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(query Query, command Command, product gateway.ProductPort, payment gateway.PaymentPort, inventory gateway.InventoryPort) *Handler {
+func New(query Query, command Command, product gateway.ProductPort, member gateway.MemberPort, payment gateway.PaymentPort, inventory gateway.InventoryPort) *Handler {
 	return &Handler{
 		readHandler:  &readHandler{query: query},
-		writeHandler: &writeHandler{command: command, product: product, payment: payment, inventory: inventory},
+		writeHandler: &writeHandler{command: command, product: product, member: member, payment: payment, inventory: inventory},
 	}
 }
 
@@ -56,13 +57,24 @@ func (h *Handler) GetHealthz(c *gin.Context) {
 }
 
 func toAPIOrder(r db.OrderOrder) api.Order {
-	return api.Order{
+	o := api.Order{
 		Id:         r.ID,
 		MemberId:   r.MemberID,
 		Status:     r.Status,
 		TotalCents: r.TotalCents,
 		CreatedAt:  r.CreatedAt.Time,
 	}
+	// checkout 経由でない注文 (POST /orders) は宛先を持たないため省く。
+	if r.ShippingRecipient != "" {
+		o.ShippingAddress = &api.ShippingAddress{
+			Recipient:  r.ShippingRecipient,
+			PostalCode: r.ShippingPostalCode,
+			Prefecture: r.ShippingPrefecture,
+			City:       r.ShippingCity,
+			Line1:      r.ShippingLine1,
+		}
+	}
+	return o
 }
 
 func toAPIOrderWithItems(r db.OrderOrder, items []db.OrderOrderItem) api.Order {

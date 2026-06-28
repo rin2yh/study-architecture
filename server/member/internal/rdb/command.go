@@ -44,3 +44,23 @@ func (r *MemberCommand) CreateSession(ctx context.Context, arg db.CreateSessionP
 func (r *MemberCommand) DeleteSession(ctx context.Context, id string) error {
 	return r.q.DeleteSession(ctx, id)
 }
+
+func (r *MemberCommand) CreateAddress(ctx context.Context, arg db.CreateAddressParams) (db.MemberAddress, error) {
+	row, err := r.q.CreateAddress(ctx, arg)
+	if err != nil {
+		return db.MemberAddress{}, dberr.FromWrite(err)
+	}
+	return row, nil
+}
+
+func (r *MemberCommand) UpdateAddress(ctx context.Context, arg db.UpdateAddressParams) (db.MemberAddress, error) {
+	row, err := r.q.UpdateAddress(ctx, arg)
+	if err != nil {
+		return db.MemberAddress{}, dberr.FromUpdate(err)
+	}
+	return row, nil
+}
+
+func (r *MemberCommand) DeleteAddress(ctx context.Context, arg db.DeleteAddressParams) error {
+	return r.q.DeleteAddress(ctx, arg)
+}

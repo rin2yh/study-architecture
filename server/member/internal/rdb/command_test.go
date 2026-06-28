@@ -69,6 +69,74 @@ func TestUpdateMember(t *testing.T) {
 	})
 }
 
+func TestCreateAddress(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberCommand(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "h")
+	seedAddresses(t, pool, memberID)
+
+	t.Run("正常系 作成行を返す", func(t *testing.T) {
+		got, err := r.CreateAddress(t.Context(), db.CreateAddressParams{
+			MemberID: memberID, Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3",
+		})
+		if err != nil {
+			t.Fatalf("CreateAddress: %v", err)
+		}
+		if got.ID == 0 || got.MemberID != memberID || got.Recipient != "山田太郎" {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+}
+
+func TestUpdateAddress(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberCommand(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "h")
+	seedAddresses(t, pool, memberID, db.MemberAddress{Recipient: "旧名", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "旧1-2-3"})
+
+	t.Run("正常系 member 所有の住所を更新して返す", func(t *testing.T) {
+		got, err := r.UpdateAddress(t.Context(), db.UpdateAddressParams{
+			ID: 1, MemberID: memberID, Recipient: "新名", PostalCode: "1000001", Prefecture: "東京都", City: "千代田区", Line1: "丸の内1-1-1",
+		})
+		if err != nil {
+			t.Fatalf("UpdateAddress: %v", err)
+		}
+		if got.Recipient != "新名" || got.City != "千代田区" {
+			t.Fatalf("unexpected row: %+v", got)
+		}
+	})
+	t.Run("準正常系 他 member の住所は更新できず ErrNotFound", func(t *testing.T) {
+		if _, err := r.UpdateAddress(t.Context(), db.UpdateAddressParams{ID: 1, MemberID: memberID + 1, Recipient: "x", PostalCode: "x", Prefecture: "x", City: "x", Line1: "x"}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}
+
+func TestDeleteAddress(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberCommand(pool)
+	q := NewMemberQuery(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "h")
+	seedAddresses(t, pool, memberID, db.MemberAddress{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"})
+
+	t.Run("正常系 削除すると取得できなくなる", func(t *testing.T) {
+		if err := r.DeleteAddress(t.Context(), db.DeleteAddressParams{ID: 1, MemberID: memberID}); err != nil {
+			t.Fatalf("DeleteAddress: %v", err)
+		}
+		if _, err := q.GetAddress(t.Context(), db.GetAddressParams{ID: 1, MemberID: memberID}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("削除後 GetAddress err = %v, want ErrNotFound", err)
+		}
+	})
+	t.Run("準正常系 未存在の削除は冪等 (error なし)", func(t *testing.T) {
+		if err := r.DeleteAddress(t.Context(), db.DeleteAddressParams{ID: 9999, MemberID: memberID}); err != nil {
+			t.Fatalf("DeleteAddress (未存在): %v", err)
+		}
+	})
+}
+
 func TestCreateSession(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)

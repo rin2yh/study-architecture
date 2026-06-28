@@ -91,7 +91,18 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 		totalCents += snap.UnitPriceCents * int64(item.Quantity)
 	}
 
-	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines)
+	// 権威ある住所は member が持つため、確定の瞬間に引いて値で固定する (ADR-[[202606261704]] / ADR-[[202606190900]])。
+	addr, err := h.member.FetchAddress(c.Request.Context(), req.MemberId, req.ShippingAddressId)
+	if err != nil {
+		if errors.Is(err, gateway.ErrAddressNotFound) {
+			_ = c.Error(middleware.Unprocessable(err.Error()))
+			return
+		}
+		_ = c.Error(middleware.BadGateway("member service unavailable"))
+		return
+	}
+
+	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines, rdb.CheckoutAddress(addr))
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -121,8 +132,8 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	// 1 つ発番して payment へ渡す (ADR-[[202606261214]])。
 	idempotencyKey := uuid.NewString()
 
-	// ADR-[[202606190900]]
-	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey); err != nil {
+	// 宛先スナップショットは settled イベント経由で shipment へ渡るため payment に同梱する (ADR-[[202606261704]])。
+	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey, addr); err != nil {
 		// ADR-[[202606261216]]
 		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
 			_ = c.Error(cerr)

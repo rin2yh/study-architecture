@@ -16,6 +16,15 @@ type CheckoutLine struct {
 	Quantity       int32
 }
 
+// CheckoutAddress は注文時点の配送先スナップショット (ADR-[[202606261704]])。
+type CheckoutAddress struct {
+	Recipient  string
+	PostalCode string
+	Prefecture string
+	City       string
+	Line1      string
+}
+
 type OrderCommand struct {
 	pool *pgxpool.Pool
 	q    db.Querier
@@ -42,7 +51,7 @@ func (r *OrderCommand) DeleteOrder(ctx context.Context, id int64) error {
 	return r.q.DeleteOrder(ctx, id)
 }
 
-func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine, addr CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return db.OrderOrder{}, nil, err
@@ -50,7 +59,16 @@ func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status stri
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
-	order, err := qtx.CreateOrder(ctx, db.CreateOrderParams{MemberID: memberID, Status: status, TotalCents: totalCents})
+	order, err := qtx.CreateOrderWithShipping(ctx, db.CreateOrderWithShippingParams{
+		MemberID:           memberID,
+		Status:             status,
+		TotalCents:         totalCents,
+		ShippingRecipient:  addr.Recipient,
+		ShippingPostalCode: addr.PostalCode,
+		ShippingPrefecture: addr.Prefecture,
+		ShippingCity:       addr.City,
+		ShippingLine1:      addr.Line1,
+	})
 	if err != nil {
 		return db.OrderOrder{}, nil, err
 	}

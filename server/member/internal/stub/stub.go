@@ -13,6 +13,10 @@ type MemberStub struct {
 
 	Session    db.MemberSession
 	SessionErr error
+
+	Addresses  []db.MemberAddress
+	Address    db.MemberAddress
+	AddressErr error
 }
 
 func (s MemberStub) ListMembers(context.Context) ([]db.MemberMember, error) {
@@ -45,4 +49,24 @@ func (s MemberStub) GetSession(context.Context, string) (db.MemberSession, error
 
 func (s MemberStub) DeleteSession(context.Context, string) error {
 	return s.SessionErr
+}
+
+func (s MemberStub) ListAddresses(context.Context, int64) ([]db.MemberAddress, error) {
+	return s.Addresses, s.AddressErr
+}
+
+func (s MemberStub) GetAddress(context.Context, db.GetAddressParams) (db.MemberAddress, error) {
+	return s.Address, s.AddressErr
+}
+
+func (s MemberStub) CreateAddress(context.Context, db.CreateAddressParams) (db.MemberAddress, error) {
+	return s.Address, s.AddressErr
+}
+
+func (s MemberStub) UpdateAddress(context.Context, db.UpdateAddressParams) (db.MemberAddress, error) {
+	return s.Address, s.AddressErr
+}
+
+func (s MemberStub) DeleteAddress(context.Context, db.DeleteAddressParams) error {
+	return s.AddressErr
 }

@@ -85,6 +85,74 @@ func TestProductClientFetchProductTransportError(t *testing.T) {
 	}
 }
 
+func TestMemberClientFetchAddress(t *testing.T) {
+	type want struct {
+		snap    gateway.AddressSnapshot
+		errIs   error
+		wantErr bool
+	}
+	tests := []struct {
+		name    string
+		handler http.HandlerFunc
+		want    want
+	}{
+		{
+			"正常系 200 を AddressSnapshot に複写",
+			jsonHandler(http.StatusOK, `{"id":5,"memberId":20,"recipient":"山田太郎","postalCode":"1500001","prefecture":"東京都","city":"渋谷区","line1":"神宮前1-2-3","createdAt":"2026-01-01T00:00:00Z"}`),
+			want{snap: gateway.AddressSnapshot{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}},
+		},
+		{
+			"準正常系 404 は ErrAddressNotFound",
+			jsonHandler(http.StatusNotFound, `{"code":"not_found","message":"address not found"}`),
+			want{errIs: gateway.ErrAddressNotFound, wantErr: true},
+		},
+		{
+			"異常系 500 は ErrUpstream",
+			jsonHandler(http.StatusInternalServerError, `{"code":"internal","message":"boom"}`),
+			want{errIs: gateway.ErrUpstream, wantErr: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(tt.handler)
+			defer srv.Close()
+			t.Setenv("MEMBER_API_URL", srv.URL)
+			c, err := gateway.NewMemberClient()
+			if err != nil {
+				t.Fatalf("NewMemberClient: %v", err)
+			}
+
+			got, err := c.FetchAddress(t.Context(), 20, 5)
+			if tt.want.wantErr {
+				if !errors.Is(err, tt.want.errIs) {
+					t.Fatalf("err = %v, want errors.Is %v", err, tt.want.errIs)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("FetchAddress: %v", err)
+			}
+			if got != tt.want.snap {
+				t.Fatalf("snap = %+v, want %+v", got, tt.want.snap)
+			}
+		})
+	}
+}
+
+func TestMemberClientFetchAddressTransportError(t *testing.T) {
+	srv := httptest.NewServer(jsonHandler(http.StatusOK, `{}`))
+	t.Setenv("MEMBER_API_URL", srv.URL)
+	c, err := gateway.NewMemberClient()
+	if err != nil {
+		t.Fatalf("NewMemberClient: %v", err)
+	}
+	srv.Close() // 接続不能にしてから呼ぶ
+
+	if _, err := c.FetchAddress(t.Context(), 20, 5); !errors.Is(err, gateway.ErrUpstream) {
+		t.Fatalf("err = %v, want ErrUpstream", err)
+	}
+}
+
 func TestPaymentClientCreatePayment(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -105,7 +173,7 @@ func TestPaymentClientCreatePayment(t *testing.T) {
 				t.Fatalf("NewPaymentClient: %v", err)
 			}
 
-			id, err := c.CreatePayment(t.Context(), 7, 2500, "card", "idem-key")
+			id, err := c.CreatePayment(t.Context(), 7, 2500, "card", "idem-key", gateway.AddressSnapshot{Recipient: "山田太郎"})
 			if tt.wantErr {
 				if !errors.Is(err, gateway.ErrUpstream) {
 					t.Fatalf("err = %v, want ErrUpstream", err)

@@ -49,3 +49,4 @@
 | [202606261702](202606261702-order-cancel-event-driven-compensation.md) | Accepted | 注文キャンセルの補償をイベント駆動 (order.cancelled) で各サービスに分散する |
 | [202606261704](202606261704-shipping-address-book-and-order-snapshot.md) | Accepted | 配送先住所は member の住所帳で持ち、注文時に order/shipment へスナップショットする |
 | [202606262000](202606262000-inventory-as-independent-service.md) | Accepted | 在庫を独立サービス (独自 DB・量子) として切り出す |
+| [202606281000](202606281000-settled-event-carries-destination-snapshot.md) | Accepted | 配送先スナップショットは settled イベントに載せ payment が中継する |

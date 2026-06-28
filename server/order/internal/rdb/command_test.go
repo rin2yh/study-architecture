@@ -58,12 +58,16 @@ func TestCheckout(t *testing.T) {
 		{ProductID: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductID: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}
-	order, items, err := c.Checkout(t.Context(), 20, "confirmed", 2500, lines)
+	addr := CheckoutAddress{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
+	order, items, err := c.Checkout(t.Context(), 20, "confirmed", 2500, lines, addr)
 	if err != nil {
 		t.Fatalf("Checkout: %v", err)
 	}
 	if order.ID == 0 || order.MemberID != 20 || order.Status != "confirmed" || order.TotalCents != 2500 {
 		t.Fatalf("unexpected order: %+v", order)
+	}
+	if order.ShippingRecipient != "山田太郎" || order.ShippingCity != "渋谷区" || order.ShippingLine1 != "神宮前1-2-3" {
+		t.Fatalf("shipping snapshot not persisted: %+v", order)
 	}
 	if len(items) != 2 || items[0].OrderID != order.ID || items[0].ProductName != "Widget" {
 		t.Fatalf("unexpected items: %+v", items)

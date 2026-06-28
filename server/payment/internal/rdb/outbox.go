@@ -31,6 +31,13 @@ func (s *OutboxStore) FetchUnpublished(ctx context.Context, limit int) ([]outbox
 			PaymentID:   r.ID,
 			OrderID:     r.OrderID,
 			AmountCents: r.AmountCents,
+			Destination: paymentevent.Destination{
+				Recipient:  r.SettledEventShipRecipient,
+				PostalCode: r.SettledEventShipPostalCode,
+				Prefecture: r.SettledEventShipPrefecture,
+				City:       r.SettledEventShipCity,
+				Line1:      r.SettledEventShipLine1,
+			},
 		}.Values()
 		// 発行時に保持した traceparent を送出メッセージへ戻し、consumer 側の span link を切らさない。
 		if r.SettledEventTraceparent != "" {

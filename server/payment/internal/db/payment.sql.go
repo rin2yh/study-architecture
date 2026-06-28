@@ -10,18 +10,27 @@ import (
 )
 
 const createPayment = `-- name: CreatePayment :one
-INSERT INTO payment.payments (order_id, amount_cents, method, status, idempotency_key)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO payment.payments (
+    order_id, amount_cents, method, status, idempotency_key,
+    settled_event_ship_recipient, settled_event_ship_postal_code,
+    settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (idempotency_key) WHERE idempotency_key <> '' DO NOTHING
-RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key
+RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key, settled_event_ship_recipient, settled_event_ship_postal_code, settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1
 `
 
 type CreatePaymentParams struct {
-	OrderID        int64  `json:"orderId"`
-	AmountCents    int64  `json:"amountCents"`
-	Method         string `json:"method"`
-	Status         string `json:"status"`
-	IdempotencyKey string `json:"idempotencyKey"`
+	OrderID                    int64  `json:"orderId"`
+	AmountCents                int64  `json:"amountCents"`
+	Method                     string `json:"method"`
+	Status                     string `json:"status"`
+	IdempotencyKey             string `json:"idempotencyKey"`
+	SettledEventShipRecipient  string `json:"settledEventShipRecipient"`
+	SettledEventShipPostalCode string `json:"settledEventShipPostalCode"`
+	SettledEventShipPrefecture string `json:"settledEventShipPrefecture"`
+	SettledEventShipCity       string `json:"settledEventShipCity"`
+	SettledEventShipLine1      string `json:"settledEventShipLine1"`
 }
 
 // ADR-[[202606261214]]
@@ -32,6 +41,11 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		arg.Method,
 		arg.Status,
 		arg.IdempotencyKey,
+		arg.SettledEventShipRecipient,
+		arg.SettledEventShipPostalCode,
+		arg.SettledEventShipPrefecture,
+		arg.SettledEventShipCity,
+		arg.SettledEventShipLine1,
 	)
 	var i PaymentPayment
 	err := row.Scan(
@@ -45,12 +59,17 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
 		&i.IdempotencyKey,
+		&i.SettledEventShipRecipient,
+		&i.SettledEventShipPostalCode,
+		&i.SettledEventShipPrefecture,
+		&i.SettledEventShipCity,
+		&i.SettledEventShipLine1,
 	)
 	return i, err
 }
 
 const getPayment = `-- name: GetPayment :one
-SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key, settled_event_ship_recipient, settled_event_ship_postal_code, settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1 FROM payment.payments
 WHERE id = $1
 `
 
@@ -68,12 +87,17 @@ func (q *Queries) GetPayment(ctx context.Context, id int64) (PaymentPayment, err
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
 		&i.IdempotencyKey,
+		&i.SettledEventShipRecipient,
+		&i.SettledEventShipPostalCode,
+		&i.SettledEventShipPrefecture,
+		&i.SettledEventShipCity,
+		&i.SettledEventShipLine1,
 	)
 	return i, err
 }
 
 const getPaymentByIdempotencyKey = `-- name: GetPaymentByIdempotencyKey :one
-SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key, settled_event_ship_recipient, settled_event_ship_postal_code, settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1 FROM payment.payments
 WHERE idempotency_key = $1
 `
 
@@ -91,12 +115,17 @@ func (q *Queries) GetPaymentByIdempotencyKey(ctx context.Context, idempotencyKey
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
 		&i.IdempotencyKey,
+		&i.SettledEventShipRecipient,
+		&i.SettledEventShipPostalCode,
+		&i.SettledEventShipPrefecture,
+		&i.SettledEventShipCity,
+		&i.SettledEventShipLine1,
 	)
 	return i, err
 }
 
 const listPayments = `-- name: ListPayments :many
-SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key FROM payment.payments
+SELECT id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key, settled_event_ship_recipient, settled_event_ship_postal_code, settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1 FROM payment.payments
 ORDER BY id
 `
 
@@ -120,6 +149,11 @@ func (q *Queries) ListPayments(ctx context.Context) ([]PaymentPayment, error) {
 			&i.SettledEventTraceparent,
 			&i.SettledEventPublishedAt,
 			&i.IdempotencyKey,
+			&i.SettledEventShipRecipient,
+			&i.SettledEventShipPostalCode,
+			&i.SettledEventShipPrefecture,
+			&i.SettledEventShipCity,
+			&i.SettledEventShipLine1,
 		); err != nil {
 			return nil, err
 		}
@@ -132,7 +166,9 @@ func (q *Queries) ListPayments(ctx context.Context) ([]PaymentPayment, error) {
 }
 
 const listUnpublishedSettledEvents = `-- name: ListUnpublishedSettledEvents :many
-SELECT id, order_id, amount_cents, settled_event_traceparent
+SELECT id, order_id, amount_cents, settled_event_traceparent,
+       settled_event_ship_recipient, settled_event_ship_postal_code,
+       settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1
 FROM payment.payments
 WHERE settled_event_pending
 ORDER BY id
@@ -140,10 +176,15 @@ LIMIT $1
 `
 
 type ListUnpublishedSettledEventsRow struct {
-	ID                      int64  `json:"id"`
-	OrderID                 int64  `json:"orderId"`
-	AmountCents             int64  `json:"amountCents"`
-	SettledEventTraceparent string `json:"settledEventTraceparent"`
+	ID                         int64  `json:"id"`
+	OrderID                    int64  `json:"orderId"`
+	AmountCents                int64  `json:"amountCents"`
+	SettledEventTraceparent    string `json:"settledEventTraceparent"`
+	SettledEventShipRecipient  string `json:"settledEventShipRecipient"`
+	SettledEventShipPostalCode string `json:"settledEventShipPostalCode"`
+	SettledEventShipPrefecture string `json:"settledEventShipPrefecture"`
+	SettledEventShipCity       string `json:"settledEventShipCity"`
+	SettledEventShipLine1      string `json:"settledEventShipLine1"`
 }
 
 func (q *Queries) ListUnpublishedSettledEvents(ctx context.Context, limit int32) ([]ListUnpublishedSettledEventsRow, error) {
@@ -160,6 +201,11 @@ func (q *Queries) ListUnpublishedSettledEvents(ctx context.Context, limit int32)
 			&i.OrderID,
 			&i.AmountCents,
 			&i.SettledEventTraceparent,
+			&i.SettledEventShipRecipient,
+			&i.SettledEventShipPostalCode,
+			&i.SettledEventShipPrefecture,
+			&i.SettledEventShipCity,
+			&i.SettledEventShipLine1,
 		); err != nil {
 			return nil, err
 		}
@@ -188,7 +234,7 @@ SET status                    = $1,
     settled_event_pending     = settled_event_pending OR $2,
     settled_event_traceparent = CASE WHEN $2 THEN $3 ELSE settled_event_traceparent END
 WHERE id = $4
-RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key
+RETURNING id, order_id, amount_cents, method, status, created_at, settled_event_pending, settled_event_traceparent, settled_event_published_at, idempotency_key, settled_event_ship_recipient, settled_event_ship_postal_code, settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1
 `
 
 type UpdatePaymentParams struct {
@@ -217,6 +263,11 @@ func (q *Queries) UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (P
 		&i.SettledEventTraceparent,
 		&i.SettledEventPublishedAt,
 		&i.IdempotencyKey,
+		&i.SettledEventShipRecipient,
+		&i.SettledEventShipPostalCode,
+		&i.SettledEventShipPrefecture,
+		&i.SettledEventShipCity,
+		&i.SettledEventShipLine1,
 	)
 	return i, err
 }

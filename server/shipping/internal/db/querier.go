@@ -10,8 +10,8 @@ import (
 
 type Querier interface {
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (ShippingShipment, error)
-	// ADR-[[202606211200]]
-	CreateShipmentForOrder(ctx context.Context, orderID int64) (ShippingShipment, error)
+	// ADR-[[202606211200]] / ADR-[[202606261704]]
+	CreateShipmentForOrder(ctx context.Context, arg CreateShipmentForOrderParams) (ShippingShipment, error)
 	GetShipment(ctx context.Context, id int64) (ShippingShipment, error)
 	ListShipments(ctx context.Context) ([]ShippingShipment, error)
 	UpdateShipment(ctx context.Context, arg UpdateShipmentParams) (ShippingShipment, error)
