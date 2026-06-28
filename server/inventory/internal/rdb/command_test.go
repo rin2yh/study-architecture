@@ -180,7 +180,6 @@ func TestCompensateByOrder(t *testing.T) {
 		if got := mustAvail(t, q, ctx, 100); got != 10 {
 			t.Fatalf("available after restock = %d, want 10", got)
 		}
-		// 再配信での二重戻しは reservation_id ユニークで弾く。
 		if err := cmd.CompensateByOrder(ctx, 2); err != nil {
 			t.Fatalf("CompensateByOrder again: %v", err)
 		}

@@ -103,11 +103,11 @@ func (q *Queries) ReleaseReservationsByOrder(ctx context.Context, orderID int64)
 }
 
 const restockConfirmedReservationsByOrder = `-- name: RestockConfirmedReservationsByOrder :exec
-INSERT INTO inventory.stock_ins (product_id, quantity, reservation_id)
+INSERT INTO inventory.stock_ins (product_id, quantity, cancelled_reservation_id)
 SELECT r.product_id, r.quantity, r.id
 FROM inventory.reservations r
 WHERE r.order_id = $1 AND r.confirmed_at IS NOT NULL
-ON CONFLICT (reservation_id) WHERE reservation_id IS NOT NULL DO NOTHING
+ON CONFLICT (cancelled_reservation_id) WHERE cancelled_reservation_id IS NOT NULL DO NOTHING
 `
 
 // (ADR-[[202606281000]])
@@ -119,7 +119,7 @@ func (q *Queries) RestockConfirmedReservationsByOrder(ctx context.Context, order
 const stockIn = `-- name: StockIn :one
 INSERT INTO inventory.stock_ins (product_id, quantity)
 VALUES ($1, $2)
-RETURNING id, product_id, quantity, created_at, reservation_id
+RETURNING id, product_id, quantity, created_at, cancelled_reservation_id
 `
 
 type StockInParams struct {
@@ -135,7 +135,7 @@ func (q *Queries) StockIn(ctx context.Context, arg StockInParams) (InventoryStoc
 		&i.ProductID,
 		&i.Quantity,
 		&i.CreatedAt,
-		&i.ReservationID,
+		&i.CancelledReservationID,
 	)
 	return i, err
 }

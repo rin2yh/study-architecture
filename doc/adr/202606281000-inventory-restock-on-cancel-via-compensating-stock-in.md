@@ -14,7 +14,7 @@
 確定済み予約の戻しは `stock_ins` への補償追記 (+quantity) で表す。
 
 - **未確定は従来どおり `released_at` で解放、確定済みは入庫として相殺**する。確定行の `-quantity` を消さず、対になる `+quantity` を足して集計を戻す (在庫数を導出で保つ ADR-[[202606262000]] の不変条件を崩さない)。
-- **`stock_ins.reservation_id` で戻し元の予約を辿れるようにし**、同列の部分ユニークを再戻しの冪等キーにする。再配信は `ON CONFLICT DO NOTHING` で 0 行に収束する (ADR-[[202606261214]] と同型)。通常の入庫は NULL。
+- **戻し元の予約を `stock_ins.cancelled_reservation_id` で辿れるようにし**、同列の部分ユニークを再戻しの冪等キーにする (再配信は `ON CONFLICT DO NOTHING` で 0 行に収束。ADR-[[202606261214]] と同型)。**用途を汎用 `reservation_id` でなく case を表す列名で限定する** (reservations の `*_at` と同じ「どの列が non-null かで導出」の流儀。ADR-[[202606262000]])。通常入庫や将来の別用途 (返品戻し等) は NULL / 別 nullable 列で表し、1 列に混ぜない。
 
 ## Consequences
 

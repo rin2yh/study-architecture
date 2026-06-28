@@ -74,8 +74,8 @@ func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, order
 	return r.q.ReleaseReservationsByOrder(ctx, orderID)
 }
 
-// CompensateByOrder は order.cancelled の補償。未確定は解放・確定済みは反対仕訳の補償 stock_in で戻す。
-// 状態ガードと reservation_id ユニークで冪等にし、再配信での二重戻しを防ぐ (ADR-[[202606281000]])。
+// CompensateByOrder は order.cancelled の補償。未確定は解放・確定済みは反対仕訳の補償 stock_in で戻す
+// (冪等。ADR-[[202606281000]] / ADR-[[202606261214]])。
 func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID int64) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

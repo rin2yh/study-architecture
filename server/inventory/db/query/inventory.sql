@@ -52,8 +52,8 @@ WHERE confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
 
 -- (ADR-[[202606281000]])
 -- name: RestockConfirmedReservationsByOrder :exec
-INSERT INTO inventory.stock_ins (product_id, quantity, reservation_id)
+INSERT INTO inventory.stock_ins (product_id, quantity, cancelled_reservation_id)
 SELECT r.product_id, r.quantity, r.id
 FROM inventory.reservations r
 WHERE r.order_id = $1 AND r.confirmed_at IS NOT NULL
-ON CONFLICT (reservation_id) WHERE reservation_id IS NOT NULL DO NOTHING;
+ON CONFLICT (cancelled_reservation_id) WHERE cancelled_reservation_id IS NOT NULL DO NOTHING;
