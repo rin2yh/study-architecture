@@ -1,0 +1,204 @@
+openapi: 3.0.3
+info:
+  title: Inventory Service API
+  version: 0.1.0
+  description: >-
+    在庫ドメイン。append-only の在庫変動台帳を単一情報源に、入庫・予約(TTL)・確定・解放を扱う
+    (ADR-[[202606262000]])。確定は payment.settled 購読で worker が行う。
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        default:
+          $ref: "#/components/responses/Error"
+  /stock-ins:
+    post:
+      operationId: stockIn
+      summary: 入庫を追記する
+      tags: [inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockInRequest"
+      responses:
+        "201":
+          description: 追記された入庫
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockIn"
+        default:
+          $ref: "#/components/responses/Error"
+  /reservations:
+    post:
+      operationId: reserve
+      summary: 注文の在庫を予約する (在庫不足は 409)
+      tags: [inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReserveRequest"
+      responses:
+        "201":
+          description: 予約成立
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResult"
+        default:
+          $ref: "#/components/responses/Error"
+  /reservations/{orderId}/release:
+    post:
+      operationId: releaseReservation
+      summary: 注文の未確定予約を解放する (補償・キャンセル)
+      tags: [inventory]
+      parameters:
+        - $ref: "#/components/parameters/OrderIdPath"
+      responses:
+        "204":
+          description: 解放した (冪等)
+        default:
+          $ref: "#/components/responses/Error"
+  /availability/{productId}:
+    get:
+      operationId: getAvailability
+      summary: 商品の利用可能在庫を取得する
+      tags: [inventory]
+      parameters:
+        - $ref: "#/components/parameters/ProductIdPath"
+      responses:
+        "200":
+          description: 利用可能在庫
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Availability"
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  parameters:
+    OrderIdPath:
+      name: orderId
+      in: path
+      required: true
+      description: 注文 ID
+      schema:
+        type: integer
+        format: int64
+    ProductIdPath:
+      name: productId
+      in: path
+      required: true
+      description: 商品 ID
+      schema:
+        type: integer
+        format: int64
+  responses:
+    Error:
+      description: エラー (全サービス共通フォーマット — ErrorJSON ミドルウェアが整形)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: 機械可読なエラー種別 (snake_case)
+          example: insufficient_stock
+        message:
+          type: string
+          example: insufficient stock for product 1
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    StockInRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        quantity:
+          type: integer
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+    StockIn:
+      type: object
+      required: [id, productId, quantity]
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+    ReserveLine:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        quantity:
+          type: integer
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+    ReserveRequest:
+      type: object
+      required: [orderId, lines]
+      properties:
+        orderId:
+          type: integer
+          format: int64
+          x-oapi-codegen-extra-tags:
+            binding: required,gt=0
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReserveLine"
+          x-oapi-codegen-extra-tags:
+            binding: required,min=1,dive
+    ReservationResult:
+      type: object
+      required: [orderId]
+      properties:
+        orderId:
+          type: integer
+          format: int64
+    Availability:
+      type: object
+      required: [productId, available]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        available:
+          type: integer
+          format: int64

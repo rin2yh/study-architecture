@@ -6,6 +6,7 @@ set -euo pipefail
 : "${DATABASE_URL_MEMBER:=postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable}"
 : "${DATABASE_URL_SHIPPING:=postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable}"
 : "${DATABASE_URL_PRODUCT:=postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable}"
+: "${DATABASE_URL_INVENTORY:=postgres://ec:ec_pass@localhost:5437/ec_inventory?sslmode=disable}"
 
 # go tool goose は全 DB ドライバを毎回ビルドして遅いため、prebuilt があればそれを使う。
 goose=(goose)
@@ -20,6 +21,7 @@ migrate_one() {
     member)   dsn="$DATABASE_URL_MEMBER" ;;
     shipping) dsn="$DATABASE_URL_SHIPPING" ;;
     product)  dsn="$DATABASE_URL_PRODUCT" ;;
+    inventory) dsn="$DATABASE_URL_INVENTORY" ;;
     *) echo "unknown service: $svc" >&2; return 1 ;;
   esac
   "${goose[@]}" -table "goose_${svc}_version" -dir "server/${svc}/db/migration" postgres "$dsn" up
@@ -28,7 +30,7 @@ migrate_one() {
 if [ "$#" -ge 1 ]; then
   migrate_one "$1"
 else
-  for svc in order payment member product shipping; do
+  for svc in order payment member product shipping inventory; do
     migrate_one "$svc"
   done
 fi

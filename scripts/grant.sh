@@ -13,3 +13,4 @@ apply db-payment  ec_payment  < scripts/grant/payment.sql
 apply db-member   ec_member   < scripts/grant/member.sql
 apply db-shipping ec_shipping < scripts/grant/shipping.sql
 apply db-product  ec_product  < scripts/grant/product.sql
+apply db-inventory ec_inventory < scripts/grant/inventory.sql

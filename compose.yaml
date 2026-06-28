@@ -13,6 +13,7 @@ volumes:
   pg_member_data:
   pg_product_data:
   pg_shipping_data:
+  pg_inventory_data:
 
 # 送り先は Alloy 固定 (ADR-[[202606241356]])。Alloy 不在 (observability profile 未起動) でも
 # アプリは graceful degradation で起動する。
@@ -40,7 +41,7 @@ services:
       timeout: 3s
       retries: 10
     networks: [external-public, external-private, internal-private]
-    depends_on: [product, order, payment, member, shipping]
+    depends_on: [product, order, payment, member, shipping, inventory]
 
   broker:
     image: redis:7-alpine
@@ -121,6 +122,20 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ec -d ec_shipping"]
     networks: [internal-private]
 
+  db-inventory:
+    <<: *postgres
+    environment:
+      <<: *postgres-env
+      POSTGRES_DB: ec_inventory
+    ports:
+      - "5437:5432"
+    volumes:
+      - pg_inventory_data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ec -d ec_inventory"]
+    networks: [internal-private]
+
   product:
     build:
       context: .
@@ -147,6 +162,7 @@ services:
       # (ADR 0008 / 0012)
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
+      INVENTORY_API_URL: http://edge-proxy/inventory # ADR-[[202606262000]]
     ports: ["8002:80"]
     depends_on:
       db-order:
@@ -210,6 +226,38 @@ services:
       REDIS_URL: redis://broker:6379
     depends_on:
       db-shipping:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+    networks: [internal-private]
+
+  # ADR-[[202606262000]]
+  inventory:
+    build:
+      context: .
+      dockerfile: server/inventory/docker/server.Dockerfile
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: inventory
+      DATABASE_URL: postgres://inventory_svc:inventory_pass@db-inventory:5432/ec_inventory?sslmode=disable # ADR-[[202606231000]]
+    ports: ["8006:80"]
+    depends_on:
+      db-inventory:
+        condition: service_healthy
+    networks: [internal-private]
+
+  # ADR-[[202606262000]]
+  inventory-worker:
+    build:
+      context: .
+      dockerfile: server/inventory/docker/worker.Dockerfile
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: inventory-worker
+      DATABASE_URL: postgres://inventory_svc:inventory_pass@db-inventory:5432/ec_inventory?sslmode=disable # ADR-[[202606231000]]
+      REDIS_URL: redis://broker:6379
+    depends_on:
+      db-inventory:
         condition: service_healthy
       broker:
         condition: service_healthy

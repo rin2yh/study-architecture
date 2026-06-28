@@ -1,6 +1,6 @@
 # ADR-202606261700: 在庫を append-only の在庫変動台帳で持ち、予約→確定の2フェーズで引き当てる
 
-- Status: Accepted
+- Status: Superseded by ADR-[[202606262000]]
 - Date: 2026-06-26
 - Relates to: ADR-[[202606261214]] (冪等性。check-then-act を持たず DB で保証), ADR-[[202606231000]] (schema 所有権), ADR-[[202606261216]] (致命/縮退分類), ADR-[[202606211200]] (payment.settled イベント), ADR-[[202606240522]] (DB-per-domain), GitHub #87
 

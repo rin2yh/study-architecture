@@ -5,7 +5,7 @@ goose = "3.27.1"
 [tasks.build]
 description = "全 image を 1 つずつ build (並列 build で daemon が詰まるのを避ける)"
 run = """
-for svc in product order payment member shipping shipping-worker; do
+for svc in product order payment member shipping shipping-worker inventory inventory-worker; do
   docker compose build "$svc"
 done
 docker compose --profile external build store
@@ -29,7 +29,7 @@ run = "docker compose --profile internal up -d --no-build"
 
 [tasks."up:db"]
 description = "DB だけ起動 (CI / 結合テスト用)"
-run = "docker compose up -d --wait db-order db-payment db-member db-shipping db-product"
+run = "docker compose up -d --wait db-order db-payment db-member db-shipping db-product db-inventory"
 
 # 可観測性スタックは observability profile に隔離してある。アプリ起動後に足す。Grafana は :3000。
 [tasks."up:obs"]
@@ -37,7 +37,7 @@ description = "可観測性スタック (Alloy/Tempo/Loki/Grafana) を起動"
 run = "docker compose --profile observability up -d"
 
 [tasks.migrate]
-description = "5 サービス分の migration を流す (引数で 1 サービス指定可)"
+description = "6 サービス分の migration を流す (引数で 1 サービス指定可)"
 run = "./scripts/migrate.sh"
 
 # サービスを実ロールで起動する前に必要 (ADR-[[202606231000]])。
@@ -51,7 +51,7 @@ run = "./scripts/grant.sh"
 [tasks."test:integration"]
 description = "DB を立てて結合テストまで含めて実行"
 depends = ["up:db", "migrate"]
-env = { DATABASE_URL_ORDER = "postgres://ec:ec_pass@localhost:5432/ec_order?sslmode=disable", DATABASE_URL_PAYMENT = "postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable", DATABASE_URL_MEMBER = "postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable", DATABASE_URL_SHIPPING = "postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable", DATABASE_URL_PRODUCT = "postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable" }
+env = { DATABASE_URL_ORDER = "postgres://ec:ec_pass@localhost:5432/ec_order?sslmode=disable", DATABASE_URL_PAYMENT = "postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable", DATABASE_URL_MEMBER = "postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable", DATABASE_URL_SHIPPING = "postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable", DATABASE_URL_PRODUCT = "postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable", DATABASE_URL_INVENTORY = "postgres://ec:ec_pass@localhost:5437/ec_inventory?sslmode=disable" }
 run = "go test ./server/... -race -count=1"
 
 # E2E は scripts/e2e-up.sh でスタックを起動してから Playwright を回す。install は 3 タスクで共有する。

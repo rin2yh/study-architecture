@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +68,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	}
 
 	lines := make([]rdb.CheckoutLine, 0, len(req.Items))
+	reserveLines := make([]gateway.ReserveLine, 0, len(req.Items))
 	var totalCents int64
 	for _, item := range req.Items {
 		snap, err := h.product.FetchProduct(c.Request.Context(), item.ProductId)
@@ -84,12 +87,33 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 			UnitPriceCents: snap.UnitPriceCents,
 			Quantity:       int32(item.Quantity),
 		})
+		reserveLines = append(reserveLines, gateway.ReserveLine{ProductID: snap.ID, Quantity: int32(item.Quantity)})
 		totalCents += snap.UnitPriceCents * int64(item.Quantity)
 	}
 
 	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines)
 	if err != nil {
 		_ = c.Error(err)
+		return
+	}
+
+	// (ADR-[[202606262000]])
+	if err := h.inventory.Reserve(c.Request.Context(), order.ID, reserveLines); err != nil {
+		if errors.Is(err, gateway.ErrInsufficientStock) {
+			// rollback で確保が残らないため解放は不要。
+			if derr := h.command.DeleteOrder(c.Request.Context(), order.ID); derr != nil {
+				_ = c.Error(derr)
+				return
+			}
+			_ = c.Error(middleware.Conflict("insufficient stock"))
+			return
+		}
+		// 上流不調は予約成否が不明。
+		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
+			_ = c.Error(cerr)
+			return
+		}
+		_ = c.Error(middleware.BadGateway("inventory service unavailable"))
 		return
 	}
 
@@ -100,9 +124,26 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	// ADR-[[202606190900]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey); err != nil {
 		// ADR-[[202606261216]]
+		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
+			_ = c.Error(cerr)
+			return
+		}
 		_ = c.Error(middleware.BadGateway("payment service unavailable"))
 		return
 	}
 
 	c.JSON(http.StatusCreated, toAPIOrderWithItems(order, items))
+}
+
+// abandonCheckout は確定前に失敗した checkout の巻き戻しを 1 箇所に集約する。各手順は冪等で、
+// 失敗は握り潰さず呼び出し元へ返す (不整合を嘘の成功にしない。[[error-handling.md]])。
+// 耐久・非同期の補償 (order.cancelled イベント駆動) は #88 (ADR-[[202606261702]])。
+func (h *writeHandler) abandonCheckout(ctx context.Context, orderID int64) error {
+	if err := h.inventory.Release(ctx, orderID); err != nil {
+		return fmt.Errorf("abandon checkout: release reservation for order %d: %w", orderID, err)
+	}
+	if err := h.command.DeleteOrder(ctx, orderID); err != nil {
+		return fmt.Errorf("abandon checkout: delete order %d: %w", orderID, err)
+	}
+	return nil
 }

@@ -1,4 +1,4 @@
-// Package gateway は order が他サービス (product / payment) を呼ぶ出力ポートと
+// Package gateway は order が他サービス (product / payment / inventory) を呼ぶ出力ポートと
 // 生成クライアント実装をまとめる。
 package gateway
 
@@ -10,11 +10,15 @@ import (
 	"os"
 
 	"github.com/rin2yh/study-architecture/server/internal/httpx/resilience"
+	"github.com/rin2yh/study-architecture/server/order/internal/client/inventory"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
 )
 
 var ErrProductNotFound = errors.New("product not found")
+
+// ErrInsufficientStock は予約が在庫不足で拒否された (409)。checkout は致命扱いで 409 を返す (ADR-[[202606262000]])。
+var ErrInsufficientStock = errors.New("insufficient stock")
 
 var ErrUpstream = errors.New("upstream service error")
 
@@ -30,6 +34,16 @@ type ProductPort interface {
 
 type PaymentPort interface {
 	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error)
+}
+
+type ReserveLine struct {
+	ProductID int64
+	Quantity  int32
+}
+
+type InventoryPort interface {
+	Reserve(ctx context.Context, orderID int64, lines []ReserveLine) error
+	Release(ctx context.Context, orderID int64) error
 }
 
 type ProductClient struct {
@@ -98,4 +112,52 @@ func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents 
 		return 0, fmt.Errorf("%w: create payment for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
 	}
 	return res.JSON201.Id, nil
+}
+
+type InventoryClient struct {
+	c inventory.ClientWithResponsesInterface
+}
+
+var _ InventoryPort = (*InventoryClient)(nil)
+
+func NewInventoryClient() (*InventoryClient, error) {
+	base := os.Getenv("INVENTORY_API_URL")
+	if base == "" {
+		return nil, errors.New("INVENTORY_API_URL is required")
+	}
+	c, err := inventory.NewClientWithResponses(base, inventory.WithHTTPClient(resilience.NewClient("order->inventory")))
+	if err != nil {
+		return nil, err
+	}
+	return &InventoryClient{c: c}, nil
+}
+
+func (i *InventoryClient) Reserve(ctx context.Context, orderID int64, lines []ReserveLine) error {
+	body := inventory.ReserveJSONRequestBody{OrderId: orderID}
+	body.Lines = make([]inventory.ReserveLine, 0, len(lines))
+	for _, l := range lines {
+		body.Lines = append(body.Lines, inventory.ReserveLine{ProductId: l.ProductID, Quantity: int(l.Quantity)})
+	}
+	res, err := i.c.ReserveWithResponse(ctx, body)
+	if err != nil {
+		return fmt.Errorf("%w: reserve for order %d: %v", ErrUpstream, orderID, err)
+	}
+	if res.StatusCode() == http.StatusConflict {
+		return fmt.Errorf("%w: order %d", ErrInsufficientStock, orderID)
+	}
+	if res.JSON201 == nil {
+		return fmt.Errorf("%w: reserve for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
+	}
+	return nil
+}
+
+func (i *InventoryClient) Release(ctx context.Context, orderID int64) error {
+	res, err := i.c.ReleaseReservationWithResponse(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("%w: release for order %d: %v", ErrUpstream, orderID, err)
+	}
+	if res.StatusCode() != http.StatusNoContent {
+		return fmt.Errorf("%w: release for order %d returned %d", ErrUpstream, orderID, res.StatusCode())
+	}
+	return nil
 }

@@ -69,6 +69,16 @@ func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams
 	return i, err
 }
 
+const deleteOrder = `-- name: DeleteOrder :exec
+DELETE FROM "order".orders
+WHERE id = $1
+`
+
+func (q *Queries) DeleteOrder(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteOrder, id)
+	return err
+}
+
 const getOrder = `-- name: GetOrder :one
 SELECT id, member_id, status, total_cents, created_at
 FROM "order".orders
