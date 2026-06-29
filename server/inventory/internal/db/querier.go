@@ -11,6 +11,8 @@ import (
 type Querier interface {
 	// 在庫数を保存せず集計で導く (ADR-[[202606262000]])。
 	AvailableQty(ctx context.Context, productID int64) (int64, error)
+	// (ADR-[[202606281000]])
+	CancelConfirmedReservationsByOrder(ctx context.Context, orderID int64) error
 	// 終端 *_at が未設定の予約だけ確定する。payment.settled 再配信は 0 行更新で吸収 (ADR-[[202606261214]])。
 	ConfirmReservationsByOrder(ctx context.Context, orderID int64) error
 	// (ADR-[[202606262000]])
@@ -20,8 +22,6 @@ type Querier interface {
 	LockProduct(ctx context.Context, dollar_1 int64) error
 	// 補償/キャンセル時の解放 (#88 のフック)。
 	ReleaseReservationsByOrder(ctx context.Context, orderID int64) error
-	// (ADR-[[202606281000]])
-	RestockConfirmedReservationsByOrder(ctx context.Context, orderID int64) error
 	StockIn(ctx context.Context, arg StockInParams) (InventoryStockIn, error)
 }
 

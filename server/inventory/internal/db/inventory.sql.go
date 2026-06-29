@@ -18,7 +18,7 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL
+    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL AND r.cancelled_at IS NULL
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
@@ -34,6 +34,18 @@ func (q *Queries) AvailableQty(ctx context.Context, productID int64) (int64, err
 	var available int64
 	err := row.Scan(&available)
 	return available, err
+}
+
+const cancelConfirmedReservationsByOrder = `-- name: CancelConfirmedReservationsByOrder :exec
+UPDATE inventory.reservations
+SET cancelled_at = now()
+WHERE order_id = $1 AND confirmed_at IS NOT NULL AND cancelled_at IS NULL
+`
+
+// (ADR-[[202606281000]])
+func (q *Queries) CancelConfirmedReservationsByOrder(ctx context.Context, orderID int64) error {
+	_, err := q.db.Exec(ctx, cancelConfirmedReservationsByOrder, orderID)
+	return err
 }
 
 const confirmReservationsByOrder = `-- name: ConfirmReservationsByOrder :exec
@@ -102,24 +114,10 @@ func (q *Queries) ReleaseReservationsByOrder(ctx context.Context, orderID int64)
 	return err
 }
 
-const restockConfirmedReservationsByOrder = `-- name: RestockConfirmedReservationsByOrder :exec
-INSERT INTO inventory.stock_ins (product_id, quantity, cancelled_reservation_id)
-SELECT r.product_id, r.quantity, r.id
-FROM inventory.reservations r
-WHERE r.order_id = $1 AND r.confirmed_at IS NOT NULL
-ON CONFLICT (cancelled_reservation_id) WHERE cancelled_reservation_id IS NOT NULL DO NOTHING
-`
-
-// (ADR-[[202606281000]])
-func (q *Queries) RestockConfirmedReservationsByOrder(ctx context.Context, orderID int64) error {
-	_, err := q.db.Exec(ctx, restockConfirmedReservationsByOrder, orderID)
-	return err
-}
-
 const stockIn = `-- name: StockIn :one
 INSERT INTO inventory.stock_ins (product_id, quantity)
 VALUES ($1, $2)
-RETURNING id, product_id, quantity, created_at, cancelled_reservation_id
+RETURNING id, product_id, quantity, created_at
 `
 
 type StockInParams struct {
@@ -135,7 +133,6 @@ func (q *Queries) StockIn(ctx context.Context, arg StockInParams) (InventoryStoc
 		&i.ProductID,
 		&i.Quantity,
 		&i.CreatedAt,
-		&i.CancelledReservationID,
 	)
 	return i, err
 }

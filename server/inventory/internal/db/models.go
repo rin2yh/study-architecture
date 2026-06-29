@@ -9,9 +9,8 @@ import (
 )
 
 type InventoryStockIn struct {
-	ID                     int64              `json:"id"`
-	ProductID              int64              `json:"productId"`
-	Quantity               int32              `json:"quantity"`
-	CreatedAt              pgtype.Timestamptz `json:"createdAt"`
-	CancelledReservationID pgtype.Int8        `json:"cancelledReservationId"`
+	ID        int64              `json:"id"`
+	ProductID int64              `json:"productId"`
+	Quantity  int32              `json:"quantity"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
 }

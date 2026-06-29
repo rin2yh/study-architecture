@@ -164,7 +164,7 @@ func TestCompensateByOrder(t *testing.T) {
 		}
 	})
 
-	t.Run("正常系 確定済み予約は補償 stock_in で戻り再実行でも 1 回に収束", func(t *testing.T) {
+	t.Run("正常系 確定済み予約は cancelled_at で戻り再実行でも 1 回に収束", func(t *testing.T) {
 		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
 			t.Fatalf("Reserve: %v", err)
 		}
@@ -178,13 +178,13 @@ func TestCompensateByOrder(t *testing.T) {
 			t.Fatalf("CompensateByOrder: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 10 {
-			t.Fatalf("available after restock = %d, want 10", got)
+			t.Fatalf("available after cancel = %d, want 10", got)
 		}
 		if err := cmd.CompensateByOrder(ctx, 2); err != nil {
 			t.Fatalf("CompensateByOrder again: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 10 {
-			t.Fatalf("available after re-run = %d, want 10 (no double restock)", got)
+			t.Fatalf("available after re-run = %d, want 10 (idempotent)", got)
 		}
 	})
 }

@@ -1,7 +1,7 @@
 -- name: StockIn :one
 INSERT INTO inventory.stock_ins (product_id, quantity)
 VALUES ($1, $2)
-RETURNING *;
+RETURNING id, product_id, quantity, created_at;
 
 -- name: LockProduct :exec
 -- 同一商品の同時予約を直列化する。tx 終了まで保持され売り越しを DB で防ぐ (ADR-[[202606262000]])。
@@ -17,7 +17,7 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL
+    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL AND r.cancelled_at IS NULL
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
@@ -51,9 +51,7 @@ WHERE confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
   AND created_at + inventory.reservation_ttl() <= now();
 
 -- (ADR-[[202606281000]])
--- name: RestockConfirmedReservationsByOrder :exec
-INSERT INTO inventory.stock_ins (product_id, quantity, cancelled_reservation_id)
-SELECT r.product_id, r.quantity, r.id
-FROM inventory.reservations r
-WHERE r.order_id = $1 AND r.confirmed_at IS NOT NULL
-ON CONFLICT (cancelled_reservation_id) WHERE cancelled_reservation_id IS NOT NULL DO NOTHING;
+-- name: CancelConfirmedReservationsByOrder :exec
+UPDATE inventory.reservations
+SET cancelled_at = now()
+WHERE order_id = $1 AND confirmed_at IS NOT NULL AND cancelled_at IS NULL;
