@@ -12,12 +12,8 @@ WHERE idempotency_key = $1;
 
 -- ADR-[[202606261214]]
 -- name: CreatePayment :one
-INSERT INTO payment.payments (
-    order_id, amount_cents, method, status, idempotency_key,
-    settled_event_ship_recipient, settled_event_ship_postal_code,
-    settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO payment.payments (order_id, amount_cents, method, status, idempotency_key)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (idempotency_key) WHERE idempotency_key <> '' DO NOTHING
 RETURNING *;
 
@@ -30,9 +26,7 @@ WHERE id = sqlc.arg(id)
 RETURNING *;
 
 -- name: ListUnpublishedSettledEvents :many
-SELECT id, order_id, amount_cents, settled_event_traceparent,
-       settled_event_ship_recipient, settled_event_ship_postal_code,
-       settled_event_ship_prefecture, settled_event_ship_city, settled_event_ship_line1
+SELECT id, order_id, amount_cents, settled_event_traceparent
 FROM payment.payments
 WHERE settled_event_pending
 ORDER BY id

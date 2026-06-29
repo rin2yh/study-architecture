@@ -7,6 +7,7 @@ import (
 	"github.com/mazrean/kessoku"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/consumer"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 )
@@ -31,12 +32,18 @@ func InitConsumer(ctx0 context.Context) (*consumer.Consumer, error) {
 		return zero, err0
 	}
 	var err1 error
-	pool0, err1 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx0)
+	orderClient, err1 := kessoku.Bind[gateway.OrderPort](kessoku.Provide(gateway.NewOrderClient)).Fn()()
 	if err1 != nil {
 		var zero *consumer.Consumer
 		return zero, err1
 	}
+	var err2 error
+	pool0, err2 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx0)
+	if err2 != nil {
+		var zero *consumer.Consumer
+		return zero, err2
+	}
 	shipmentCommand0 := kessoku.Bind[consumer.ShipmentCreator](kessoku.Provide(rdb.NewShipmentCommand)).Fn()(pool0)
-	consumer0 := kessoku.Provide(consumer.New).Fn()(client, shipmentCommand0)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(client, shipmentCommand0, orderClient)
 	return consumer0, nil
 }

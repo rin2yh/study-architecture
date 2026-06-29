@@ -7,6 +7,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/consumer"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 )
@@ -24,5 +25,6 @@ var _ = kessoku.Inject[*consumer.Consumer](
 	kessoku.Async(kessoku.Provide(rdb.NewPool)),
 	kessoku.Provide(redisx.NewClient),
 	kessoku.Bind[consumer.ShipmentCreator](kessoku.Provide(rdb.NewShipmentCommand)),
+	kessoku.Bind[gateway.OrderPort](kessoku.Provide(gateway.NewOrderClient)),
 	kessoku.Provide(consumer.New),
 )

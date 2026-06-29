@@ -5,14 +5,12 @@
  * 決済ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
-import type { ShippingAddress } from './shippingAddress.ts';
 
 export interface CreatePaymentRequest {
   orderId: number;
   amountCents: number;
   method: string;
   status: string;
-  /** ADR-[[202606261214]] */
+  /** order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。 */
   idempotencyKey: string;
-  shippingAddress: ShippingAddress;
 }

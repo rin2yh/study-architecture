@@ -49,7 +49,7 @@ type MemberPort interface {
 }
 
 type PaymentPort interface {
-	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string, dest AddressSnapshot) (int64, error)
+	CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error)
 }
 
 type ReserveLine struct {
@@ -151,20 +151,13 @@ func NewPaymentClient() (*PaymentClient, error) {
 	return &PaymentClient{c: c}, nil
 }
 
-func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string, dest AddressSnapshot) (int64, error) {
+func (p *PaymentClient) CreatePayment(ctx context.Context, orderID, amountCents int64, method, idempotencyKey string) (int64, error) {
 	res, err := p.c.CreatePaymentWithResponse(ctx, payment.CreatePaymentJSONRequestBody{
 		OrderId:        orderID,
 		AmountCents:    amountCents,
 		Method:         method,
 		Status:         "pending",
 		IdempotencyKey: idempotencyKey,
-		ShippingAddress: payment.ShippingAddress{
-			Recipient:  dest.Recipient,
-			PostalCode: dest.PostalCode,
-			Prefecture: dest.Prefecture,
-			City:       dest.City,
-			Line1:      dest.Line1,
-		},
 	})
 	if err != nil {
 		return 0, fmt.Errorf("%w: create payment for order %d: %v", ErrUpstream, orderID, err)

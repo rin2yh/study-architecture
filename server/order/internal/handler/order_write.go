@@ -132,8 +132,7 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	// 1 つ発番して payment へ渡す (ADR-[[202606261214]])。
 	idempotencyKey := uuid.NewString()
 
-	// 宛先スナップショットは settled イベント経由で shipment へ渡るため payment に同梱する (ADR-[[202606261704]])。
-	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey, addr); err != nil {
+	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey); err != nil {
 		// ADR-[[202606261216]]
 		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {
 			_ = c.Error(cerr)

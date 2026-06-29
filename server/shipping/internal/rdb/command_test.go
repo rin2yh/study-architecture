@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
 
 func TestCreateShipment(t *testing.T) {
@@ -32,7 +32,7 @@ func TestCreateShipmentForOrder(t *testing.T) {
 	r := NewShipmentCommand(pool)
 	seedShipments(t, pool)
 
-	dest := paymentevent.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
+	dest := gateway.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
 	t.Run("正常系 carrier/tracking 未指定で宛先を持つ preparing 枠を作る", func(t *testing.T) {
 		got, err := r.CreateShipmentForOrder(t.Context(), 300, dest)
 		if err != nil {
