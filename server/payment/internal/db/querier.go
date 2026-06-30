@@ -13,9 +13,10 @@ type Querier interface {
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (PaymentPayment, error)
 	GetPayment(ctx context.Context, id int64) (PaymentPayment, error)
 	GetPaymentByIdempotencyKey(ctx context.Context, idempotencyKey string) (PaymentPayment, error)
+	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	ListPayments(ctx context.Context) ([]PaymentPayment, error)
-	ListUnpublishedSettledEvents(ctx context.Context, limit int32) ([]ListUnpublishedSettledEventsRow, error)
-	MarkSettledEventPublished(ctx context.Context, id int64) error
+	ListUnpublishedOutbox(ctx context.Context, limit int32) ([]ListUnpublishedOutboxRow, error)
+	MarkOutboxPublished(ctx context.Context, id int64) error
 	// 終端でない確定済み決済だけ返金へ遷移。再配信は 0 行更新で吸収する (ADR-[[202606261214]])。
 	RefundPaymentByOrder(ctx context.Context, orderID int64) error
 	UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (PaymentPayment, error)

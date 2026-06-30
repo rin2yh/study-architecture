@@ -11,21 +11,14 @@ import (
 
 const cancelOrder = `-- name: CancelOrder :one
 UPDATE "order".orders
-SET status                      = 'cancelled',
-    cancelled_event_pending     = true,
-    cancelled_event_traceparent = $2
+SET status = 'cancelled'
 WHERE id = $1
-RETURNING id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at
+RETURNING id, member_id, status, total_cents, created_at
 `
 
-type CancelOrderParams struct {
-	ID                        int64  `json:"id"`
-	CancelledEventTraceparent string `json:"cancelledEventTraceparent"`
-}
-
-// 遷移と送信状態を同一 tx で確定し、送出はリレーに後追いさせる (ADR-[[202606261212]])。
-func (q *Queries) CancelOrder(ctx context.Context, arg CancelOrderParams) (OrderOrder, error) {
-	row := q.db.QueryRow(ctx, cancelOrder, arg.ID, arg.CancelledEventTraceparent)
+// 遷移と未送信イベントを同一 tx で確定し、送出はリレーに後追いさせる (ADR-[[202606300600]])。
+func (q *Queries) CancelOrder(ctx context.Context, id int64) (OrderOrder, error) {
+	row := q.db.QueryRow(ctx, cancelOrder, id)
 	var i OrderOrder
 	err := row.Scan(
 		&i.ID,
@@ -33,9 +26,6 @@ func (q *Queries) CancelOrder(ctx context.Context, arg CancelOrderParams) (Order
 		&i.Status,
 		&i.TotalCents,
 		&i.CreatedAt,
-		&i.CancelledEventPending,
-		&i.CancelledEventTraceparent,
-		&i.CancelledEventPublishedAt,
 	)
 	return i, err
 }
@@ -43,7 +33,7 @@ func (q *Queries) CancelOrder(ctx context.Context, arg CancelOrderParams) (Order
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO "order".orders (member_id, status, total_cents)
 VALUES ($1, $2, $3)
-RETURNING id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at
+RETURNING id, member_id, status, total_cents, created_at
 `
 
 type CreateOrderParams struct {
@@ -61,9 +51,6 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.Status,
 		&i.TotalCents,
 		&i.CreatedAt,
-		&i.CancelledEventPending,
-		&i.CancelledEventTraceparent,
-		&i.CancelledEventPublishedAt,
 	)
 	return i, err
 }
@@ -114,7 +101,7 @@ func (q *Queries) DeleteOrder(ctx context.Context, id int64) error {
 }
 
 const getOrder = `-- name: GetOrder :one
-SELECT id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at FROM "order".orders
+SELECT id, member_id, status, total_cents, created_at FROM "order".orders
 WHERE id = $1
 `
 
@@ -127,15 +114,12 @@ func (q *Queries) GetOrder(ctx context.Context, id int64) (OrderOrder, error) {
 		&i.Status,
 		&i.TotalCents,
 		&i.CreatedAt,
-		&i.CancelledEventPending,
-		&i.CancelledEventTraceparent,
-		&i.CancelledEventPublishedAt,
 	)
 	return i, err
 }
 
 const getOrderForUpdate = `-- name: GetOrderForUpdate :one
-SELECT id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at FROM "order".orders
+SELECT id, member_id, status, total_cents, created_at FROM "order".orders
 WHERE id = $1
 FOR UPDATE
 `
@@ -150,11 +134,30 @@ func (q *Queries) GetOrderForUpdate(ctx context.Context, id int64) (OrderOrder, 
 		&i.Status,
 		&i.TotalCents,
 		&i.CreatedAt,
-		&i.CancelledEventPending,
-		&i.CancelledEventTraceparent,
-		&i.CancelledEventPublishedAt,
 	)
 	return i, err
+}
+
+const insertOutbox = `-- name: InsertOutbox :exec
+INSERT INTO "order".outbox (aggregate_id, event_type, payload, traceparent)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertOutboxParams struct {
+	AggregateID int64  `json:"aggregateId"`
+	EventType   string `json:"eventType"`
+	Payload     []byte `json:"payload"`
+	Traceparent string `json:"traceparent"`
+}
+
+func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) error {
+	_, err := q.db.Exec(ctx, insertOutbox,
+		arg.AggregateID,
+		arg.EventType,
+		arg.Payload,
+		arg.Traceparent,
+	)
+	return err
 }
 
 const listOrderItems = `-- name: ListOrderItems :many
@@ -193,7 +196,7 @@ func (q *Queries) ListOrderItems(ctx context.Context, orderID int64) ([]OrderOrd
 }
 
 const listOrders = `-- name: ListOrders :many
-SELECT id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at FROM "order".orders
+SELECT id, member_id, status, total_cents, created_at FROM "order".orders
 ORDER BY id
 `
 
@@ -212,9 +215,6 @@ func (q *Queries) ListOrders(ctx context.Context) ([]OrderOrder, error) {
 			&i.Status,
 			&i.TotalCents,
 			&i.CreatedAt,
-			&i.CancelledEventPending,
-			&i.CancelledEventTraceparent,
-			&i.CancelledEventPublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -227,7 +227,7 @@ func (q *Queries) ListOrders(ctx context.Context) ([]OrderOrder, error) {
 }
 
 const listOrdersByMember = `-- name: ListOrdersByMember :many
-SELECT id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at FROM "order".orders
+SELECT id, member_id, status, total_cents, created_at FROM "order".orders
 WHERE member_id = $1
 ORDER BY id
 `
@@ -247,9 +247,6 @@ func (q *Queries) ListOrdersByMember(ctx context.Context, memberID int64) ([]Ord
 			&i.Status,
 			&i.TotalCents,
 			&i.CreatedAt,
-			&i.CancelledEventPending,
-			&i.CancelledEventTraceparent,
-			&i.CancelledEventPublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -261,29 +258,30 @@ func (q *Queries) ListOrdersByMember(ctx context.Context, memberID int64) ([]Ord
 	return items, nil
 }
 
-const listUnpublishedCancelledEvents = `-- name: ListUnpublishedCancelledEvents :many
-SELECT id, cancelled_event_traceparent
-FROM "order".orders
-WHERE cancelled_event_pending
+const listUnpublishedOutbox = `-- name: ListUnpublishedOutbox :many
+SELECT id, payload, traceparent
+FROM "order".outbox
+WHERE published_at IS NULL
 ORDER BY id
 LIMIT $1
 `
 
-type ListUnpublishedCancelledEventsRow struct {
-	ID                        int64  `json:"id"`
-	CancelledEventTraceparent string `json:"cancelledEventTraceparent"`
+type ListUnpublishedOutboxRow struct {
+	ID          int64  `json:"id"`
+	Payload     []byte `json:"payload"`
+	Traceparent string `json:"traceparent"`
 }
 
-func (q *Queries) ListUnpublishedCancelledEvents(ctx context.Context, limit int32) ([]ListUnpublishedCancelledEventsRow, error) {
-	rows, err := q.db.Query(ctx, listUnpublishedCancelledEvents, limit)
+func (q *Queries) ListUnpublishedOutbox(ctx context.Context, limit int32) ([]ListUnpublishedOutboxRow, error) {
+	rows, err := q.db.Query(ctx, listUnpublishedOutbox, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListUnpublishedCancelledEventsRow{}
+	items := []ListUnpublishedOutboxRow{}
 	for rows.Next() {
-		var i ListUnpublishedCancelledEventsRow
-		if err := rows.Scan(&i.ID, &i.CancelledEventTraceparent); err != nil {
+		var i ListUnpublishedOutboxRow
+		if err := rows.Scan(&i.ID, &i.Payload, &i.Traceparent); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -294,14 +292,14 @@ func (q *Queries) ListUnpublishedCancelledEvents(ctx context.Context, limit int3
 	return items, nil
 }
 
-const markCancelledEventPublished = `-- name: MarkCancelledEventPublished :exec
-UPDATE "order".orders
-SET cancelled_event_pending = false, cancelled_event_published_at = now()
+const markOutboxPublished = `-- name: MarkOutboxPublished :exec
+UPDATE "order".outbox
+SET published_at = now()
 WHERE id = $1
 `
 
-func (q *Queries) MarkCancelledEventPublished(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, markCancelledEventPublished, id)
+func (q *Queries) MarkOutboxPublished(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markOutboxPublished, id)
 	return err
 }
 
@@ -309,7 +307,7 @@ const updateOrder = `-- name: UpdateOrder :one
 UPDATE "order".orders
 SET status = $2
 WHERE id = $1
-RETURNING id, member_id, status, total_cents, created_at, cancelled_event_pending, cancelled_event_traceparent, cancelled_event_published_at
+RETURNING id, member_id, status, total_cents, created_at
 `
 
 type UpdateOrderParams struct {
@@ -326,9 +324,6 @@ func (q *Queries) UpdateOrder(ctx context.Context, arg UpdateOrderParams) (Order
 		&i.Status,
 		&i.TotalCents,
 		&i.CreatedAt,
-		&i.CancelledEventPending,
-		&i.CancelledEventTraceparent,
-		&i.CancelledEventPublishedAt,
 	)
 	return i, err
 }

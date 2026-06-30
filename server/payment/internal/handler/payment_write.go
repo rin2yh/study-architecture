@@ -50,12 +50,7 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 	if settled {
 		traceparent = paymentevent.Traceparent(c.Request.Context())
 	}
-	row, err := h.command.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
-		ID:          id,
-		Status:      req.Status,
-		MarkSettled: settled,
-		Traceparent: traceparent,
-	})
+	row, err := h.command.UpdatePayment(c.Request.Context(), id, req.Status, settled, traceparent)
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("payment not found"))

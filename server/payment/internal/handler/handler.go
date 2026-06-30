@@ -17,7 +17,7 @@ type Query interface {
 
 type Command interface {
 	CreatePayment(ctx context.Context, arg db.CreatePaymentParams) (db.PaymentPayment, error)
-	UpdatePayment(ctx context.Context, arg db.UpdatePaymentParams) (db.PaymentPayment, error)
+	UpdatePayment(ctx context.Context, id int64, status string, settle bool, traceparent string) (db.PaymentPayment, error)
 }
 
 type readHandler struct {

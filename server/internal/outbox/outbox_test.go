@@ -130,6 +130,61 @@ func TestRelayDrain(t *testing.T) {
 	})
 }
 
+func TestDecodePayload(t *testing.T) {
+	type want struct {
+		values map[string]any
+		err    bool
+	}
+	tests := []struct {
+		name string
+		raw  string
+		want want
+	}{
+		{
+			"正常系 文字列と整数を復元する",
+			`{"event":"payment.settled","orderId":20,"amountCents":2980}`,
+			want{map[string]any{"event": "payment.settled", "orderId": int64(20), "amountCents": int64(2980)}, false},
+		},
+		{
+			"正常系 int64 上限近傍の整数を桁落ちなく復元する",
+			`{"id":9007199254740993}`,
+			want{map[string]any{"id": int64(9007199254740993)}, false},
+		},
+		{
+			"準正常系 整数でない数値は文字列で復元する",
+			`{"ratio":1.5}`,
+			want{map[string]any{"ratio": "1.5"}, false},
+		},
+		{
+			"異常系 壊れた JSON は error",
+			`{"event":`,
+			want{nil, true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DecodePayload([]byte(tt.raw))
+			if tt.want.err {
+				if err == nil {
+					t.Fatal("DecodePayload(): want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("DecodePayload() = %v, want nil", err)
+			}
+			if len(got) != len(tt.want.values) {
+				t.Fatalf("len = %d, want %d (%#v)", len(got), len(tt.want.values), got)
+			}
+			for k, w := range tt.want.values {
+				if got[k] != w {
+					t.Fatalf("values[%q] = %#v (%T), want %#v (%T)", k, got[k], got[k], w, w)
+				}
+			}
+		})
+	}
+}
+
 func TestRelayRun(t *testing.T) {
 	t.Run("準正常系 ctx キャンセルで context.Canceled を返して停止する", func(t *testing.T) {
 		r, _ := newTestRelay(t, &fakeStore{})

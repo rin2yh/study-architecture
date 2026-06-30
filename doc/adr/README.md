@@ -41,7 +41,7 @@
 | [202606251000](202606251000-metrics-alloy-push-to-prometheus-otlp.md) | Accepted | メトリクスは Alloy から Prometheus へ OTLP で push する |
 | [202606261100](202606261100-alerts-grafana-managed-provisioned.md) | Accepted | アラートは Grafana-managed alerting で provisioning する |
 | [202606261210](202606261210-sync-call-resilience-policy.md) | Accepted | order の同期呼び出しに timeout・リトライ・サーキットブレーカを入れる |
-| [202606261212](202606261212-transactional-outbox-payment-settled.md) | Accepted | 決済確定イベントを Transactional Outbox (集約列 + プロセス内リレー) で確実に発行する |
+| [202606261212](202606261212-transactional-outbox-payment-settled.md) | Superseded | 決済確定イベントを Transactional Outbox (集約列 + プロセス内リレー) で確実に発行する |
 | [202606261214](202606261214-idempotency-checkout-and-shipping.md) | Accepted | checkout と shipping を DB ユニーク制約で冪等にする |
 | [202606261216](202606261216-graceful-degradation-policy.md) | Accepted | 依存を「致命 / 縮退可」で分類しグレースフルデグラデーション方針を定める |
 | [202606261600](202606261600-resource-metrics-cadvisor-via-alloy.md) | Accepted | リソースメトリクスは cAdvisor を Alloy で収集し既存 OTLP 経路へ相乗りさせる |
@@ -50,3 +50,4 @@
 | [202606261704](202606261704-shipping-address-book-and-order-snapshot.md) | Accepted | 配送先住所は member の住所帳で持ち、注文時に order/shipment へスナップショットする |
 | [202606262000](202606262000-inventory-as-independent-service.md) | Accepted (戻しの表現は一部 ADR-[[202606281000]] で補足) | 在庫を独立サービス (独自 DB・量子) として切り出す |
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
+| [202606300600](202606300600-transactional-outbox-dedicated-table.md) | Accepted | Outbox を集約列から専用 outbox テーブルへ移す (ADR-202606261212 を Supersede) |

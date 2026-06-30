@@ -2,11 +2,13 @@ package rdb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
@@ -28,10 +30,39 @@ func (r *PaymentCommand) CreatePayment(ctx context.Context, arg db.CreatePayment
 	return row, err
 }
 
-func (r *PaymentCommand) UpdatePayment(ctx context.Context, arg db.UpdatePaymentParams) (db.PaymentPayment, error) {
-	row, err := r.q.UpdatePayment(ctx, arg)
+// ADR-[[202606300600]]
+func (r *PaymentCommand) UpdatePayment(ctx context.Context, id int64, status string, settle bool, traceparent string) (db.PaymentPayment, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return db.PaymentPayment{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := db.New(tx)
+	row, err := qtx.UpdatePayment(ctx, db.UpdatePaymentParams{ID: id, Status: status})
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
+	}
+	if settle {
+		payload, err := json.Marshal(paymentevent.Settled{
+			PaymentID:   row.ID,
+			OrderID:     row.OrderID,
+			AmountCents: row.AmountCents,
+		}.Values())
+		if err != nil {
+			return db.PaymentPayment{}, err
+		}
+		if err := qtx.InsertOutbox(ctx, db.InsertOutboxParams{
+			AggregateID: row.ID,
+			EventType:   paymentevent.TypeSettled,
+			Payload:     payload,
+			Traceparent: traceparent,
+		}); err != nil {
+			return db.PaymentPayment{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.PaymentPayment{}, err
 	}
 	return row, nil
 }

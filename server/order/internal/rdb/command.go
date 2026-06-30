@@ -2,11 +2,13 @@ package rdb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
@@ -65,8 +67,20 @@ func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent st
 	case "cancelled":
 		return order, nil
 	}
-	cancelled, err := qtx.CancelOrder(ctx, db.CancelOrderParams{ID: id, CancelledEventTraceparent: traceparent})
+	cancelled, err := qtx.CancelOrder(ctx, id)
 	if err != nil {
+		return db.OrderOrder{}, err
+	}
+	payload, err := json.Marshal(orderevent.Cancelled{OrderID: cancelled.ID}.Values())
+	if err != nil {
+		return db.OrderOrder{}, err
+	}
+	if err := qtx.InsertOutbox(ctx, db.InsertOutboxParams{
+		AggregateID: cancelled.ID,
+		EventType:   orderevent.TypeCancelled,
+		Payload:     payload,
+		Traceparent: traceparent,
+	}); err != nil {
 		return db.OrderOrder{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

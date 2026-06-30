@@ -4,7 +4,9 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -23,6 +25,30 @@ type Message struct {
 type Store interface {
 	FetchUnpublished(ctx context.Context, limit int) ([]Message, error)
 	MarkPublished(ctx context.Context, id int64) error
+}
+
+// DecodePayload は outbox 行の payload (jsonb) を XAdd 用の Values へ復元する。発行時の Values を
+// そのまま JSON 化して保存しているので戻すだけでよく、リレーはイベントの中身を知らないままにできる。
+// bigint が JSON 経由で float64 化して桁落ちしないよう、整数は json.Number から int64 へ戻す。
+func DecodePayload(raw []byte) (map[string]any, error) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var values map[string]any
+	if err := dec.Decode(&values); err != nil {
+		return nil, err
+	}
+	for k, v := range values {
+		n, ok := v.(json.Number)
+		if !ok {
+			continue
+		}
+		if i, err := n.Int64(); err == nil {
+			values[k] = i
+		} else {
+			values[k] = n.String()
+		}
+	}
+	return values, nil
 }
 
 type Relay struct {

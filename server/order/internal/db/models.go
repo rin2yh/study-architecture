@@ -9,14 +9,11 @@ import (
 )
 
 type OrderOrder struct {
-	ID                        int64              `json:"id"`
-	MemberID                  int64              `json:"memberId"`
-	Status                    string             `json:"status"`
-	TotalCents                int64              `json:"totalCents"`
-	CreatedAt                 pgtype.Timestamptz `json:"createdAt"`
-	CancelledEventPending     bool               `json:"cancelledEventPending"`
-	CancelledEventTraceparent string             `json:"cancelledEventTraceparent"`
-	CancelledEventPublishedAt pgtype.Timestamptz `json:"cancelledEventPublishedAt"`
+	ID         int64              `json:"id"`
+	MemberID   int64              `json:"memberId"`
+	Status     string             `json:"status"`
+	TotalCents int64              `json:"totalCents"`
+	CreatedAt  pgtype.Timestamptz `json:"createdAt"`
 }
 
 type OrderOrderItem struct {

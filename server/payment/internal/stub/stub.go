@@ -24,6 +24,6 @@ func (s PaymentStub) CreatePayment(context.Context, db.CreatePaymentParams) (db.
 	return s.Payment, s.Err
 }
 
-func (s PaymentStub) UpdatePayment(context.Context, db.UpdatePaymentParams) (db.PaymentPayment, error) {
+func (s PaymentStub) UpdatePayment(context.Context, int64, string, bool, string) (db.PaymentPayment, error) {
 	return s.Payment, s.Err
 }
