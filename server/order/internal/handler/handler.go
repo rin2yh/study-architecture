@@ -34,7 +34,6 @@ type readHandler struct {
 type writeHandler struct {
 	command   Command
 	product   gateway.ProductPort
-	member    gateway.MemberPort
 	payment   gateway.PaymentPort
 	inventory gateway.InventoryPort
 }
@@ -46,10 +45,10 @@ type Handler struct {
 
 var _ api.ServerInterface = (*Handler)(nil)
 
-func New(query Query, command Command, product gateway.ProductPort, member gateway.MemberPort, payment gateway.PaymentPort, inventory gateway.InventoryPort) *Handler {
+func New(query Query, command Command, product gateway.ProductPort, payment gateway.PaymentPort, inventory gateway.InventoryPort) *Handler {
 	return &Handler{
 		readHandler:  &readHandler{query: query},
-		writeHandler: &writeHandler{command: command, product: product, member: member, payment: payment, inventory: inventory},
+		writeHandler: &writeHandler{command: command, product: product, payment: payment, inventory: inventory},
 	}
 }
 

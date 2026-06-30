@@ -245,19 +245,15 @@ components:
             binding: required,gt=0
     CheckoutRequest:
       type: object
-      required: [memberId, shippingAddressId, paymentMethod, items]
+      required: [memberId, shippingAddress, paymentMethod, items]
       properties:
         memberId:
           type: integer
           format: int64
           x-oapi-codegen-extra-tags:
             binding: required,gt=0
-        shippingAddressId:
-          type: integer
-          format: int64
-          description: 配送先に選ぶ住所帳 (member) の住所 id。注文時点の住所を order/shipment へスナップショットする (ADR-[[202606261704]])。
-          x-oapi-codegen-extra-tags:
-            binding: required,gt=0
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
         paymentMethod:
           type: string
           x-oapi-codegen-extra-tags:

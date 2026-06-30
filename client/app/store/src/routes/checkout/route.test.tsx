@@ -2,12 +2,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
+import { getAddress } from "api/member";
 import { checkout } from "api/order";
 import { type CartItem, readCart, writeCart } from "@/entities/cart";
 import { currentMemberId } from "@/features/auth/model/session";
 import Checkout, { action } from "./route";
 
 vi.mock("api/order", () => ({ checkout: vi.fn() }));
+vi.mock("api/member", () => ({
+  getAddress: vi.fn(),
+  GetAddressResponse: { parse: (x: unknown) => x },
+}));
 vi.mock("@/features/auth/model/session", () => ({ currentMemberId: vi.fn() }));
 
 const order = {
@@ -70,8 +75,13 @@ afterEach(() => {
 
 describe("action", () => {
   describe("正常系", () => {
-    it("カート・配送先・支払い方法を渡すと checkout を呼び注文を返す", async () => {
+    it("member から住所を解決し checkout に値で渡して注文を返す", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(1);
+      vi.mocked(getAddress).mockResolvedValue({
+        data: addresses[0],
+        status: 200,
+        headers: new Headers(),
+      });
       vi.mocked(checkout).mockResolvedValue({ data: order, status: 201, headers: new Headers() });
 
       const result = await callAction({
@@ -80,9 +90,16 @@ describe("action", () => {
         paymentMethod: "card",
       });
 
+      expect(getAddress).toHaveBeenCalledWith(1, 5);
       expect(checkout).toHaveBeenCalledWith({
         memberId: 1,
-        shippingAddressId: 5,
+        shippingAddress: {
+          recipient: "山田太郎",
+          postalCode: "1500001",
+          prefecture: "東京都",
+          city: "渋谷区",
+          line1: "神宮前1-2-3",
+        },
         paymentMethod: "card",
         items: [{ productId: 1, quantity: 2 }],
       });
@@ -115,11 +132,32 @@ describe("action", () => {
       expect(checkout).not.toHaveBeenCalled();
       expect(result).toEqual({ ok: false, error });
     });
+
+    it("選んだ住所が member に無いと checkout を呼ばずエラーを返す", async () => {
+      vi.mocked(currentMemberId).mockResolvedValue(1);
+      vi.mocked(getAddress).mockResolvedValue({
+        data: { code: "not_found", message: "address not found" },
+        status: 404,
+        headers: new Headers(),
+      });
+      const result = await callAction({
+        items: JSON.stringify([{ productId: 1, quantity: 1 }]),
+        shippingAddressId: "5",
+        paymentMethod: "card",
+      });
+      expect(checkout).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: false, error: "配送先が見つかりません。" });
+    });
   });
 
   describe("異常系", () => {
     it("checkout が失敗したらエラーメッセージを返す", async () => {
       vi.mocked(currentMemberId).mockResolvedValue(1);
+      vi.mocked(getAddress).mockResolvedValue({
+        data: addresses[0],
+        status: 200,
+        headers: new Headers(),
+      });
       vi.mocked(checkout).mockRejectedValue(new Error("boom"));
       const result = await callAction({
         items: JSON.stringify([{ productId: 1, quantity: 1 }]),

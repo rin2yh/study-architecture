@@ -110,18 +110,16 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 		totalCents += snap.UnitPriceCents * int64(item.Quantity)
 	}
 
-	// 権威ある住所は member が持つため、確定の瞬間に引いて値で固定する (ADR-[[202606261704]] / ADR-[[202606190900]])。
-	addr, err := h.member.FetchAddress(c.Request.Context(), req.MemberId, req.ShippingAddressId)
-	if err != nil {
-		if errors.Is(err, gateway.ErrAddressNotFound) {
-			_ = c.Error(middleware.Unprocessable(err.Error()))
-			return
-		}
-		_ = c.Error(middleware.BadGateway("member service unavailable"))
-		return
+	// 宛先は BFF が member の住所帳から解決して値で渡す。order は受け取った値を注文時点で複写する (ADR-[[202606301100]] / ADR-[[202606190900]])。
+	addr := rdb.CheckoutAddress{
+		Recipient:  req.ShippingAddress.Recipient,
+		PostalCode: req.ShippingAddress.PostalCode,
+		Prefecture: req.ShippingAddress.Prefecture,
+		City:       req.ShippingAddress.City,
+		Line1:      req.ShippingAddress.Line1,
 	}
 
-	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines, rdb.CheckoutAddress(addr))
+	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines, addr)
 	if err != nil {
 		_ = c.Error(err)
 		return

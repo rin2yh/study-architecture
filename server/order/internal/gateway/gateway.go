@@ -11,14 +11,11 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/httpx/resilience"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/inventory"
-	"github.com/rin2yh/study-architecture/server/order/internal/client/member"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/payment"
 	"github.com/rin2yh/study-architecture/server/order/internal/client/product"
 )
 
 var ErrProductNotFound = errors.New("product not found")
-
-var ErrAddressNotFound = errors.New("shipping address not found")
 
 // ErrInsufficientStock は予約が在庫不足で拒否された (409)。checkout は致命扱いで 409 を返す (ADR-[[202606262000]])。
 var ErrInsufficientStock = errors.New("insufficient stock")
@@ -33,19 +30,6 @@ type ProductSnapshot struct {
 
 type ProductPort interface {
 	FetchProduct(ctx context.Context, id int64) (ProductSnapshot, error)
-}
-
-// AddressSnapshot は注文時点で確定する配送先の値 (ADR-[[202606261704]])。
-type AddressSnapshot struct {
-	Recipient  string
-	PostalCode string
-	Prefecture string
-	City       string
-	Line1      string
-}
-
-type MemberPort interface {
-	FetchAddress(ctx context.Context, memberID, addressID int64) (AddressSnapshot, error)
 }
 
 type PaymentPort interface {
@@ -92,44 +76,6 @@ func (p *ProductClient) FetchProduct(ctx context.Context, id int64) (ProductSnap
 		return ProductSnapshot{}, fmt.Errorf("%w: get product %d returned %d", ErrUpstream, id, res.StatusCode())
 	}
 	return ProductSnapshot{ID: res.JSON200.Id, Name: res.JSON200.Name, UnitPriceCents: res.JSON200.PriceCents}, nil
-}
-
-type MemberClient struct {
-	c member.ClientWithResponsesInterface
-}
-
-var _ MemberPort = (*MemberClient)(nil)
-
-func NewMemberClient() (*MemberClient, error) {
-	base := os.Getenv("MEMBER_API_URL")
-	if base == "" {
-		return nil, errors.New("MEMBER_API_URL is required")
-	}
-	c, err := member.NewClientWithResponses(base, member.WithHTTPClient(resilience.NewClient("order->member")))
-	if err != nil {
-		return nil, err
-	}
-	return &MemberClient{c: c}, nil
-}
-
-func (m *MemberClient) FetchAddress(ctx context.Context, memberID, addressID int64) (AddressSnapshot, error) {
-	res, err := m.c.GetAddressWithResponse(ctx, memberID, addressID)
-	if err != nil {
-		return AddressSnapshot{}, fmt.Errorf("%w: get address %d for member %d: %v", ErrUpstream, addressID, memberID, err)
-	}
-	if res.StatusCode() == http.StatusNotFound {
-		return AddressSnapshot{}, fmt.Errorf("%w: member %d address %d", ErrAddressNotFound, memberID, addressID)
-	}
-	if res.JSON200 == nil {
-		return AddressSnapshot{}, fmt.Errorf("%w: get address %d returned %d", ErrUpstream, addressID, res.StatusCode())
-	}
-	return AddressSnapshot{
-		Recipient:  res.JSON200.Recipient,
-		PostalCode: res.JSON200.PostalCode,
-		Prefecture: res.JSON200.Prefecture,
-		City:       res.JSON200.City,
-		Line1:      res.JSON200.Line1,
-	}, nil
 }
 
 type PaymentClient struct {

@@ -24,8 +24,8 @@ type CheckoutRequest struct {
 	MemberId      int64          `binding:"required,gt=0" json:"memberId"`
 	PaymentMethod string         `binding:"required" json:"paymentMethod"`
 
-	// ShippingAddressId 配送先に選ぶ住所帳 (member) の住所 id。注文時点の住所を order/shipment へスナップショットする (ADR-[[202606261704]])。
-	ShippingAddressId int64 `binding:"required,gt=0" json:"shippingAddressId"`
+	// ShippingAddress 注文時点の配送先スナップショット (ADR-[[202606261704]])。
+	ShippingAddress ShippingAddress `json:"shippingAddress"`
 }
 
 // CreateOrderRequest defines model for CreateOrderRequest.

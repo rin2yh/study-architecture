@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CheckoutItem } from './checkoutItem.ts';
+import type { ShippingAddress } from './shippingAddress.ts';
 
 export interface CheckoutRequest {
   memberId: number;
-  /** 配送先に選ぶ住所帳 (member) の住所 id。注文時点の住所を order/shipment へスナップショットする (ADR-[[202606261704]])。 */
-  shippingAddressId: number;
+  shippingAddress: ShippingAddress;
   paymentMethod: string;
   items: CheckoutItem[];
 }

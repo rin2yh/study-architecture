@@ -72,7 +72,13 @@ export const CreateOrderResponse = zod.object({
  */
 export const CheckoutBody = zod.object({
   "memberId": zod.number(),
-  "shippingAddressId": zod.number().describe('配送先に選ぶ住所帳 (member) の住所 id。注文時点の住所を order\/shipment へスナップショットする (ADR-[[202606261704]])。'),
+  "shippingAddress": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).describe('注文時点の配送先スナップショット (ADR-[[202606261704]])。'),
   "paymentMethod": zod.string(),
   "items": zod.array(zod.object({
   "productId": zod.number(),

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigation } from "react-router";
 
-import { listAddresses, ListAddressesResponse } from "api/member";
+import { getAddress, GetAddressResponse, listAddresses, ListAddressesResponse } from "api/member";
 import { checkout } from "api/order";
 import { useCart } from "@/entities/cart";
 import { currentMemberId, requireMemberId } from "@/features/auth";
@@ -37,7 +37,24 @@ export async function action({ request }: Route.ActionArgs): Promise<CheckoutRes
   if (memberId === null) return { ok: false, error: "ログインが必要です。" };
 
   try {
-    const res = await checkout({ memberId, shippingAddressId, paymentMethod, items });
+    // 住所帳の権威は member。BFF が解決して値で order へ渡し、order は member を呼ばない (ADR-[[202606301100]])。
+    const addrRes = await getAddress(memberId, shippingAddressId);
+    if (addrRes.status === 404) return { ok: false, error: "配送先が見つかりません。" };
+    if (addrRes.status !== 200) throw new Error(`get address returned ${addrRes.status}`);
+    const a = GetAddressResponse.parse(addrRes.data);
+
+    const res = await checkout({
+      memberId,
+      shippingAddress: {
+        recipient: a.recipient,
+        postalCode: a.postalCode,
+        prefecture: a.prefecture,
+        city: a.city,
+        line1: a.line1,
+      },
+      paymentMethod,
+      items,
+    });
     if (res.status !== 201) throw new Error(`checkout returned ${res.status}`);
     return { ok: true, order: res.data };
   } catch (e) {
