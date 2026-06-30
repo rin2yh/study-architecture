@@ -7,6 +7,7 @@ import (
 	"github.com/mazrean/kessoku"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/payment/internal/consumer"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
@@ -25,10 +26,17 @@ func InitApp(ctx context.Context) (*App, error) {
 		return zero, err0
 	}
 	paymentQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewPaymentQuery)).Fn()(pool)
-	paymentCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewPaymentCommand)).Fn()(pool)
 	outboxStore := kessoku.Bind[outbox.Store](kessoku.Provide(rdb.NewOutboxStore)).Fn()(pool)
-	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, paymentCommand)
+	paymentCommand := kessoku.Provide(rdb.NewPaymentCommand).Fn()(pool)
 	relay := kessoku.Provide(outbox.NewRelay).Fn()(client, outboxStore)
-	app := kessoku.Provide(NewApp).Fn()(handler0, relay)
+	command := kessoku.Provide(func(c *rdb.PaymentCommand) handler.Command {
+		return c
+	}).Fn()(paymentCommand)
+	paymentRefunder := kessoku.Provide(func(c *rdb.PaymentCommand) consumer.PaymentRefunder {
+		return c
+	}).Fn()(paymentCommand)
+	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, command)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(client, paymentRefunder)
+	app := kessoku.Provide(NewApp).Fn()(handler0, relay, consumer0)
 	return app, nil
 }

@@ -9,16 +9,19 @@ import (
 )
 
 type OrderOrder struct {
-	ID                 int64              `json:"id"`
-	MemberID           int64              `json:"memberId"`
-	Status             string             `json:"status"`
-	TotalCents         int64              `json:"totalCents"`
-	CreatedAt          pgtype.Timestamptz `json:"createdAt"`
-	ShippingRecipient  string             `json:"shippingRecipient"`
-	ShippingPostalCode string             `json:"shippingPostalCode"`
-	ShippingPrefecture string             `json:"shippingPrefecture"`
-	ShippingCity       string             `json:"shippingCity"`
-	ShippingLine1      string             `json:"shippingLine1"`
+	ID                        int64              `json:"id"`
+	MemberID                  int64              `json:"memberId"`
+	Status                    string             `json:"status"`
+	TotalCents                int64              `json:"totalCents"`
+	CreatedAt                 pgtype.Timestamptz `json:"createdAt"`
+	CancelledEventPending     bool               `json:"cancelledEventPending"`
+	CancelledEventTraceparent string             `json:"cancelledEventTraceparent"`
+	CancelledEventPublishedAt pgtype.Timestamptz `json:"cancelledEventPublishedAt"`
+	ShippingRecipient         string             `json:"shippingRecipient"`
+	ShippingPostalCode        string             `json:"shippingPostalCode"`
+	ShippingPrefecture        string             `json:"shippingPrefecture"`
+	ShippingCity              string             `json:"shippingCity"`
+	ShippingLine1             string             `json:"shippingLine1"`
 }
 
 type OrderOrderItem struct {

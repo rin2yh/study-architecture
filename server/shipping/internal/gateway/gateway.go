@@ -13,7 +13,7 @@ import (
 
 var ErrUpstream = errors.New("upstream service error")
 
-// Destination は注文時点で確定した配送先のスナップショット (ADR-[[202606281000]])。
+// Destination は注文時点で確定した配送先のスナップショット (ADR-[[202606301000]])。
 type Destination struct {
 	Recipient  string
 	PostalCode string

@@ -36,3 +36,15 @@ LIMIT $1;
 UPDATE payment.payments
 SET settled_event_pending = false, settled_event_published_at = now()
 WHERE id = $1;
+
+-- 終端でない確定済み決済だけ返金へ遷移。再配信は 0 行更新で吸収する (ADR-[[202606261214]])。
+-- name: RefundPaymentByOrder :exec
+UPDATE payment.payments
+SET status = 'refunded'
+WHERE order_id = $1 AND status IN ('paid', 'settled', 'captured');
+
+-- 返金すべき入金がないため refunded とは区別する (ADR-[[202606261702]])。
+-- name: VoidPendingPaymentByOrder :exec
+UPDATE payment.payments
+SET status = 'cancelled'
+WHERE order_id = $1 AND status = 'pending';

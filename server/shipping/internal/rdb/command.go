@@ -41,3 +41,7 @@ func (r *ShipmentCommand) UpdateShipment(ctx context.Context, arg db.UpdateShipm
 	}
 	return row, nil
 }
+
+func (r *ShipmentCommand) CancelShipmentForOrder(ctx context.Context, orderID int64) error {
+	return r.q.CancelShipmentForOrder(ctx, orderID)
+}

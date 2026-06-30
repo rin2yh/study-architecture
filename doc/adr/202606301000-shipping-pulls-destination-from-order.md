@@ -1,7 +1,7 @@
-# ADR-202606281000: 配送先スナップショットは shipping が order から引く (settled イベントは orderId のみ)
+# ADR-202606301000: 配送先スナップショットは shipping が order から引く (settled イベントは orderId のみ)
 
 - Status: Accepted
-- Date: 2026-06-28
+- Date: 2026-06-30
 - Relates to: ADR-[[202606261704]] (この実装で詰める点), ADR-[[202606250141]] (秘匿情報を必要な所だけに留める), ADR-[[202606170909]] (顧客系/運用系の境界), GitHub #89
 
 ## Context

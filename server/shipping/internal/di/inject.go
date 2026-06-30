@@ -10,6 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/worker"
 )
 
 var _ = kessoku.Inject[*handler.Handler](
@@ -20,11 +21,16 @@ var _ = kessoku.Inject[*handler.Handler](
 	kessoku.Provide(handler.New),
 )
 
-var _ = kessoku.Inject[*consumer.Consumer](
-	"InitConsumer",
+// kessoku は同一 concrete の二重 provide を許さない。
+var _ = kessoku.Inject[*worker.Worker](
+	"InitWorker",
 	kessoku.Async(kessoku.Provide(rdb.NewPool)),
 	kessoku.Provide(redisx.NewClient),
-	kessoku.Bind[consumer.ShipmentCreator](kessoku.Provide(rdb.NewShipmentCommand)),
+	kessoku.Provide(rdb.NewShipmentCommand),
+	kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCreator { return c }),
+	kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCanceller { return c }),
 	kessoku.Bind[gateway.OrderPort](kessoku.Provide(gateway.NewOrderClient)),
 	kessoku.Provide(consumer.New),
+	kessoku.Provide(consumer.NewCancel),
+	kessoku.Provide(worker.New),
 )

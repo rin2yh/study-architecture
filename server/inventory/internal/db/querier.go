@@ -9,8 +9,10 @@ import (
 )
 
 type Querier interface {
-	// 利用可能在庫 = 入庫(+) と、確定・取り置き中の予約(-) の符号付き合計。
+	// 在庫数を保存せず集計で導く (ADR-[[202606262000]])。
 	AvailableQty(ctx context.Context, productID int64) (int64, error)
+	// (ADR-[[202606281000]])
+	CancelConfirmedReservationsByOrder(ctx context.Context, orderID int64) error
 	// 終端 *_at が未設定の予約だけ確定する。payment.settled 再配信は 0 行更新で吸収 (ADR-[[202606261214]])。
 	ConfirmReservationsByOrder(ctx context.Context, orderID int64) error
 	// (ADR-[[202606262000]])

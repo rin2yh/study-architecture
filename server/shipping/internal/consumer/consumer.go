@@ -141,7 +141,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "raw", raw, "error", err)
 		return nil
 	}
-	// 宛先は order が注文時に確定したスナップショットを引く (ADR-[[202606281000]])。order 不調は
+	// 宛先は order が注文時に確定したスナップショットを引く (ADR-[[202606301000]])。order 不調は
 	// 取得失敗を伝播させ ack せず再配送に委ねる。
 	dest, err := c.order.FetchDestination(ctx, orderID)
 	if err != nil {

@@ -102,6 +102,34 @@ export const CheckoutResponse = zod.object({
 })
 
 /**
+ * @summary 注文をキャンセルする (未発送=可・発送済み=409。補償は order.cancelled で各サービスが実施)
+ */
+export const CancelOrderParams = zod.object({
+  "id": zod.number().describe('リソース ID')
+})
+
+export const CancelOrderResponse = zod.object({
+  "id": zod.number(),
+  "memberId": zod.number(),
+  "status": zod.string(),
+  "totalCents": zod.number(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "shippingAddress": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).optional().describe('注文時点の配送先スナップショット (ADR-[[202606261704]])。'),
+  "items": zod.array(zod.object({
+  "productId": zod.number(),
+  "productName": zod.string(),
+  "unitPriceCents": zod.number(),
+  "quantity": zod.number()
+})).optional()
+})
+
+/**
  * @summary 注文を取得
  */
 export const GetOrderParams = zod.object({

@@ -206,6 +206,9 @@ type ClientInterface interface {
 	UpdateOrderWithBody(ctx context.Context, id IdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateOrder(ctx context.Context, id IdPath, body UpdateOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelOrder request
+	CancelOrder(ctx context.Context, id IdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) CheckoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -306,6 +309,18 @@ func (c *Client) UpdateOrderWithBody(ctx context.Context, id IdPath, contentType
 
 func (c *Client) UpdateOrder(ctx context.Context, id IdPath, body UpdateOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrderRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CancelOrder(ctx context.Context, id IdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelOrderRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -546,6 +561,40 @@ func NewUpdateOrderRequestWithBody(server string, id IdPath, contentType string,
 	return req, nil
 }
 
+// NewCancelOrderRequest generates requests for CancelOrder
+func NewCancelOrderRequest(server string, id IdPath) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orders/%s/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -612,6 +661,9 @@ type ClientWithResponsesInterface interface {
 	UpdateOrderWithBodyWithResponse(ctx context.Context, id IdPath, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrderResponse, error)
 
 	UpdateOrderWithResponse(ctx context.Context, id IdPath, body UpdateOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrderResponse, error)
+
+	// CancelOrderWithResponse request
+	CancelOrderWithResponse(ctx context.Context, id IdPath, reqEditors ...RequestEditorFn) (*CancelOrderResponse, error)
 }
 
 type CheckoutResponse struct {
@@ -800,6 +852,37 @@ func (r UpdateOrderResponse) ContentType() string {
 	return ""
 }
 
+type CancelOrderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Order
+	JSONDefault  *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelOrderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelOrderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelOrderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // CheckoutWithBodyWithResponse request with arbitrary body returning *CheckoutResponse
 func (c *ClientWithResponses) CheckoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CheckoutResponse, error) {
 	rsp, err := c.CheckoutWithBody(ctx, contentType, body, reqEditors...)
@@ -876,6 +959,15 @@ func (c *ClientWithResponses) UpdateOrderWithResponse(ctx context.Context, id Id
 		return nil, err
 	}
 	return ParseUpdateOrderResponse(rsp)
+}
+
+// CancelOrderWithResponse request returning *CancelOrderResponse
+func (c *ClientWithResponses) CancelOrderWithResponse(ctx context.Context, id IdPath, reqEditors ...RequestEditorFn) (*CancelOrderResponse, error) {
+	rsp, err := c.CancelOrder(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelOrderResponse(rsp)
 }
 
 // ParseCheckoutResponse parses an HTTP response from a CheckoutWithResponse call
@@ -1052,6 +1144,39 @@ func ParseUpdateOrderResponse(rsp *http.Response) (*UpdateOrderResponse, error) 
 	}
 
 	response := &UpdateOrderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Order
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelOrderResponse parses an HTTP response from a CancelOrderWithResponse call
+func ParseCancelOrderResponse(rsp *http.Response) (*CancelOrderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelOrderResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

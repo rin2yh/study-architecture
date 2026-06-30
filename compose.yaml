@@ -164,9 +164,12 @@ services:
       PRODUCT_API_URL: http://edge-proxy/product
       MEMBER_API_URL: http://edge-proxy/member # ADR-[[202606261704]]
       INVENTORY_API_URL: http://edge-proxy/inventory # ADR-[[202606262000]]
+      REDIS_URL: redis://broker:6379 # ADR-[[202606261702]]
     ports: ["8002:80"]
     depends_on:
       db-order:
+        condition: service_healthy
+      broker:
         condition: service_healthy
     networks: [external-private]
 
@@ -225,7 +228,7 @@ services:
       OTEL_SERVICE_NAME: shipping-worker
       DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
       REDIS_URL: redis://broker:6379
-      # 運用系→顧客系の越境は edge-proxy 経由 (ADR-[[202606281000]])。
+      # 運用系→顧客系の越境は edge-proxy 経由 (ADR-[[202606301000]])。
       ORDER_API_URL: http://edge-proxy/order
     depends_on:
       db-shipping:
