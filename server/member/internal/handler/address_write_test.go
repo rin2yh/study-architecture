@@ -73,6 +73,7 @@ func TestCreateAddressError(t *testing.T) {
 	}{
 		{"準正常系 recipient 欠落は 400 bad_request", args{stub.MemberStub{}, `{"postalCode":"1500001","prefecture":"東京都","city":"渋谷区","line1":"神宮前1-2-3"}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"準正常系 line1 欠落は 400 bad_request", args{stub.MemberStub{}, `{"recipient":"山田太郎","postalCode":"1500001","prefecture":"東京都","city":"渋谷区"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 未存在 member は 404 not_found", args{stub.MemberStub{AddressErr: dberr.ErrNotFound}, validAddress}, want{http.StatusNotFound, "not_found"}},
 		{"異常系 DB エラーは 500 internal", args{stub.MemberStub{AddressErr: errors.New("db failure")}, validAddress}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

@@ -27,6 +27,10 @@ func (h *writeHandler) CreateAddress(c *gin.Context, id api.IdPath) {
 		Line1:      req.Line1,
 	})
 	if err != nil {
+		if errors.Is(err, dberr.ErrNotFound) {
+			_ = c.Error(middleware.NotFound("member not found"))
+			return
+		}
 		_ = c.Error(err)
 		return
 	}

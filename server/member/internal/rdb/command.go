@@ -48,7 +48,7 @@ func (r *MemberCommand) DeleteSession(ctx context.Context, id string) error {
 func (r *MemberCommand) CreateAddress(ctx context.Context, arg db.CreateAddressParams) (db.MemberAddress, error) {
 	row, err := r.q.CreateAddress(ctx, arg)
 	if err != nil {
-		return db.MemberAddress{}, dberr.FromWrite(err)
+		return db.MemberAddress{}, dberr.FromWriteFK(err)
 	}
 	return row, nil
 }

@@ -87,6 +87,13 @@ func TestCreateAddress(t *testing.T) {
 			t.Fatalf("unexpected row: %+v", got)
 		}
 	})
+	t.Run("準正常系 未存在 member への追加は FK 違反で ErrNotFound", func(t *testing.T) {
+		if _, err := r.CreateAddress(t.Context(), db.CreateAddressParams{
+			MemberID: memberID + 999, Recipient: "x", PostalCode: "x", Prefecture: "x", City: "x", Line1: "x",
+		}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestUpdateAddress(t *testing.T) {

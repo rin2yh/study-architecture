@@ -10,6 +10,7 @@ import { PageLoading } from "ui/page-loading";
 import type { Route } from "./+types/route";
 import { OrderConfirmed } from "./components/order-confirmed";
 import { EmptyCheckout } from "./components/empty-checkout";
+import { EmptyAddresses } from "./components/empty-addresses";
 
 // ADR-[[202606170905]]
 export async function loader({ request }: Route.LoaderArgs) {
@@ -57,6 +58,7 @@ export default function Checkout({ loaderData, actionData }: Route.ComponentProp
   if (actionData?.ok) return <OrderConfirmed order={actionData.order} />;
   if (!cart.ready) return <PageLoading />;
   if (cart.items.length === 0) return <EmptyCheckout />;
+  if (loaderData.addresses.length === 0) return <EmptyAddresses />;
   return (
     <CheckoutForm
       items={cart.items}
