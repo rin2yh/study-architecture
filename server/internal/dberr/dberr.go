@@ -45,6 +45,16 @@ func FromUpdate(err error) error {
 	return FromWrite(err)
 }
 
+// FromWriteFK は FromWrite に加え foreign_key_violation (SQLSTATE 23503) を ErrNotFound に
+// 正規化する。INSERT で参照先の親行が無い (存在しない member への子行追加など) を 404 に倒すため。
+func FromWriteFK(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return ErrNotFound
+	}
+	return FromWrite(err)
+}
+
 // FromInsertSkipped は INSERT ... ON CONFLICT DO NOTHING の :one が行を返さない (既存と衝突して
 // 挿入がスキップされた) を ErrConflict に正規化する。read の no rows (ErrNotFound) とは逆の意味。
 func FromInsertSkipped(err error) error {

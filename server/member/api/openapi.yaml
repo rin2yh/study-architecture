@@ -137,6 +137,96 @@ paths:
                 $ref: "#/components/schemas/Member"
         default:
           $ref: "#/components/responses/Error"
+  /members/{id}/addresses:
+    get:
+      operationId: listAddresses
+      summary: 会員の住所帳一覧
+      tags: [address]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: 住所の配列
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Address"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createAddress
+      summary: 住所を住所帳に追加
+      tags: [address]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressInput"
+      responses:
+        "201":
+          description: 追加された住所
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+        default:
+          $ref: "#/components/responses/Error"
+  /members/{id}/addresses/{addressId}:
+    get:
+      operationId: getAddress
+      summary: 住所を取得
+      tags: [address]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AddressIdPath"
+      responses:
+        "200":
+          description: 住所
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: updateAddress
+      summary: 住所を更新
+      tags: [address]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AddressIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressInput"
+      responses:
+        "200":
+          description: 更新された住所
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteAddress
+      summary: 住所を削除
+      tags: [address]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AddressIdPath"
+      responses:
+        "204":
+          description: 削除済み (存在しない id でも冪等に 204)
+        default:
+          $ref: "#/components/responses/Error"
 components:
   parameters:
     IdPath:
@@ -144,6 +234,14 @@ components:
       in: path
       required: true
       description: リソース ID
+      schema:
+        type: integer
+        format: int64
+    AddressIdPath:
+      name: addressId
+      in: path
+      required: true
+      description: 住所 ID
       schema:
         type: integer
         format: int64
@@ -252,6 +350,53 @@ components:
           x-oapi-codegen-extra-tags:
             binding: required,email
         displayName:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+    Address:
+      type: object
+      required: [id, memberId, recipient, postalCode, prefecture, city, line1, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        memberId:
+          type: integer
+          format: int64
+        recipient:
+          type: string
+        postalCode:
+          type: string
+        prefecture:
+          type: string
+        city:
+          type: string
+        line1:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    AddressInput:
+      type: object
+      required: [recipient, postalCode, prefecture, city, line1]
+      properties:
+        recipient:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        postalCode:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        prefecture:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        city:
+          type: string
+          x-oapi-codegen-extra-tags:
+            binding: required
+        line1:
           type: string
           x-oapi-codegen-extra-tags:
             binding: required

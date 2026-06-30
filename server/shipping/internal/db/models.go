@@ -9,10 +9,15 @@ import (
 )
 
 type ShippingShipment struct {
-	ID         int64              `json:"id"`
-	OrderID    int64              `json:"orderId"`
-	Carrier    string             `json:"carrier"`
-	TrackingNo string             `json:"trackingNo"`
-	Status     string             `json:"status"`
-	CreatedAt  pgtype.Timestamptz `json:"createdAt"`
+	ID             int64              `json:"id"`
+	OrderID        int64              `json:"orderId"`
+	Carrier        string             `json:"carrier"`
+	TrackingNo     string             `json:"trackingNo"`
+	Status         string             `json:"status"`
+	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
+	ShipRecipient  string             `json:"shipRecipient"`
+	ShipPostalCode string             `json:"shipPostalCode"`
+	ShipPrefecture string             `json:"shipPrefecture"`
+	ShipCity       string             `json:"shipCity"`
+	ShipLine1      string             `json:"shipLine1"`
 }

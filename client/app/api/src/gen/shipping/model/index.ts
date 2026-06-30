@@ -7,6 +7,7 @@
  */
 
 export * from './createShipmentRequest.ts';
+export * from './destination.ts';
 export * from './error.ts';
 export * from './errorResponse.ts';
 export * from './health.ts';

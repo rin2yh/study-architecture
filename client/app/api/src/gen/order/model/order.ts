@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrderItem } from './orderItem.ts';
+import type { ShippingAddress } from './shippingAddress.ts';
 
 export interface Order {
   id: number;
@@ -13,5 +14,6 @@ export interface Order {
   status: string;
   totalCents: number;
   createdAt: string;
+  shippingAddress?: ShippingAddress;
   items?: OrderItem[];
 }

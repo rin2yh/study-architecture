@@ -17,6 +17,13 @@ export const ListShipmentsResponseItem = zod.object({
   "carrier": zod.string(),
   "trackingNo": zod.string(),
   "status": zod.string(),
+  "destination": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).describe('ADR-[[202606261704]]'),
   "createdAt": zod.iso.datetime({"offset":true})
 })
 export const ListShipmentsResponse = zod.array(ListShipmentsResponseItem)
@@ -37,6 +44,13 @@ export const CreateShipmentResponse = zod.object({
   "carrier": zod.string(),
   "trackingNo": zod.string(),
   "status": zod.string(),
+  "destination": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).describe('ADR-[[202606261704]]'),
   "createdAt": zod.iso.datetime({"offset":true})
 })
 
@@ -53,6 +67,13 @@ export const GetShipmentResponse = zod.object({
   "carrier": zod.string(),
   "trackingNo": zod.string(),
   "status": zod.string(),
+  "destination": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).describe('ADR-[[202606261704]]'),
   "createdAt": zod.iso.datetime({"offset":true})
 })
 
@@ -73,6 +94,13 @@ export const UpdateShipmentResponse = zod.object({
   "carrier": zod.string(),
   "trackingNo": zod.string(),
   "status": zod.string(),
+  "destination": zod.object({
+  "recipient": zod.string(),
+  "postalCode": zod.string(),
+  "prefecture": zod.string(),
+  "city": zod.string(),
+  "line1": zod.string()
+}).describe('ADR-[[202606261704]]'),
   "createdAt": zod.iso.datetime({"offset":true})
 })
 

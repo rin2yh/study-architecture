@@ -15,6 +15,8 @@ type Query interface {
 	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
 	GetMemberByEmail(ctx context.Context, email string) (db.MemberMember, error)
 	GetSession(ctx context.Context, id string) (db.MemberSession, error)
+	ListAddresses(ctx context.Context, memberID int64) ([]db.MemberAddress, error)
+	GetAddress(ctx context.Context, arg db.GetAddressParams) (db.MemberAddress, error)
 }
 
 type Command interface {
@@ -22,6 +24,9 @@ type Command interface {
 	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error)
 	CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.MemberSession, error)
 	DeleteSession(ctx context.Context, id string) error
+	CreateAddress(ctx context.Context, arg db.CreateAddressParams) (db.MemberAddress, error)
+	UpdateAddress(ctx context.Context, arg db.UpdateAddressParams) (db.MemberAddress, error)
+	DeleteAddress(ctx context.Context, arg db.DeleteAddressParams) error
 }
 
 type readHandler struct {
@@ -59,6 +64,19 @@ func toAPIMember(r db.MemberMember) api.Member {
 		Email:       r.Email,
 		DisplayName: r.DisplayName,
 		CreatedAt:   r.CreatedAt.Time,
+	}
+}
+
+func toAPIAddress(r db.MemberAddress) api.Address {
+	return api.Address{
+		Id:         r.ID,
+		MemberId:   r.MemberID,
+		Recipient:  r.Recipient,
+		PostalCode: r.PostalCode,
+		Prefecture: r.Prefecture,
+		City:       r.City,
+		Line1:      r.Line1,
+		CreatedAt:  r.CreatedAt.Time,
 	}
 }
 

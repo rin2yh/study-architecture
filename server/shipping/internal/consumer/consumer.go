@@ -18,6 +18,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
 
 const (
@@ -30,24 +31,25 @@ const (
 var tracer = otel.Tracer("shipping-worker")
 
 type ShipmentCreator interface {
-	CreateShipmentForOrder(ctx context.Context, orderID int64) (db.ShippingShipment, error)
+	CreateShipmentForOrder(ctx context.Context, orderID int64, dest gateway.Destination) (db.ShippingShipment, error)
 }
 
 type Consumer struct {
 	rdb     *redis.Client
 	creator ShipmentCreator
+	order   gateway.OrderPort
 	name    string
 	block   time.Duration
 }
 
-func New(rc *redis.Client, creator ShipmentCreator) *Consumer {
+func New(rc *redis.Client, creator ShipmentCreator, order gateway.OrderPort) *Consumer {
 	// 同一グループ内で consumer を識別する名前。再起動後も pending を引き取れるよう
 	// ランダムでなく安定値 (hostname) にする。
 	name, _ := os.Hostname()
 	if name == "" {
 		name = consumerGroup
 	}
-	return &Consumer{rdb: rc, creator: creator, name: name, block: 5 * time.Second}
+	return &Consumer{rdb: rc, creator: creator, order: order, name: name, block: 5 * time.Second}
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
@@ -139,7 +141,13 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "raw", raw, "error", err)
 		return nil
 	}
-	_, err = c.creator.CreateShipmentForOrder(ctx, orderID)
+	// 宛先は order が注文時に確定したスナップショットを引く (ADR-[[202606301000]])。order 不調は
+	// 取得失敗を伝播させ ack せず再配送に委ねる。
+	dest, err := c.order.FetchDestination(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	_, err = c.creator.CreateShipmentForOrder(ctx, orderID, dest)
 	if errors.Is(err, dberr.ErrConflict) {
 		return nil
 	}

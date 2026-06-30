@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CheckoutItem } from './checkoutItem.ts';
+import type { ShippingAddress } from './shippingAddress.ts';
 
 export interface CheckoutRequest {
   memberId: number;
+  shippingAddress: ShippingAddress;
   paymentMethod: string;
   items: CheckoutItem[];
 }

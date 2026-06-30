@@ -42,7 +42,7 @@ func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderO
 	return s.Order, s.Err
 }
 
-func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine, rdb.CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error) {
 	return s.Order, s.Items, s.Err
 }
 

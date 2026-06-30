@@ -1,5 +1,6 @@
 import { Form } from "react-router";
 
+import type { Address } from "api/member";
 import { Alert, AlertDescription } from "ui/alert";
 import { Button } from "ui/button";
 import { Card, CardContent } from "ui/card";
@@ -9,14 +10,16 @@ import { Separator } from "ui/separator";
 import { type CartItem, cartTotalCents } from "@/entities/cart";
 import { yen } from "@/shared/lib/money";
 import { toCheckoutItems } from "../model/checkout-items";
+import { formatAddress } from "../model/format-address";
 
 interface CheckoutFormProps {
   items: CartItem[];
+  addresses: Address[];
   error?: string;
   submitting: boolean;
 }
 
-export function CheckoutForm({ items, error, submitting }: CheckoutFormProps) {
+export function CheckoutForm({ items, addresses, error, submitting }: CheckoutFormProps) {
   return (
     <div className="mx-auto max-w-2xl p-8">
       <h1 className="text-3xl font-bold">チェックアウト</h1>
@@ -40,6 +43,21 @@ export function CheckoutForm({ items, error, submitting }: CheckoutFormProps) {
 
       <Form method="post" className="mt-8 space-y-4">
         <input type="hidden" name="items" value={JSON.stringify(toCheckoutItems(items))} />
+        <div className="space-y-2">
+          <Label htmlFor="shippingAddressId">配送先</Label>
+          <Select name="shippingAddressId" defaultValue={String(addresses[0].id)}>
+            <SelectTrigger id="shippingAddressId" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {addresses.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>
+                  {formatAddress(a)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="paymentMethod">支払い方法</Label>
           <Select name="paymentMethod" defaultValue="card">

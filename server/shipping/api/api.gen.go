@@ -20,6 +20,15 @@ type CreateShipmentRequest struct {
 	TrackingNo string `binding:"required" json:"trackingNo"`
 }
 
+// Destination ADR-[[202606261704]]
+type Destination struct {
+	City       string `json:"city"`
+	Line1      string `json:"line1"`
+	PostalCode string `json:"postalCode"`
+	Prefecture string `json:"prefecture"`
+	Recipient  string `json:"recipient"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	// Code 機械可読なエラー種別 (snake_case)。取りうる値は共通ミドルウェア server/internal/middleware (ErrorJSON / AppError) を唯一の出所とする。
@@ -36,12 +45,15 @@ type Health struct {
 
 // Shipment defines model for Shipment.
 type Shipment struct {
-	Carrier    string    `json:"carrier"`
-	CreatedAt  time.Time `json:"createdAt"`
-	Id         int64     `json:"id"`
-	OrderId    int64     `json:"orderId"`
-	Status     string    `json:"status"`
-	TrackingNo string    `json:"trackingNo"`
+	Carrier   string    `json:"carrier"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Destination ADR-[[202606261704]]
+	Destination Destination `json:"destination"`
+	Id          int64       `json:"id"`
+	OrderId     int64       `json:"orderId"`
+	Status      string      `json:"status"`
+	TrackingNo  string      `json:"trackingNo"`
 }
 
 // UpdateShipmentRequest defines model for UpdateShipmentRequest.

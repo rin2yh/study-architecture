@@ -201,7 +201,7 @@ func TestCheckout(t *testing.T) {
 	}
 
 	rec := postCheckout(rdb.NewOrderCommand(pool), stub.TwoProducts(), stub.Payment{ID: 1}, stub.Inventory{},
-		`{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`)
+		`{"memberId":20,"shippingAddress":{"recipient":"山田太郎","postalCode":"1500001","prefecture":"東京都","city":"渋谷区","line1":"神宮前1-2-3"},"paymentMethod":"card","items":[{"productId":100,"quantity":2},{"productId":200,"quantity":1}]}`)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())
@@ -210,8 +210,9 @@ func TestCheckout(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	// 500*2 + 1500*1
-	want := api.Order{MemberId: 20, Status: "confirmed", TotalCents: 2500, Items: &[]api.OrderItem{
+	want := api.Order{MemberId: 20, Status: "confirmed", TotalCents: 2500, ShippingAddress: &api.ShippingAddress{
+		Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3",
+	}, Items: &[]api.OrderItem{
 		{ProductId: 100, ProductName: "Widget", UnitPriceCents: 500, Quantity: 2},
 		{ProductId: 200, ProductName: "Gadget", UnitPriceCents: 1500, Quantity: 1},
 	}}
@@ -219,7 +220,8 @@ func TestCheckout(t *testing.T) {
 }
 
 func TestCheckoutError(t *testing.T) {
-	const valid = `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":2}]}`
+	const addr = `"shippingAddress":{"recipient":"山田太郎","postalCode":"1500001","prefecture":"東京都","city":"渋谷区","line1":"神宮前1-2-3"}`
+	const valid = `{"memberId":20,` + addr + `,"paymentMethod":"card","items":[{"productId":100,"quantity":2}]}`
 	type args struct {
 		command   handler.Command
 		product   gateway.ProductPort
@@ -237,11 +239,11 @@ func TestCheckoutError(t *testing.T) {
 		args args
 		want want
 	}{
-		{"準正常系 明細が空配列は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"準正常系 items 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"準正常系 quantity 0 は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"準正常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
-		{"準正常系 paymentMethod 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 明細が空配列は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,` + addr + `,"paymentMethod":"card","items":[]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 items 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,` + addr + `,"paymentMethod":"card"}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 quantity 0 は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,` + addr + `,"paymentMethod":"card","items":[{"productId":100,"quantity":0}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 memberId 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{` + addr + `,"paymentMethod":"card","items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
+		{"準正常系 paymentMethod 欠落は 400 bad_request", args{stub.OrderStub{}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, `{"memberId":20,` + addr + `,"items":[{"productId":100,"quantity":1}]}`}, want{http.StatusBadRequest, "bad_request"}},
 		{"準正常系 未存在 product は 422 unprocessable_entity", args{stub.OrderStub{}, stub.Product{Err: gateway.ErrProductNotFound}, stub.Payment{}, stub.Inventory{}, valid}, want{http.StatusUnprocessableEntity, "unprocessable_entity"}},
 		{"準正常系 在庫不足は 409 conflict", args{okOrder, stub.TwoProducts(), stub.Payment{}, stub.Inventory{ReserveErr: gateway.ErrInsufficientStock}, valid}, want{http.StatusConflict, "conflict"}},
 		{"異常系 product 呼び出し失敗は 502 bad_gateway", args{stub.OrderStub{}, stub.Product{Err: errors.New("boom")}, stub.Payment{}, stub.Inventory{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},

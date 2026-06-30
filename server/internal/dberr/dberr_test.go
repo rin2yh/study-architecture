@@ -70,6 +70,37 @@ func TestFromWrite(t *testing.T) {
 	}
 }
 
+func TestFromWriteFK(t *testing.T) {
+	other := errors.New("boom")
+	uniqueViolation := &pgconn.PgError{Code: "23505"}
+	fkViolation := &pgconn.PgError{Code: "23503"}
+	tests := []struct {
+		name string
+		in   error
+		want error
+	}{
+		{"正常系 エラー無しは nil", nil, nil},
+		{"準正常系 foreign_key_violation は ErrNotFound に正規化", fkViolation, dberr.ErrNotFound},
+		{"準正常系 ラップされた foreign_key_violation も ErrNotFound", fmt.Errorf("insert: %w", fkViolation), dberr.ErrNotFound},
+		{"準正常系 unique_violation は ErrConflict に正規化", uniqueViolation, dberr.ErrConflict},
+		{"異常系 その他エラーは透過", other, other},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dberr.FromWriteFK(tt.in)
+			if tt.want == nil {
+				if got != nil {
+					t.Fatalf("FromWriteFK = %v, want nil", got)
+				}
+				return
+			}
+			if !errors.Is(got, tt.want) {
+				t.Fatalf("FromWriteFK = %v, want errors.Is %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestFromUpdate(t *testing.T) {
 	other := errors.New("boom")
 	uniqueViolation := &pgconn.PgError{Code: "23505"}

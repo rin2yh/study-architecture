@@ -10,6 +10,7 @@ func TestStart(t *testing.T) {
 		// pgxpool.New / redis.ParseURL は遅延接続なので到達不能 URL でも InitConsumer は成功する。
 		t.Setenv("DATABASE_URL", "postgres://u:p@127.0.0.1:1/db?sslmode=disable")
 		t.Setenv("REDIS_URL", "redis://127.0.0.1:1")
+		t.Setenv("ORDER_API_URL", "http://127.0.0.1:1")
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		if code := start(ctx); code != 0 {

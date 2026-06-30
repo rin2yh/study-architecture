@@ -15,4 +15,5 @@ export * from './health.ts';
 export * from './memberIdHeaderParameter.ts';
 export * from './order.ts';
 export * from './orderItem.ts';
+export * from './shippingAddress.ts';
 export * from './updateOrderRequest.ts';

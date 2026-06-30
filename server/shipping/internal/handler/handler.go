@@ -53,6 +53,13 @@ func toAPIShipment(r db.ShippingShipment) api.Shipment {
 		Carrier:    r.Carrier,
 		TrackingNo: r.TrackingNo,
 		Status:     r.Status,
-		CreatedAt:  r.CreatedAt.Time,
+		Destination: api.Destination{
+			Recipient:  r.ShipRecipient,
+			PostalCode: r.ShipPostalCode,
+			Prefecture: r.ShipPrefecture,
+			City:       r.ShipCity,
+			Line1:      r.ShipLine1,
+		},
+		CreatedAt: r.CreatedAt.Time,
 	}
 }

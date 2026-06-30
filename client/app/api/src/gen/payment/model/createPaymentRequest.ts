@@ -11,4 +11,6 @@ export interface CreatePaymentRequest {
   amountCents: number;
   method: string;
   status: string;
+  /** order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。 */
+  idempotencyKey: string;
 }
