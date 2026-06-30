@@ -50,5 +50,4 @@
 | [202606261704](202606261704-shipping-address-book-and-order-snapshot.md) | Accepted | 配送先住所は member の住所帳で持ち、注文時に order/shipment へスナップショットする |
 | [202606262000](202606262000-inventory-as-independent-service.md) | Accepted (戻しの表現は一部 ADR-[[202606281000]] で補足) | 在庫を独立サービス (独自 DB・量子) として切り出す |
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
-| [202606300600](202606300600-transactional-outbox-dedicated-table.md) | Accepted | Outbox を集約列から専用 outbox テーブルへ移す (ADR-202606261212 を Supersede) |
-| [202606300900](202606300900-event-publish-transactional-dispatcher.md) | Accepted | イベント発行を共有トランザクショナル・ディスパッチャに集約する |
+| [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
