@@ -32,6 +32,15 @@ func (r *PaymentCommand) CreatePayment(ctx context.Context, arg db.CreatePayment
 
 // ADR-[[202606300600]]
 func (r *PaymentCommand) UpdatePayment(ctx context.Context, id int64, status string, settle bool, traceparent string) (db.PaymentPayment, error) {
+	// 確定でなければ outbox 投入がなく調整する 2 書き込みがないので、単文のままにする。
+	if !settle {
+		row, err := r.q.UpdatePayment(ctx, db.UpdatePaymentParams{ID: id, Status: status})
+		if err != nil {
+			return db.PaymentPayment{}, dberr.FromUpdate(err)
+		}
+		return row, nil
+	}
+
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return db.PaymentPayment{}, err
@@ -43,23 +52,21 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, id int64, status str
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
 	}
-	if settle {
-		payload, err := json.Marshal(paymentevent.Settled{
-			PaymentID:   row.ID,
-			OrderID:     row.OrderID,
-			AmountCents: row.AmountCents,
-		}.Values())
-		if err != nil {
-			return db.PaymentPayment{}, err
-		}
-		if err := qtx.InsertOutbox(ctx, db.InsertOutboxParams{
-			AggregateID: row.ID,
-			EventType:   paymentevent.TypeSettled,
-			Payload:     payload,
-			Traceparent: traceparent,
-		}); err != nil {
-			return db.PaymentPayment{}, err
-		}
+	payload, err := json.Marshal(paymentevent.Settled{
+		PaymentID:   row.ID,
+		OrderID:     row.OrderID,
+		AmountCents: row.AmountCents,
+	}.Values())
+	if err != nil {
+		return db.PaymentPayment{}, err
+	}
+	if err := qtx.InsertOutbox(ctx, db.InsertOutboxParams{
+		AggregateID: row.ID,
+		EventType:   paymentevent.TypeSettled,
+		Payload:     payload,
+		Traceparent: traceparent,
+	}); err != nil {
+		return db.PaymentPayment{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.PaymentPayment{}, err
