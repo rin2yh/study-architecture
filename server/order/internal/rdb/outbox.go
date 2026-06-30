@@ -27,13 +27,9 @@ func (s *OutboxStore) FetchUnpublished(ctx context.Context, limit int) ([]outbox
 	}
 	msgs := make([]outbox.Message, 0, len(rows))
 	for _, r := range rows {
-		values, err := outbox.DecodePayload(r.Payload)
+		values, err := outbox.DecodePayload(r.Payload, r.Traceparent)
 		if err != nil {
 			return nil, err
-		}
-		// consumer 側の span link を切らさないため (ADR-[[202606250159]])。
-		if r.Traceparent != "" {
-			values[orderevent.FieldTraceparent] = r.Traceparent
 		}
 		msgs = append(msgs, outbox.Message{ID: r.ID, Stream: orderevent.Stream, Values: values})
 	}
