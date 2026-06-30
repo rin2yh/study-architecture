@@ -15,16 +15,6 @@ CREATE INDEX payment_outbox_unpublished_idx
     ON payment.outbox (id)
     WHERE published_at IS NULL;
 
--- 直後に列を落とすため、先に移さないと in-flight の未送信が失われる。
--- payload のキーは paymentevent.Settled.Values() と一致させる。
-INSERT INTO payment.outbox (aggregate_id, event_type, payload, traceparent)
-SELECT id,
-       'payment.settled',
-       jsonb_build_object('event', 'payment.settled', 'paymentId', id, 'orderId', order_id, 'amountCents', amount_cents),
-       settled_event_traceparent
-FROM payment.payments
-WHERE settled_event_pending;
-
 DROP INDEX payment.payments_settled_event_pending_idx;
 ALTER TABLE payment.payments
     DROP COLUMN settled_event_pending,

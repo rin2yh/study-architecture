@@ -15,16 +15,6 @@ CREATE INDEX order_outbox_unpublished_idx
     ON "order".outbox (id)
     WHERE published_at IS NULL;
 
--- 直後に列を落とすため、先に移さないと in-flight の未送信が失われる。
--- payload のキーは orderevent.Cancelled.Values() と一致させる。
-INSERT INTO "order".outbox (aggregate_id, event_type, payload, traceparent)
-SELECT id,
-       'order.cancelled',
-       jsonb_build_object('event', 'order.cancelled', 'orderId', id),
-       cancelled_event_traceparent
-FROM "order".orders
-WHERE cancelled_event_pending;
-
 DROP INDEX "order".orders_cancelled_event_pending_idx;
 ALTER TABLE "order".orders
     DROP COLUMN cancelled_event_pending,

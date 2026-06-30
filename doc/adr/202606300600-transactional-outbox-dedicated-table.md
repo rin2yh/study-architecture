@@ -16,7 +16,7 @@
 
 - 集約更新と outbox INSERT を同一トランザクションで確定する (ローカル整合)。リレーが未送信行 (`published_at IS NULL`) を polling して `XAdd` する点は不変。
 - `payload` は発行時の `Values()` をそのまま JSON 化して保存し、復元は `server/internal/outbox.DecodePayload` に共有で寄せる。リレーはイベントの中身を知らないまま複数イベント種を運べる。
-- 移行マイグレーションで in-flight の未送信行を新テーブルへ移し、発行保証を切らさない。
+- 本リポジトリは運用していないため、移行時の in-flight 未送信行のバックフィルは行わない (列追加 ADR-[[202606261212]] 同様、新規 DB 前提)。
 
 ## Consequences
 
