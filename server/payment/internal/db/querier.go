@@ -16,7 +16,11 @@ type Querier interface {
 	ListPayments(ctx context.Context) ([]PaymentPayment, error)
 	ListUnpublishedSettledEvents(ctx context.Context, limit int32) ([]ListUnpublishedSettledEventsRow, error)
 	MarkSettledEventPublished(ctx context.Context, id int64) error
+	// 終端でない確定済み決済だけ返金へ遷移。再配信は 0 行更新で吸収する (ADR-[[202606261214]])。
+	RefundPaymentByOrder(ctx context.Context, orderID int64) error
 	UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (PaymentPayment, error)
+	// 返金すべき入金がないため refunded とは区別する (ADR-[[202606261702]])。
+	VoidPendingPaymentByOrder(ctx context.Context, orderID int64) error
 }
 
 var _ Querier = (*Queries)(nil)

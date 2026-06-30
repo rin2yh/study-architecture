@@ -2,12 +2,16 @@ package rdb
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
+
+// 発送済み注文はキャンセル不可で返品フローへ分岐する (ADR-[[202606261702]])。handler は 409 に対応づける。
+var ErrNotCancellable = errors.New("order not cancellable")
 
 type CheckoutLine struct {
 	ProductID      int64
@@ -40,6 +44,35 @@ func (r *OrderCommand) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams
 // DeleteOrder は予約失敗時の補償で注文を取り消す。order_items は ON DELETE CASCADE で連れて消える。
 func (r *OrderCommand) DeleteOrder(ctx context.Context, id int64) error {
 	return r.q.DeleteOrder(ctx, id)
+}
+
+// キャンセル可否の判定と遷移を 1 tx で直列化する (ADR-[[202606261702]])。
+func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent string) (db.OrderOrder, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return db.OrderOrder{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := db.New(tx)
+	order, err := qtx.GetOrderForUpdate(ctx, id)
+	if err != nil {
+		return db.OrderOrder{}, dberr.FromRead(err)
+	}
+	switch order.Status {
+	case "shipped":
+		return db.OrderOrder{}, ErrNotCancellable
+	case "cancelled":
+		return order, nil
+	}
+	cancelled, err := qtx.CancelOrder(ctx, db.CancelOrderParams{ID: id, CancelledEventTraceparent: traceparent})
+	if err != nil {
+		return db.OrderOrder{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.OrderOrder{}, err
+	}
+	return cancelled, nil
 }
 
 func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error) {

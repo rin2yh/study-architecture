@@ -17,7 +17,7 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL
+    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL AND r.cancelled_at IS NULL
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
@@ -49,3 +49,9 @@ UPDATE inventory.reservations
 SET expired_at = now()
 WHERE confirmed_at IS NULL AND released_at IS NULL AND expired_at IS NULL
   AND created_at + inventory.reservation_ttl() <= now();
+
+-- (ADR-[[202606281000]])
+-- name: CancelConfirmedReservationsByOrder :exec
+UPDATE inventory.reservations
+SET cancelled_at = now()
+WHERE order_id = $1 AND confirmed_at IS NOT NULL AND cancelled_at IS NULL;

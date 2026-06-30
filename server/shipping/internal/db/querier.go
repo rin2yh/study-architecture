@@ -9,6 +9,8 @@ import (
 )
 
 type Querier interface {
+	// (ADR-[[202606261702]] / ADR-[[202606261214]])
+	CancelShipmentForOrder(ctx context.Context, orderID int64) error
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (ShippingShipment, error)
 	// ADR-[[202606211200]]
 	CreateShipmentForOrder(ctx context.Context, orderID int64) (ShippingShipment, error)

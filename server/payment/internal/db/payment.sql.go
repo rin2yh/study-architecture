@@ -182,6 +182,18 @@ func (q *Queries) MarkSettledEventPublished(ctx context.Context, id int64) error
 	return err
 }
 
+const refundPaymentByOrder = `-- name: RefundPaymentByOrder :exec
+UPDATE payment.payments
+SET status = 'refunded'
+WHERE order_id = $1 AND status IN ('paid', 'settled', 'captured')
+`
+
+// 終端でない確定済み決済だけ返金へ遷移。再配信は 0 行更新で吸収する (ADR-[[202606261214]])。
+func (q *Queries) RefundPaymentByOrder(ctx context.Context, orderID int64) error {
+	_, err := q.db.Exec(ctx, refundPaymentByOrder, orderID)
+	return err
+}
+
 const updatePayment = `-- name: UpdatePayment :one
 UPDATE payment.payments
 SET status                    = $1,
@@ -219,4 +231,16 @@ func (q *Queries) UpdatePayment(ctx context.Context, arg UpdatePaymentParams) (P
 		&i.IdempotencyKey,
 	)
 	return i, err
+}
+
+const voidPendingPaymentByOrder = `-- name: VoidPendingPaymentByOrder :exec
+UPDATE payment.payments
+SET status = 'cancelled'
+WHERE order_id = $1 AND status = 'pending'
+`
+
+// 返金すべき入金がないため refunded とは区別する (ADR-[[202606261702]])。
+func (q *Queries) VoidPendingPaymentByOrder(ctx context.Context, orderID int64) error {
+	_, err := q.db.Exec(ctx, voidPendingPaymentByOrder, orderID)
+	return err
 }

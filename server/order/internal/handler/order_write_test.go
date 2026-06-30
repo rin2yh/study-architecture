@@ -158,6 +158,41 @@ func TestUpdateOrderError(t *testing.T) {
 	}
 }
 
+func TestCancelOrder(t *testing.T) {
+	type args struct {
+		fake stub.OrderStub
+		path string
+	}
+	type want struct {
+		status int
+		code   string
+	}
+	cancelled := stub.OrderStub{Order: db.OrderOrder{ID: 1, MemberID: 10, Status: "cancelled", TotalCents: 1980}}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"正常系 未発送注文をキャンセルし 200", args{cancelled, "/orders/1/cancel"}, want{http.StatusOK, ""}},
+		{"準正常系 未存在は 404 not_found", args{stub.OrderStub{CancelErr: dberr.ErrNotFound}, "/orders/99/cancel"}, want{http.StatusNotFound, "not_found"}},
+		{"準正常系 発送済みは 409 conflict", args{stub.OrderStub{CancelErr: rdb.ErrNotCancellable}, "/orders/1/cancel"}, want{http.StatusConflict, "conflict"}},
+		{"異常系 DB エラーは 500 internal", args{stub.OrderStub{CancelErr: errors.New("db failure")}, "/orders/1/cancel"}, want{http.StatusInternalServerError, "internal"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, tt.args.path, nil)
+			newWriteServer(tt.args.fake).ServeHTTP(rec, req)
+			if rec.Code != tt.want.status {
+				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.want.status, rec.Body.String())
+			}
+			if tt.want.code != "" {
+				assert.ErrorCode(t, rec.Body.Bytes(), tt.want.code)
+			}
+		})
+	}
+}
+
 func TestCheckout(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, "DATABASE_URL_ORDER")

@@ -18,7 +18,7 @@ FROM (
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
-    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL
+    WHERE r.product_id = $1 AND r.confirmed_at IS NOT NULL AND r.cancelled_at IS NULL
   UNION ALL
     SELECT -r.quantity::bigint
     FROM inventory.reservations r
@@ -28,12 +28,24 @@ FROM (
 ) d
 `
 
-// 利用可能在庫 = 入庫(+) と、確定・取り置き中の予約(-) の符号付き合計。
+// 在庫数を保存せず集計で導く (ADR-[[202606262000]])。
 func (q *Queries) AvailableQty(ctx context.Context, productID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, availableQty, productID)
 	var available int64
 	err := row.Scan(&available)
 	return available, err
+}
+
+const cancelConfirmedReservationsByOrder = `-- name: CancelConfirmedReservationsByOrder :exec
+UPDATE inventory.reservations
+SET cancelled_at = now()
+WHERE order_id = $1 AND confirmed_at IS NOT NULL AND cancelled_at IS NULL
+`
+
+// (ADR-[[202606281000]])
+func (q *Queries) CancelConfirmedReservationsByOrder(ctx context.Context, orderID int64) error {
+	_, err := q.db.Exec(ctx, cancelConfirmedReservationsByOrder, orderID)
+	return err
 }
 
 const confirmReservationsByOrder = `-- name: ConfirmReservationsByOrder :exec

@@ -1,6 +1,6 @@
 # ADR-202606262000: 在庫を独立サービス (独自 DB・量子) として切り出す
 
-- Status: Accepted
+- Status: Accepted (確定済み予約のキャンセル戻しの表現は ADR-[[202606281000]] で補足)
 - Date: 2026-06-26
 - Supersedes: ADR-[[202606261700]]
 - Relates to: ADR-[[202606170900]] (サービス境界), ADR-[[202606240522]] (DB-per-domain), ADR-[[202606231000]] (schema 所有権), ADR-[[202606190900]] (product=order の参照データ), ADR-[[202606211200]] (payment.settled イベント), ADR-[[202606261214]] (DB 制約で冪等化), ADR-[[202606261216]] (致命/縮退分類), GitHub #87

@@ -11,6 +11,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
+	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/order/api"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
@@ -55,6 +56,24 @@ func (h *writeHandler) UpdateOrder(c *gin.Context, id api.IdPath) {
 			return
 		}
 		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, toAPIOrder(row))
+}
+
+// 補償は order.cancelled を購読する payment/shipping/inventory が各自で行う (ADR-[[202606261702]])。
+func (h *writeHandler) CancelOrder(c *gin.Context, id api.IdPath) {
+	traceparent := orderevent.Traceparent(c.Request.Context())
+	row, err := h.command.CancelOrder(c.Request.Context(), id, traceparent)
+	if err != nil {
+		switch {
+		case errors.Is(err, dberr.ErrNotFound):
+			_ = c.Error(middleware.NotFound("order not found"))
+		case errors.Is(err, rdb.ErrNotCancellable):
+			_ = c.Error(middleware.Conflict("order already shipped"))
+		default:
+			_ = c.Error(err)
+		}
 		return
 	}
 	c.JSON(http.StatusOK, toAPIOrder(row))

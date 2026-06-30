@@ -15,6 +15,7 @@ type OrderStub struct {
 	Items     []db.OrderOrderItem
 	Err       error
 	DeleteErr error
+	CancelErr error
 }
 
 func (s OrderStub) ListOrders(context.Context) ([]db.OrderOrder, error) {
@@ -47,6 +48,10 @@ func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.Checkou
 
 func (s OrderStub) DeleteOrder(context.Context, int64) error {
 	return s.DeleteErr
+}
+
+func (s OrderStub) CancelOrder(context.Context, int64, string) (db.OrderOrder, error) {
+	return s.Order, s.CancelErr
 }
 
 type Product struct {

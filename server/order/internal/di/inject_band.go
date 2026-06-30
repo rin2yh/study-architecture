@@ -5,38 +5,49 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/internal/outbox"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
-func InitHandler(ctx context.Context) (*handler.Handler, error) {
+func InitApp(ctx context.Context) (*App, error) {
 	var err error
 	productClient, err := kessoku.Bind[gateway.ProductPort](kessoku.Provide(gateway.NewProductClient)).Fn()()
 	if err != nil {
-		var zero *handler.Handler
+		var zero *App
 		return zero, err
 	}
 	var err0 error
 	paymentClient, err0 := kessoku.Bind[gateway.PaymentPort](kessoku.Provide(gateway.NewPaymentClient)).Fn()()
 	if err0 != nil {
-		var zero *handler.Handler
+		var zero *App
 		return zero, err0
 	}
 	var err1 error
 	inventoryClient, err1 := kessoku.Bind[gateway.InventoryPort](kessoku.Provide(gateway.NewInventoryClient)).Fn()()
 	if err1 != nil {
-		var zero *handler.Handler
+		var zero *App
 		return zero, err1
 	}
 	var err2 error
-	pool, err2 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	client, err2 := kessoku.Provide(redisx.NewClient).Fn()()
 	if err2 != nil {
-		var zero *handler.Handler
+		var zero *App
 		return zero, err2
+	}
+	var err3 error
+	pool, err3 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	if err3 != nil {
+		var zero *App
+		return zero, err3
 	}
 	orderQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewOrderQuery)).Fn()(pool)
 	orderCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewOrderCommand)).Fn()(pool)
+	outboxStore := kessoku.Bind[outbox.Store](kessoku.Provide(rdb.NewOutboxStore)).Fn()(pool)
 	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, paymentClient, inventoryClient)
-	return handler0, nil
+	relay := kessoku.Provide(outbox.NewRelay).Fn()(client, outboxStore)
+	app := kessoku.Provide(NewApp).Fn()(handler0, relay)
+	return app, nil
 }

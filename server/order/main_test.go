@@ -13,6 +13,7 @@ func TestStart(t *testing.T) {
 		t.Setenv("PRODUCT_API_URL", "http://127.0.0.1:1")
 		t.Setenv("PAYMENT_API_URL", "http://127.0.0.1:1")
 		t.Setenv("INVENTORY_API_URL", "http://127.0.0.1:1")
+		t.Setenv("REDIS_URL", "redis://127.0.0.1:1")
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		if code := start(ctx, "127.0.0.1:0"); code != 0 {

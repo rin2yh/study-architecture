@@ -33,14 +33,14 @@ func run(ctx context.Context) error {
 	}
 	defer shutdown()
 
-	cons, err := di.InitConsumer(ctx)
+	w, err := di.InitWorker(ctx)
 	if err != nil {
 		return err
 	}
 
 	slog.Info("shipping worker started")
-	// context.Canceled は SIGTERM 受信後の正常停止なので error とはみなさない。
-	if err := cons.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+	// context.Canceled は SIGTERM 受信後の正常停止。
+	if err := w.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
 	return nil

@@ -9,13 +9,19 @@ import (
 )
 
 type Querier interface {
+	// 遷移と送信状態を同一 tx で確定し、送出はリレーに後追いさせる (ADR-[[202606261212]])。
+	CancelOrder(ctx context.Context, arg CancelOrderParams) (OrderOrder, error)
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (OrderOrder, error)
 	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderOrderItem, error)
 	DeleteOrder(ctx context.Context, id int64) error
 	GetOrder(ctx context.Context, id int64) (OrderOrder, error)
+	// 判定〜更新を 1 tx で直列化する行ロック付き取得 (ADR-[[202606261702]])。
+	GetOrderForUpdate(ctx context.Context, id int64) (OrderOrder, error)
 	ListOrderItems(ctx context.Context, orderID int64) ([]OrderOrderItem, error)
 	ListOrders(ctx context.Context) ([]OrderOrder, error)
 	ListOrdersByMember(ctx context.Context, memberID int64) ([]OrderOrder, error)
+	ListUnpublishedCancelledEvents(ctx context.Context, limit int32) ([]ListUnpublishedCancelledEventsRow, error)
+	MarkCancelledEventPublished(ctx context.Context, id int64) error
 	UpdateOrder(ctx context.Context, arg UpdateOrderParams) (OrderOrder, error)
 }
 

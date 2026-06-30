@@ -1,5 +1,5 @@
-// Package worker は payment.settled 購読 (consumer) と TTL 回収 (reaper) を 1 プロセスで束ねる。
-// 両者は同じ DB プールを共有するため 1 つの DI グラフでまとめ、二重接続を避ける。
+// Package worker は payment.settled 購読 (consumer)・order.cancelled 購読 (cancel)・TTL 回収 (reaper) を
+// 1 プロセスで束ねる。いずれも同じ DB プールを共有するため 1 つの DI グラフでまとめ、二重接続を避ける。
 package worker
 
 import (
@@ -11,25 +11,28 @@ import (
 
 type Worker struct {
 	consumer *consumer.Consumer
+	cancel   *consumer.CancelConsumer
 	reaper   *reaper.Reaper
 }
 
-func New(c *consumer.Consumer, r *reaper.Reaper) *Worker {
-	return &Worker{consumer: c, reaper: r}
+func New(c *consumer.Consumer, cancel *consumer.CancelConsumer, r *reaper.Reaper) *Worker {
+	return &Worker{consumer: c, cancel: cancel, reaper: r}
 }
 
-// Run は consumer と reaper を並行に回し、どちらかが終了したら他方も止めて最初のエラーを返す。
-// 片方が静かに死んでも fail loud で worker ごと落とし再起動に委ねる (ADR-[[202606211200]])。
+// Run は全 goroutine を並行に回し、どれかが終了したら他も止めて最初のエラーを返す。
+// 1 つが静かに死んでも fail loud で worker ごと落とし再起動に委ねる (ADR-[[202606211200]])。
 func (w *Worker) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	errc := make(chan error, 2)
+	errc := make(chan error, 3)
 	go func() { errc <- w.consumer.Run(ctx) }()
+	go func() { errc <- w.cancel.Run(ctx) }()
 	go func() { errc <- w.reaper.Run(ctx) }()
 
 	err := <-errc
 	cancel()
+	<-errc
 	<-errc
 	return err
 }

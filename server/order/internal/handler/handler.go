@@ -24,6 +24,7 @@ type Command interface {
 	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
 	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine) (db.OrderOrder, []db.OrderOrderItem, error)
 	DeleteOrder(ctx context.Context, id int64) error
+	CancelOrder(ctx context.Context, id int64, traceparent string) (db.OrderOrder, error)
 }
 
 type readHandler struct {
