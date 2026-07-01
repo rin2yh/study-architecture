@@ -11,12 +11,11 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 )
 
 const dbEnv = "DATABASE_URL_SHIPPING"
 
-func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...db.ShippingShipment) {
+func seedShipments(t *testing.T, pool *pgxpool.Pool, rows ...Shipment) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE shipping.shipments RESTART IDENTITY`); err != nil {
@@ -35,11 +34,11 @@ func TestListShipments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
-		seed []db.ShippingShipment
+		seed []Shipment
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			seed: []db.ShippingShipment{
+			seed: []Shipment{
 				{OrderID: 1, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"},
 				{OrderID: 2, Carrier: "佐川急便", TrackingNo: "TRK-2", Status: "pending"},
 			},
@@ -82,7 +81,7 @@ func TestGetShipment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewShipmentQuery(pool)
-	seedShipments(t, pool, db.ShippingShipment{OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"})
+	seedShipments(t, pool, Shipment{OrderID: 100, Carrier: "ヤマト運輸", TrackingNo: "TRK-1", Status: "shipped"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
 		got, err := r.GetShipment(t.Context(), 1)

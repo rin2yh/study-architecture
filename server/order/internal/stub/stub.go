@@ -3,46 +3,45 @@ package stub
 import (
 	"context"
 
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
 type OrderStub struct {
-	Orders    []db.OrderOrder
-	ByMember  []db.OrderOrder
-	Order     db.OrderOrder
-	Items     []db.OrderOrderItem
+	Orders    []rdb.Order
+	ByMember  []rdb.Order
+	Order     rdb.Order
+	Items     []rdb.OrderItem
 	Err       error
 	DeleteErr error
 	CancelErr error
 }
 
-func (s OrderStub) ListOrders(context.Context) ([]db.OrderOrder, error) {
+func (s OrderStub) ListOrders(context.Context) ([]rdb.Order, error) {
 	return s.Orders, s.Err
 }
 
-func (s OrderStub) ListOrdersByMember(context.Context, int64) ([]db.OrderOrder, error) {
+func (s OrderStub) ListOrdersByMember(context.Context, int64) ([]rdb.Order, error) {
 	return s.ByMember, s.Err
 }
 
-func (s OrderStub) GetOrder(context.Context, int64) (db.OrderOrder, error) {
+func (s OrderStub) GetOrder(context.Context, int64) (rdb.Order, error) {
 	return s.Order, s.Err
 }
 
-func (s OrderStub) GetOrderItems(context.Context, int64) ([]db.OrderOrderItem, error) {
+func (s OrderStub) GetOrderItems(context.Context, int64) ([]rdb.OrderItem, error) {
 	return s.Items, s.Err
 }
 
-func (s OrderStub) CreateOrder(context.Context, db.CreateOrderParams) (db.OrderOrder, error) {
+func (s OrderStub) CreateOrder(context.Context, rdb.OrderCreate) (rdb.Order, error) {
 	return s.Order, s.Err
 }
 
-func (s OrderStub) UpdateOrder(context.Context, db.UpdateOrderParams) (db.OrderOrder, error) {
+func (s OrderStub) UpdateOrder(context.Context, rdb.OrderUpdate) (rdb.Order, error) {
 	return s.Order, s.Err
 }
 
-func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine, rdb.CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (s OrderStub) Checkout(context.Context, int64, string, int64, []rdb.CheckoutLine, rdb.CheckoutAddress) (rdb.Order, []rdb.OrderItem, error) {
 	return s.Order, s.Items, s.Err
 }
 
@@ -50,7 +49,7 @@ func (s OrderStub) DeleteOrder(context.Context, int64) error {
 	return s.DeleteErr
 }
 
-func (s OrderStub) CancelOrder(context.Context, int64, string) (db.OrderOrder, error) {
+func (s OrderStub) CancelOrder(context.Context, int64, string) (rdb.Order, error) {
 	return s.Order, s.CancelErr
 }
 

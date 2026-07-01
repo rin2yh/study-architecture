@@ -10,7 +10,6 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	"github.com/rin2yh/study-architecture/server/inventory/api"
-	"github.com/rin2yh/study-architecture/server/inventory/internal/db"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/handler"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/stub"
@@ -29,7 +28,7 @@ func post(command handler.Command, path, body string) *httptest.ResponseRecorder
 }
 
 func TestStockIn(t *testing.T) {
-	fake := stub.InventoryStub{StockInRow: db.InventoryStockIn{ID: 1, ProductID: 100, Quantity: 50}}
+	fake := stub.InventoryStub{StockInRow: rdb.StockIn{ID: 1, ProductID: 100, Quantity: 50}}
 	rec := post(fake, "/stock-ins", `{"productId":100,"quantity":50}`)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201 (body: %s)", rec.Code, rec.Body.String())

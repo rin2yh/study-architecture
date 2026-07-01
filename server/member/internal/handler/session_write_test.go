@@ -14,19 +14,18 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/auth"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
 	"github.com/rin2yh/study-architecture/server/member/internal/handler"
 	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/member/internal/stub"
 )
 
-func memberWithPassword(t *testing.T, plain string) db.MemberMember {
+func memberWithPassword(t *testing.T, plain string) rdb.Member {
 	t.Helper()
 	hash, err := auth.HashPassword(plain)
 	if err != nil {
 		t.Fatalf("hash: %v", err)
 	}
-	return db.MemberMember{ID: 7, Email: "user@example.com", DisplayName: "会員", PasswordHash: hash}
+	return rdb.Member{ID: 7, Email: "user@example.com", DisplayName: "会員", PasswordHash: hash}
 }
 
 func TestCreateSession(t *testing.T) {

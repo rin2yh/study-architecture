@@ -11,12 +11,11 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
 const dbEnv = "DATABASE_URL_ORDER"
 
-func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...db.OrderOrder) {
+func seedOrders(t *testing.T, pool *pgxpool.Pool, rows ...Order) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE "order".order_items, "order".orders, "order".outbox RESTART IDENTITY`); err != nil {
@@ -36,9 +35,9 @@ func TestListOrdersByMember(t *testing.T) {
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderQuery(pool)
 	seedOrders(t, pool,
-		db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000},
-		db.OrderOrder{MemberID: 20, Status: "paid", TotalCents: 3000},
-		db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980},
+		Order{MemberID: 10, Status: "paid", TotalCents: 5000},
+		Order{MemberID: 20, Status: "paid", TotalCents: 3000},
+		Order{MemberID: 10, Status: "pending", TotalCents: 1980},
 	)
 
 	t.Run("正常系 指定会員の注文だけを id 昇順で返す", func(t *testing.T) {
@@ -74,11 +73,11 @@ func TestListOrders(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
-		seed []db.OrderOrder
+		seed []Order
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			seed: []db.OrderOrder{
+			seed: []Order{
 				{MemberID: 1, Status: "pending", TotalCents: 1980},
 				{MemberID: 2, Status: "paid", TotalCents: 2980},
 			},
@@ -121,7 +120,7 @@ func TestGetOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderQuery(pool)
-	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "paid", TotalCents: 5000})
+	seedOrders(t, pool, Order{MemberID: 10, Status: "paid", TotalCents: 5000})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
 		got, err := r.GetOrder(t.Context(), 1)
@@ -145,7 +144,7 @@ func TestGetOrderItems(t *testing.T) {
 	r := NewOrderQuery(pool)
 
 	t.Run("正常系 明細を id 昇順で返す", func(t *testing.T) {
-		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 2500})
+		seedOrders(t, pool, Order{MemberID: 10, Status: "confirmed", TotalCents: 2500})
 		ctx := t.Context()
 		if _, err := pool.Exec(ctx,
 			`INSERT INTO "order".order_items (order_id, product_id, product_name, unit_price_cents, quantity)
@@ -163,7 +162,7 @@ func TestGetOrderItems(t *testing.T) {
 	})
 
 	t.Run("準正常系 明細が無ければ空スライス", func(t *testing.T) {
-		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+		seedOrders(t, pool, Order{MemberID: 10, Status: "pending", TotalCents: 1980})
 
 		got, err := r.GetOrderItems(t.Context(), 1)
 		if err != nil {

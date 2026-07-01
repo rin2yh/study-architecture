@@ -7,17 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/shipping/api"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 )
 
 type Query interface {
-	ListShipments(ctx context.Context) ([]db.ShippingShipment, error)
-	GetShipment(ctx context.Context, id int64) (db.ShippingShipment, error)
+	ListShipments(ctx context.Context) ([]rdb.Shipment, error)
+	GetShipment(ctx context.Context, id int64) (rdb.Shipment, error)
 }
 
 type Command interface {
-	CreateShipment(ctx context.Context, arg db.CreateShipmentParams) (db.ShippingShipment, error)
-	UpdateShipment(ctx context.Context, arg db.UpdateShipmentParams) (db.ShippingShipment, error)
+	CreateShipment(ctx context.Context, arg rdb.ShipmentCreate) (rdb.Shipment, error)
+	UpdateShipment(ctx context.Context, arg rdb.ShipmentUpdate) (rdb.Shipment, error)
 }
 
 type readHandler struct {
@@ -46,7 +46,7 @@ func (h *Handler) GetHealthz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func toAPIShipment(r db.ShippingShipment) api.Shipment {
+func toAPIShipment(r rdb.Shipment) api.Shipment {
 	return api.Shipment{
 		Id:         r.ID,
 		OrderId:    r.OrderID,
@@ -60,6 +60,6 @@ func toAPIShipment(r db.ShippingShipment) api.Shipment {
 			City:       r.ShipCity,
 			Line1:      r.ShipLine1,
 		},
-		CreatedAt: r.CreatedAt.Time,
+		CreatedAt: r.CreatedAt,
 	}
 }

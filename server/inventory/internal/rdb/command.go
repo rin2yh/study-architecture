@@ -27,12 +27,12 @@ func NewInventoryCommand(pool *pgxpool.Pool) *InventoryCommand {
 	return &InventoryCommand{pool: pool, q: db.New(pool)}
 }
 
-func (r *InventoryCommand) StockIn(ctx context.Context, productID int64, quantity int32) (db.InventoryStockIn, error) {
+func (r *InventoryCommand) StockIn(ctx context.Context, productID int64, quantity int32) (StockIn, error) {
 	row, err := r.q.StockIn(ctx, db.StockInParams{ProductID: productID, Quantity: quantity})
 	if err != nil {
-		return db.InventoryStockIn{}, dberr.FromWrite(err)
+		return StockIn{}, dberr.FromWrite(err)
 	}
-	return row, nil
+	return toStockIn(row), nil
 }
 
 // (ADR-[[202606262000]])

@@ -16,7 +16,6 @@ import (
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/order/api"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
@@ -167,7 +166,7 @@ func TestCancelOrder(t *testing.T) {
 		status int
 		code   string
 	}
-	cancelled := stub.OrderStub{Order: db.OrderOrder{ID: 1, MemberID: 10, Status: "cancelled", TotalCents: 1980}}
+	cancelled := stub.OrderStub{Order: rdb.Order{ID: 1, MemberID: 10, Status: "cancelled", TotalCents: 1980}}
 	tests := []struct {
 		name string
 		args args
@@ -233,7 +232,7 @@ func TestCheckoutError(t *testing.T) {
 		status int
 		code   string
 	}
-	okOrder := stub.OrderStub{Order: db.OrderOrder{ID: 7}}
+	okOrder := stub.OrderStub{Order: rdb.Order{ID: 7}}
 	tests := []struct {
 		name string
 		args args
@@ -250,7 +249,7 @@ func TestCheckoutError(t *testing.T) {
 		{"異常系 inventory 呼び出し失敗は 502 bad_gateway", args{okOrder, stub.TwoProducts(), stub.Payment{}, stub.Inventory{ReserveErr: errors.New("boom")}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
 		{"異常系 注文書き込み失敗は 500 internal", args{stub.OrderStub{Err: errors.New("db failure")}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{}, valid}, want{http.StatusInternalServerError, "internal"}},
 		{"異常系 payment 失敗は 502 bad_gateway", args{okOrder, stub.TwoProducts(), stub.Payment{Err: errors.New("boom")}, stub.Inventory{}, valid}, want{http.StatusBadGateway, "bad_gateway"}},
-		{"異常系 在庫不足だが注文の補償取消も失敗は 500 internal", args{stub.OrderStub{Order: db.OrderOrder{ID: 7}, DeleteErr: errors.New("db down")}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{ReserveErr: gateway.ErrInsufficientStock}, valid}, want{http.StatusInternalServerError, "internal"}},
+		{"異常系 在庫不足だが注文の補償取消も失敗は 500 internal", args{stub.OrderStub{Order: rdb.Order{ID: 7}, DeleteErr: errors.New("db down")}, stub.TwoProducts(), stub.Payment{}, stub.Inventory{ReserveErr: gateway.ErrInsufficientStock}, valid}, want{http.StatusInternalServerError, "internal"}},
 		{"異常系 payment 失敗かつ予約解放の補償も失敗は 500 internal", args{okOrder, stub.TwoProducts(), stub.Payment{Err: errors.New("boom")}, stub.Inventory{ReleaseErr: errors.New("inv down")}, valid}, want{http.StatusInternalServerError, "internal"}},
 	}
 	for _, tt := range tests {

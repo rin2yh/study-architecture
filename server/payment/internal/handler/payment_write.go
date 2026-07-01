@@ -10,7 +10,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/api"
-	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/event"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
@@ -25,7 +24,7 @@ func (h *writeHandler) CreatePayment(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("amountCents must not be negative"))
 		return
 	}
-	row, err := h.command.CreatePayment(c.Request.Context(), db.CreatePaymentParams{
+	row, err := h.command.CreatePayment(c.Request.Context(), rdb.PaymentCreate{
 		OrderID:        req.OrderId,
 		AmountCents:    req.AmountCents,
 		Method:         req.Method,

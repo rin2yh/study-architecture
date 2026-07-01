@@ -17,14 +17,18 @@ func NewProductQuery(pool *pgxpool.Pool) *ProductQuery {
 	return &ProductQuery{q: db.New(pool)}
 }
 
-func (r *ProductQuery) ListProducts(ctx context.Context) ([]db.ProductProduct, error) {
-	return r.q.ListProducts(ctx)
+func (r *ProductQuery) ListProducts(ctx context.Context) ([]Product, error) {
+	rows, err := r.q.ListProducts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toProducts(rows), nil
 }
 
-func (r *ProductQuery) GetProduct(ctx context.Context, id int64) (db.ProductProduct, error) {
+func (r *ProductQuery) GetProduct(ctx context.Context, id int64) (Product, error) {
 	row, err := r.q.GetProduct(ctx, id)
 	if err != nil {
-		return db.ProductProduct{}, dberr.FromRead(err)
+		return Product{}, dberr.FromRead(err)
 	}
-	return row, nil
+	return toProduct(row), nil
 }

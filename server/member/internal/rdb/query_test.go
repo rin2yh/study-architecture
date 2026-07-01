@@ -11,12 +11,11 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
 )
 
 const dbEnv = "DATABASE_URL_MEMBER"
 
-func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...db.MemberMember) {
+func seedMembers(t *testing.T, pool *pgxpool.Pool, rows ...Member) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE member.members RESTART IDENTITY CASCADE`); err != nil {
@@ -50,11 +49,11 @@ func TestListMembers(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
-		seed []db.MemberMember
+		seed []Member
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			seed: []db.MemberMember{
+			seed: []Member{
 				{Email: "a@example.com", DisplayName: "会員A"},
 				{Email: "b@example.com", DisplayName: "会員B"},
 			},
@@ -97,7 +96,7 @@ func TestGetMember(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberQuery(pool)
-	seedMembers(t, pool, db.MemberMember{Email: "user@example.com", DisplayName: "会員A"})
+	seedMembers(t, pool, Member{Email: "user@example.com", DisplayName: "会員A"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
 		got, err := r.GetMember(t.Context(), 1)
@@ -126,7 +125,7 @@ func TestGetMemberByEmail(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetMemberByEmail: %v", err)
 		}
-		assert.DeepEqual(t, db.MemberMember{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
+		assert.DeepEqual(t, Member{Email: "user@example.com", DisplayName: "会員", PasswordHash: "stored-hash"}, got, "ID", "CreatedAt")
 	})
 	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetMemberByEmail(t.Context(), "none@example.com"); !errors.Is(err, dberr.ErrNotFound) {
@@ -135,7 +134,7 @@ func TestGetMemberByEmail(t *testing.T) {
 	})
 }
 
-func seedAddresses(t *testing.T, pool *pgxpool.Pool, memberID int64, rows ...db.MemberAddress) {
+func seedAddresses(t *testing.T, pool *pgxpool.Pool, memberID int64, rows ...Address) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE member.addresses RESTART IDENTITY CASCADE`); err != nil {
@@ -159,8 +158,8 @@ func TestListAddresses(t *testing.T) {
 
 	t.Run("正常系 member の住所を id 昇順で返す", func(t *testing.T) {
 		seedAddresses(t, pool, memberID,
-			db.MemberAddress{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"},
-			db.MemberAddress{Recipient: "山田花子", PostalCode: "1000001", Prefecture: "東京都", City: "千代田区", Line1: "丸の内1-1-1"},
+			Address{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"},
+			Address{Recipient: "山田花子", PostalCode: "1000001", Prefecture: "東京都", City: "千代田区", Line1: "丸の内1-1-1"},
 		)
 		got, err := r.ListAddresses(t.Context(), memberID)
 		if err != nil {
@@ -187,10 +186,10 @@ func TestGetAddress(t *testing.T) {
 	pool := testdb.Open(t, dbEnv)
 	r := NewMemberQuery(pool)
 	memberID := seedOneMember(t, pool, "user@example.com", "h")
-	seedAddresses(t, pool, memberID, db.MemberAddress{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"})
+	seedAddresses(t, pool, memberID, Address{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"})
 
 	t.Run("正常系 member 所有の住所を返す", func(t *testing.T) {
-		got, err := r.GetAddress(t.Context(), db.GetAddressParams{ID: 1, MemberID: memberID})
+		got, err := r.GetAddress(t.Context(), AddressRef{ID: 1, MemberID: memberID})
 		if err != nil {
 			t.Fatalf("GetAddress: %v", err)
 		}
@@ -199,12 +198,12 @@ func TestGetAddress(t *testing.T) {
 		}
 	})
 	t.Run("準正常系 他 member の住所は引けず ErrNotFound", func(t *testing.T) {
-		if _, err := r.GetAddress(t.Context(), db.GetAddressParams{ID: 1, MemberID: memberID + 1}); !errors.Is(err, dberr.ErrNotFound) {
+		if _, err := r.GetAddress(t.Context(), AddressRef{ID: 1, MemberID: memberID + 1}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
 	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.GetAddress(t.Context(), db.GetAddressParams{ID: 9999, MemberID: memberID}); !errors.Is(err, dberr.ErrNotFound) {
+		if _, err := r.GetAddress(t.Context(), AddressRef{ID: 9999, MemberID: memberID}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
@@ -228,7 +227,7 @@ func TestGetSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetSession: %v", err)
 		}
-		assert.DeepEqual(t, db.MemberSession{ID: "live", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
+		assert.DeepEqual(t, Session{ID: "live", MemberID: memberID}, got, "ExpiresAt", "CreatedAt")
 	})
 	t.Run("準正常系 期限切れは ErrNotFound", func(t *testing.T) {
 		if _, err := r.GetSession(t.Context(), "expired"); !errors.Is(err, dberr.ErrNotFound) {

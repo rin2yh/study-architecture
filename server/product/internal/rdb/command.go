@@ -17,18 +17,26 @@ func NewProductCommand(pool *pgxpool.Pool) *ProductCommand {
 	return &ProductCommand{q: db.New(pool)}
 }
 
-func (r *ProductCommand) CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.ProductProduct, error) {
-	row, err := r.q.CreateProduct(ctx, arg)
+func (r *ProductCommand) CreateProduct(ctx context.Context, arg ProductCreate) (Product, error) {
+	row, err := r.q.CreateProduct(ctx, db.CreateProductParams{
+		Sku:        arg.Sku,
+		Name:       arg.Name,
+		PriceCents: arg.PriceCents,
+	})
 	if err != nil {
-		return db.ProductProduct{}, dberr.FromWrite(err)
+		return Product{}, dberr.FromWrite(err)
 	}
-	return row, nil
+	return toProduct(row), nil
 }
 
-func (r *ProductCommand) UpdateProduct(ctx context.Context, arg db.UpdateProductParams) (db.ProductProduct, error) {
-	row, err := r.q.UpdateProduct(ctx, arg)
+func (r *ProductCommand) UpdateProduct(ctx context.Context, arg ProductUpdate) (Product, error) {
+	row, err := r.q.UpdateProduct(ctx, db.UpdateProductParams{
+		ID:         arg.ID,
+		Name:       arg.Name,
+		PriceCents: arg.PriceCents,
+	})
 	if err != nil {
-		return db.ProductProduct{}, dberr.FromUpdate(err)
+		return Product{}, dberr.FromUpdate(err)
 	}
-	return row, nil
+	return toProduct(row), nil
 }

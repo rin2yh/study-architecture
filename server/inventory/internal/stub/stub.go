@@ -4,13 +4,12 @@ package stub
 import (
 	"context"
 
-	"github.com/rin2yh/study-architecture/server/inventory/internal/db"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/rdb"
 )
 
 type InventoryStub struct {
 	AvailableQty int64
-	StockInRow   db.InventoryStockIn
+	StockInRow   rdb.StockIn
 	ReserveErr   error
 	Err          error
 }
@@ -19,7 +18,7 @@ func (s InventoryStub) Available(context.Context, int64) (int64, error) {
 	return s.AvailableQty, s.Err
 }
 
-func (s InventoryStub) StockIn(context.Context, int64, int32) (db.InventoryStockIn, error) {
+func (s InventoryStub) StockIn(context.Context, int64, int32) (rdb.StockIn, error) {
 	return s.StockInRow, s.Err
 }
 

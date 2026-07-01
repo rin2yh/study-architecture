@@ -6,7 +6,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
 func TestOutboxStore(t *testing.T) {
@@ -14,7 +13,7 @@ func TestOutboxStore(t *testing.T) {
 	pool := testdb.Open(t, dbEnv)
 	cmd := NewOrderCommand(pool)
 	store := NewOutboxStore(pool)
-	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 1980})
+	seedOrders(t, pool, Order{MemberID: 10, Status: "confirmed", TotalCents: 1980})
 
 	if _, err := cmd.CancelOrder(t.Context(), 1, "tp-xyz"); err != nil {
 		t.Fatalf("CancelOrder: %v", err)

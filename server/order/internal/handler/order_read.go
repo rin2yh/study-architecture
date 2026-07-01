@@ -9,12 +9,12 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/order/api"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
+	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
 func (h *readHandler) ListOrders(c *gin.Context, params api.ListOrdersParams) {
 	var (
-		rows []db.OrderOrder
+		rows []rdb.Order
 		err  error
 	)
 	if params.XMemberId != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/member/api"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 )
 
 func (h *readHandler) ListAddresses(c *gin.Context, id api.IdPath) {
@@ -26,7 +26,7 @@ func (h *readHandler) ListAddresses(c *gin.Context, id api.IdPath) {
 }
 
 func (h *readHandler) GetAddress(c *gin.Context, id api.IdPath, addressID api.AddressIdPath) {
-	row, err := h.query.GetAddress(c.Request.Context(), db.GetAddressParams{ID: addressID, MemberID: id})
+	row, err := h.query.GetAddress(c.Request.Context(), rdb.AddressRef{ID: addressID, MemberID: id})
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("address not found"))

@@ -9,7 +9,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/member/api"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 )
 
 func (h *writeHandler) CreateAddress(c *gin.Context, id api.IdPath) {
@@ -18,7 +18,7 @@ func (h *writeHandler) CreateAddress(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.command.CreateAddress(c.Request.Context(), db.CreateAddressParams{
+	row, err := h.command.CreateAddress(c.Request.Context(), rdb.AddressCreate{
 		MemberID:   id,
 		Recipient:  req.Recipient,
 		PostalCode: req.PostalCode,
@@ -43,7 +43,7 @@ func (h *writeHandler) UpdateAddress(c *gin.Context, id api.IdPath, addressID ap
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.command.UpdateAddress(c.Request.Context(), db.UpdateAddressParams{
+	row, err := h.command.UpdateAddress(c.Request.Context(), rdb.AddressUpdate{
 		ID:         addressID,
 		MemberID:   id,
 		Recipient:  req.Recipient,
@@ -64,7 +64,7 @@ func (h *writeHandler) UpdateAddress(c *gin.Context, id api.IdPath, addressID ap
 }
 
 func (h *writeHandler) DeleteAddress(c *gin.Context, id api.IdPath, addressID api.AddressIdPath) {
-	if err := h.command.DeleteAddress(c.Request.Context(), db.DeleteAddressParams{ID: addressID, MemberID: id}); err != nil {
+	if err := h.command.DeleteAddress(c.Request.Context(), rdb.AddressRef{ID: addressID, MemberID: id}); err != nil {
 		_ = c.Error(err)
 		return
 	}

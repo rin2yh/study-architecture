@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/inventory/api"
-	"github.com/rin2yh/study-architecture/server/inventory/internal/db"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/rdb"
 )
 
@@ -16,7 +15,7 @@ type Query interface {
 }
 
 type Command interface {
-	StockIn(ctx context.Context, productID int64, quantity int32) (db.InventoryStockIn, error)
+	StockIn(ctx context.Context, productID int64, quantity int32) (rdb.StockIn, error)
 	Reserve(ctx context.Context, orderID int64, lines []rdb.ReserveLine) error
 	ReleaseReservationsByOrder(ctx context.Context, orderID int64) error
 }
@@ -47,7 +46,7 @@ func (h *Handler) GetHealthz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func toAPIStockIn(r db.InventoryStockIn) api.StockIn {
+func toAPIStockIn(r rdb.StockIn) api.StockIn {
 	return api.StockIn{
 		Id:        r.ID,
 		ProductId: r.ProductID,

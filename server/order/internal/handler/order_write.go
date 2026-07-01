@@ -13,7 +13,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/order/api"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
@@ -28,7 +27,7 @@ func (h *writeHandler) CreateOrder(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("totalCents must not be negative"))
 		return
 	}
-	row, err := h.command.CreateOrder(c.Request.Context(), db.CreateOrderParams{
+	row, err := h.command.CreateOrder(c.Request.Context(), rdb.OrderCreate{
 		MemberID:   req.MemberId,
 		Status:     req.Status,
 		TotalCents: req.TotalCents,
@@ -46,7 +45,7 @@ func (h *writeHandler) UpdateOrder(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.command.UpdateOrder(c.Request.Context(), db.UpdateOrderParams{
+	row, err := h.command.UpdateOrder(c.Request.Context(), rdb.OrderUpdate{
 		ID:     id,
 		Status: req.Status,
 	})

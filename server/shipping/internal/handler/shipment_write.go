@@ -9,7 +9,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/shipping/api"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 )
 
 func (h *writeHandler) CreateShipment(c *gin.Context) {
@@ -18,7 +18,7 @@ func (h *writeHandler) CreateShipment(c *gin.Context) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.command.CreateShipment(c.Request.Context(), db.CreateShipmentParams{
+	row, err := h.command.CreateShipment(c.Request.Context(), rdb.ShipmentCreate{
 		OrderID:    req.OrderId,
 		Carrier:    req.Carrier,
 		TrackingNo: req.TrackingNo,
@@ -37,7 +37,7 @@ func (h *writeHandler) UpdateShipment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.command.UpdateShipment(c.Request.Context(), db.UpdateShipmentParams{
+	row, err := h.command.UpdateShipment(c.Request.Context(), rdb.ShipmentUpdate{
 		ID:     id,
 		Status: req.Status,
 	})

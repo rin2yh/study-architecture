@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/auth"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 )
 
 // ADR-[[202606211100]]
@@ -47,10 +46,10 @@ func (h *writeHandler) CreateSession(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	row, err := h.command.CreateSession(c.Request.Context(), db.CreateSessionParams{
+	row, err := h.command.CreateSession(c.Request.Context(), rdb.SessionCreate{
 		ID:        id,
 		MemberID:  member.ID,
-		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(sessionTTL), Valid: true},
+		ExpiresAt: time.Now().Add(sessionTTL),
 	})
 	if err != nil {
 		_ = c.Error(err)

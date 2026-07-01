@@ -7,26 +7,26 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/member/api"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 )
 
 type Query interface {
-	ListMembers(ctx context.Context) ([]db.MemberMember, error)
-	GetMember(ctx context.Context, id int64) (db.MemberMember, error)
-	GetMemberByEmail(ctx context.Context, email string) (db.MemberMember, error)
-	GetSession(ctx context.Context, id string) (db.MemberSession, error)
-	ListAddresses(ctx context.Context, memberID int64) ([]db.MemberAddress, error)
-	GetAddress(ctx context.Context, arg db.GetAddressParams) (db.MemberAddress, error)
+	ListMembers(ctx context.Context) ([]rdb.Member, error)
+	GetMember(ctx context.Context, id int64) (rdb.Member, error)
+	GetMemberByEmail(ctx context.Context, email string) (rdb.Member, error)
+	GetSession(ctx context.Context, id string) (rdb.Session, error)
+	ListAddresses(ctx context.Context, memberID int64) ([]rdb.Address, error)
+	GetAddress(ctx context.Context, ref rdb.AddressRef) (rdb.Address, error)
 }
 
 type Command interface {
-	CreateMember(ctx context.Context, arg db.CreateMemberParams) (db.MemberMember, error)
-	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.MemberMember, error)
-	CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.MemberSession, error)
+	CreateMember(ctx context.Context, arg rdb.MemberCreate) (rdb.Member, error)
+	UpdateMember(ctx context.Context, arg rdb.MemberUpdate) (rdb.Member, error)
+	CreateSession(ctx context.Context, arg rdb.SessionCreate) (rdb.Session, error)
 	DeleteSession(ctx context.Context, id string) error
-	CreateAddress(ctx context.Context, arg db.CreateAddressParams) (db.MemberAddress, error)
-	UpdateAddress(ctx context.Context, arg db.UpdateAddressParams) (db.MemberAddress, error)
-	DeleteAddress(ctx context.Context, arg db.DeleteAddressParams) error
+	CreateAddress(ctx context.Context, arg rdb.AddressCreate) (rdb.Address, error)
+	UpdateAddress(ctx context.Context, arg rdb.AddressUpdate) (rdb.Address, error)
+	DeleteAddress(ctx context.Context, ref rdb.AddressRef) error
 }
 
 type readHandler struct {
@@ -58,16 +58,16 @@ func (h *Handler) GetHealthz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func toAPIMember(r db.MemberMember) api.Member {
+func toAPIMember(r rdb.Member) api.Member {
 	return api.Member{
 		Id:          r.ID,
 		Email:       r.Email,
 		DisplayName: r.DisplayName,
-		CreatedAt:   r.CreatedAt.Time,
+		CreatedAt:   r.CreatedAt,
 	}
 }
 
-func toAPIAddress(r db.MemberAddress) api.Address {
+func toAPIAddress(r rdb.Address) api.Address {
 	return api.Address{
 		Id:         r.ID,
 		MemberId:   r.MemberID,
@@ -76,14 +76,14 @@ func toAPIAddress(r db.MemberAddress) api.Address {
 		Prefecture: r.Prefecture,
 		City:       r.City,
 		Line1:      r.Line1,
-		CreatedAt:  r.CreatedAt.Time,
+		CreatedAt:  r.CreatedAt,
 	}
 }
 
-func toAPISession(token string, r db.MemberSession) api.Session {
+func toAPISession(token string, r rdb.Session) api.Session {
 	return api.Session{
 		Id:        token,
 		MemberId:  r.MemberID,
-		ExpiresAt: r.ExpiresAt.Time,
+		ExpiresAt: r.ExpiresAt,
 	}
 }

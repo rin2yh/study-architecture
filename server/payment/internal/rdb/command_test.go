@@ -7,7 +7,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
 func TestCreatePayment(t *testing.T) {
@@ -17,7 +16,7 @@ func TestCreatePayment(t *testing.T) {
 
 	t.Run("正常系 新規作成で行が返る", func(t *testing.T) {
 		seedPayments(t, pool)
-		got, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid", IdempotencyKey: "k-20"})
+		got, err := r.CreatePayment(t.Context(), PaymentCreate{OrderID: 20, AmountCents: 2980, Method: "card", Status: "paid", IdempotencyKey: "k-20"})
 		if err != nil {
 			t.Fatalf("CreatePayment: %v", err)
 		}
@@ -28,11 +27,11 @@ func TestCreatePayment(t *testing.T) {
 
 	t.Run("準正常系 同一 idempotency key の再送は既存を冪等に返す", func(t *testing.T) {
 		seedPayments(t, pool)
-		first, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending", IdempotencyKey: "k-30"})
+		first, err := r.CreatePayment(t.Context(), PaymentCreate{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending", IdempotencyKey: "k-30"})
 		if err != nil {
 			t.Fatalf("first CreatePayment: %v", err)
 		}
-		second, err := r.CreatePayment(t.Context(), db.CreatePaymentParams{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending", IdempotencyKey: "k-30"})
+		second, err := r.CreatePayment(t.Context(), PaymentCreate{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending", IdempotencyKey: "k-30"})
 		if err != nil {
 			t.Fatalf("second CreatePayment: %v", err)
 		}
@@ -70,7 +69,7 @@ func TestRefundByOrder(t *testing.T) {
 	}
 
 	t.Run("正常系 確定済みは返金され再実行でも 1 回に収束", func(t *testing.T) {
-		seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "settled"})
+		seedPayments(t, pool, Payment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "settled"})
 		if err := r.RefundByOrder(t.Context(), 20); err != nil {
 			t.Fatalf("RefundByOrder: %v", err)
 		}
@@ -86,7 +85,7 @@ func TestRefundByOrder(t *testing.T) {
 	})
 
 	t.Run("正常系 未確定 (入金前) はキャンセルへ倒す", func(t *testing.T) {
-		seedPayments(t, pool, db.PaymentPayment{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending"})
+		seedPayments(t, pool, Payment{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending"})
 		if err := r.RefundByOrder(t.Context(), 30); err != nil {
 			t.Fatalf("RefundByOrder: %v", err)
 		}
@@ -100,7 +99,7 @@ func TestUpdatePayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentCommand(pool)
-	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
+	seedPayments(t, pool, Payment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
 
 	t.Run("正常系 status のみ更新し order_id/amount_cents/method は不変", func(t *testing.T) {
 		got, err := r.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "refunded"})

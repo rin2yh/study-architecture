@@ -5,7 +5,6 @@ import (
 
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
 func TestOutboxStoreFetchUnpublished(t *testing.T) {
@@ -15,7 +14,7 @@ func TestOutboxStoreFetchUnpublished(t *testing.T) {
 	store := NewOutboxStore(pool)
 
 	t.Run("正常系 確定マーク済みの行を traceparent 付きで返す", func(t *testing.T) {
-		seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
+		seedPayments(t, pool, Payment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
 		if _, err := cmd.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "paid", Settle: true, Traceparent: "tp-1"}); err != nil {
 			t.Fatalf("UpdatePayment: %v", err)
 		}
@@ -36,7 +35,7 @@ func TestOutboxStoreFetchUnpublished(t *testing.T) {
 	})
 
 	t.Run("準正常系 確定していない更新は outbox に積まない", func(t *testing.T) {
-		seedPayments(t, pool, db.PaymentPayment{OrderID: 21, AmountCents: 500, Method: "card", Status: "pending"})
+		seedPayments(t, pool, Payment{OrderID: 21, AmountCents: 500, Method: "card", Status: "pending"})
 		if _, err := cmd.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "refunded"}); err != nil {
 			t.Fatalf("UpdatePayment: %v", err)
 		}
@@ -57,7 +56,7 @@ func TestOutboxStoreMarkPublished(t *testing.T) {
 	cmd := NewPaymentCommand(pool)
 	store := NewOutboxStore(pool)
 
-	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
+	seedPayments(t, pool, Payment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
 	if _, err := cmd.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "paid", Settle: true, Traceparent: "tp-1"}); err != nil {
 		t.Fatalf("UpdatePayment: %v", err)
 	}

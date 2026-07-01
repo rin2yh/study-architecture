@@ -11,12 +11,11 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
 const dbEnv = "DATABASE_URL_PAYMENT"
 
-func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...db.PaymentPayment) {
+func seedPayments(t *testing.T, pool *pgxpool.Pool, rows ...Payment) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE payment.payments, payment.outbox RESTART IDENTITY`); err != nil {
@@ -35,11 +34,11 @@ func TestListPayments(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
-		seed []db.PaymentPayment
+		seed []Payment
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			seed: []db.PaymentPayment{
+			seed: []Payment{
 				{OrderID: 1, AmountCents: 1980, Method: "card", Status: "paid"},
 				{OrderID: 2, AmountCents: 2980, Method: "bank", Status: "pending"},
 			},
@@ -82,7 +81,7 @@ func TestGetPayment(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewPaymentQuery(pool)
-	seedPayments(t, pool, db.PaymentPayment{OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid"})
+	seedPayments(t, pool, Payment{OrderID: 10, AmountCents: 1980, Method: "card", Status: "paid"})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
 		got, err := r.GetPayment(t.Context(), 1)

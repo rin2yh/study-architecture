@@ -11,12 +11,11 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/product/internal/db"
 )
 
 const dbEnv = "DATABASE_URL_PRODUCT"
 
-func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...db.ProductProduct) {
+func seedProducts(t *testing.T, pool *pgxpool.Pool, rows ...Product) {
 	t.Helper()
 	ctx := t.Context()
 	if _, err := pool.Exec(ctx, `TRUNCATE product.products RESTART IDENTITY`); err != nil {
@@ -35,11 +34,11 @@ func TestListProducts(t *testing.T) {
 	skip.Short(t)
 	tests := []struct {
 		name string
-		seed []db.ProductProduct
+		seed []Product
 	}{
 		{
 			name: "正常系 id 昇順 (登録順) に複数件返す",
-			seed: []db.ProductProduct{
+			seed: []Product{
 				{Sku: "SKU-1", Name: "商品1", PriceCents: 1980},
 				{Sku: "SKU-2", Name: "商品2", PriceCents: 2980},
 			},
@@ -82,7 +81,7 @@ func TestGetProduct(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewProductQuery(pool)
-	seedProducts(t, pool, db.ProductProduct{Sku: "SKU-1", Name: "商品1", PriceCents: 1980})
+	seedProducts(t, pool, Product{Sku: "SKU-1", Name: "商品1", PriceCents: 1980})
 
 	t.Run("正常系 既存 id の行を返す", func(t *testing.T) {
 		got, err := r.GetProduct(t.Context(), 1)

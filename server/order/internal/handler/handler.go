@@ -7,24 +7,23 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rin2yh/study-architecture/server/order/api"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
 )
 
 type Query interface {
-	ListOrders(ctx context.Context) ([]db.OrderOrder, error)
-	ListOrdersByMember(ctx context.Context, memberID int64) ([]db.OrderOrder, error)
-	GetOrder(ctx context.Context, id int64) (db.OrderOrder, error)
-	GetOrderItems(ctx context.Context, orderID int64) ([]db.OrderOrderItem, error)
+	ListOrders(ctx context.Context) ([]rdb.Order, error)
+	ListOrdersByMember(ctx context.Context, memberID int64) ([]rdb.Order, error)
+	GetOrder(ctx context.Context, id int64) (rdb.Order, error)
+	GetOrderItems(ctx context.Context, orderID int64) ([]rdb.OrderItem, error)
 }
 
 type Command interface {
-	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error)
-	UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error)
-	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine, addr rdb.CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error)
+	CreateOrder(ctx context.Context, arg rdb.OrderCreate) (rdb.Order, error)
+	UpdateOrder(ctx context.Context, arg rdb.OrderUpdate) (rdb.Order, error)
+	Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []rdb.CheckoutLine, addr rdb.CheckoutAddress) (rdb.Order, []rdb.OrderItem, error)
 	DeleteOrder(ctx context.Context, id int64) error
-	CancelOrder(ctx context.Context, id int64, traceparent string) (db.OrderOrder, error)
+	CancelOrder(ctx context.Context, id int64, traceparent string) (rdb.Order, error)
 }
 
 type readHandler struct {
@@ -56,13 +55,13 @@ func (h *Handler) GetHealthz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func toAPIOrder(r db.OrderOrder) api.Order {
+func toAPIOrder(r rdb.Order) api.Order {
 	o := api.Order{
 		Id:         r.ID,
 		MemberId:   r.MemberID,
 		Status:     r.Status,
 		TotalCents: r.TotalCents,
-		CreatedAt:  r.CreatedAt.Time,
+		CreatedAt:  r.CreatedAt,
 	}
 	// checkout 経由でない注文 (POST /orders) は宛先を持たないため省く。
 	if r.ShippingRecipient != "" {
@@ -77,7 +76,7 @@ func toAPIOrder(r db.OrderOrder) api.Order {
 	return o
 }
 
-func toAPIOrderWithItems(r db.OrderOrder, items []db.OrderOrderItem) api.Order {
+func toAPIOrderWithItems(r rdb.Order, items []rdb.OrderItem) api.Order {
 	o := toAPIOrder(r)
 	out := make([]api.OrderItem, 0, len(items))
 	for _, it := range items {

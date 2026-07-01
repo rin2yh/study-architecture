@@ -53,3 +53,4 @@
 | [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
 | [202606301000](202606301000-shipping-pulls-destination-from-order.md) | Accepted | 配送先スナップショットは shipping が order から引く (settled は orderId のみ) |
 | [202606301100](202606301100-bff-resolves-shipping-address-for-checkout.md) | Accepted | checkout の配送先は BFF が解決し order へ値で渡す (order は member を引かない) |
+| [202607011200](202607011200-handler-port-domain-dto-types.md) | Accepted | handler の port を domain/DTO 型に統一し db.* を露出しない |

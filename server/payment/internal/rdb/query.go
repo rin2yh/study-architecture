@@ -17,14 +17,18 @@ func NewPaymentQuery(pool *pgxpool.Pool) *PaymentQuery {
 	return &PaymentQuery{q: db.New(pool)}
 }
 
-func (r *PaymentQuery) ListPayments(ctx context.Context) ([]db.PaymentPayment, error) {
-	return r.q.ListPayments(ctx)
+func (r *PaymentQuery) ListPayments(ctx context.Context) ([]Payment, error) {
+	rows, err := r.q.ListPayments(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toPayments(rows), nil
 }
 
-func (r *PaymentQuery) GetPayment(ctx context.Context, id int64) (db.PaymentPayment, error) {
+func (r *PaymentQuery) GetPayment(ctx context.Context, id int64) (Payment, error) {
 	row, err := r.q.GetPayment(ctx, id)
 	if err != nil {
-		return db.PaymentPayment{}, dberr.FromRead(err)
+		return Payment{}, dberr.FromRead(err)
 	}
-	return row, nil
+	return toPayment(row), nil
 }

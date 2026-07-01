@@ -10,7 +10,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/member/api"
 	"github.com/rin2yh/study-architecture/server/member/internal/auth"
-	"github.com/rin2yh/study-architecture/server/member/internal/db"
+	"github.com/rin2yh/study-architecture/server/member/internal/rdb"
 )
 
 func (h *writeHandler) CreateMember(c *gin.Context) {
@@ -24,7 +24,7 @@ func (h *writeHandler) CreateMember(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	row, err := h.command.CreateMember(c.Request.Context(), db.CreateMemberParams{
+	row, err := h.command.CreateMember(c.Request.Context(), rdb.MemberCreate{
 		Email:        string(req.Email),
 		DisplayName:  req.DisplayName,
 		PasswordHash: hash,
@@ -46,7 +46,7 @@ func (h *writeHandler) UpdateMember(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	row, err := h.command.UpdateMember(c.Request.Context(), db.UpdateMemberParams{
+	row, err := h.command.UpdateMember(c.Request.Context(), rdb.MemberUpdate{
 		ID:          id,
 		Email:       string(req.Email),
 		DisplayName: req.DisplayName,

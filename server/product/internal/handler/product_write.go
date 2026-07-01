@@ -9,7 +9,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/middleware"
 	"github.com/rin2yh/study-architecture/server/product/api"
-	"github.com/rin2yh/study-architecture/server/product/internal/db"
+	"github.com/rin2yh/study-architecture/server/product/internal/rdb"
 )
 
 func (h *writeHandler) CreateProduct(c *gin.Context) {
@@ -22,7 +22,7 @@ func (h *writeHandler) CreateProduct(c *gin.Context) {
 		_ = c.Error(middleware.Unprocessable("priceCents must not be negative"))
 		return
 	}
-	row, err := h.command.CreateProduct(c.Request.Context(), db.CreateProductParams{
+	row, err := h.command.CreateProduct(c.Request.Context(), rdb.ProductCreate{
 		Sku:        req.Sku,
 		Name:       req.Name,
 		PriceCents: req.PriceCents,
@@ -48,7 +48,7 @@ func (h *writeHandler) UpdateProduct(c *gin.Context, id api.IdPath) {
 		_ = c.Error(middleware.Unprocessable("priceCents must not be negative"))
 		return
 	}
-	row, err := h.command.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
+	row, err := h.command.UpdateProduct(c.Request.Context(), rdb.ProductUpdate{
 		ID:         id,
 		Name:       req.Name,
 		PriceCents: req.PriceCents,

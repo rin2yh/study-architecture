@@ -8,7 +8,6 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/test/assert"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
-	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
 func TestCreateOrder(t *testing.T) {
@@ -17,7 +16,7 @@ func TestCreateOrder(t *testing.T) {
 	r := NewOrderCommand(pool)
 	seedOrders(t, pool)
 
-	got, err := r.CreateOrder(t.Context(), db.CreateOrderParams{MemberID: 20, Status: "pending", TotalCents: 1980})
+	got, err := r.CreateOrder(t.Context(), OrderCreate{MemberID: 20, Status: "pending", TotalCents: 1980})
 	if err != nil {
 		t.Fatalf("CreateOrder: %v", err)
 	}
@@ -30,10 +29,10 @@ func TestUpdateOrder(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)
 	r := NewOrderCommand(pool)
-	seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "pending", TotalCents: 1980})
+	seedOrders(t, pool, Order{MemberID: 10, Status: "pending", TotalCents: 1980})
 
 	t.Run("正常系 status のみ更新し member_id/total_cents は不変", func(t *testing.T) {
-		got, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 1, Status: "paid"})
+		got, err := r.UpdateOrder(t.Context(), OrderUpdate{ID: 1, Status: "paid"})
 		if err != nil {
 			t.Fatalf("UpdateOrder: %v", err)
 		}
@@ -42,7 +41,7 @@ func TestUpdateOrder(t *testing.T) {
 		}
 	})
 	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.UpdateOrder(t.Context(), db.UpdateOrderParams{ID: 9999, Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
+		if _, err := r.UpdateOrder(t.Context(), OrderUpdate{ID: 9999, Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
@@ -54,7 +53,7 @@ func TestCancelOrder(t *testing.T) {
 	r := NewOrderCommand(pool)
 
 	t.Run("正常系 未発送はキャンセルされ補償イベントが未送信になる", func(t *testing.T) {
-		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 1980})
+		seedOrders(t, pool, Order{MemberID: 10, Status: "confirmed", TotalCents: 1980})
 		got, err := r.CancelOrder(t.Context(), 1, "tp-1")
 		if err != nil {
 			t.Fatalf("CancelOrder: %v", err)
@@ -73,7 +72,7 @@ func TestCancelOrder(t *testing.T) {
 	})
 
 	t.Run("正常系 既にキャンセル済みは冪等 (再送出を増やさない)", func(t *testing.T) {
-		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "confirmed", TotalCents: 1980})
+		seedOrders(t, pool, Order{MemberID: 10, Status: "confirmed", TotalCents: 1980})
 		if _, err := r.CancelOrder(t.Context(), 1, "tp-1"); err != nil {
 			t.Fatalf("CancelOrder 1st: %v", err)
 		}
@@ -90,7 +89,7 @@ func TestCancelOrder(t *testing.T) {
 	})
 
 	t.Run("準正常系 発送済みは ErrNotCancellable", func(t *testing.T) {
-		seedOrders(t, pool, db.OrderOrder{MemberID: 10, Status: "shipped", TotalCents: 1980})
+		seedOrders(t, pool, Order{MemberID: 10, Status: "shipped", TotalCents: 1980})
 		if _, err := r.CancelOrder(t.Context(), 1, "tp"); !errors.Is(err, ErrNotCancellable) {
 			t.Fatalf("err = %v, want ErrNotCancellable", err)
 		}

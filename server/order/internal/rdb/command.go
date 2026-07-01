@@ -52,16 +52,24 @@ func NewOrderCommand(pool *pgxpool.Pool) *OrderCommand {
 	return &OrderCommand{pool: pool, q: db.New(pool)}
 }
 
-func (r *OrderCommand) CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.OrderOrder, error) {
-	return r.q.CreateOrder(ctx, arg)
+func (r *OrderCommand) CreateOrder(ctx context.Context, arg OrderCreate) (Order, error) {
+	row, err := r.q.CreateOrder(ctx, db.CreateOrderParams{
+		MemberID:   arg.MemberID,
+		Status:     arg.Status,
+		TotalCents: arg.TotalCents,
+	})
+	if err != nil {
+		return Order{}, err
+	}
+	return toOrder(row), nil
 }
 
-func (r *OrderCommand) UpdateOrder(ctx context.Context, arg db.UpdateOrderParams) (db.OrderOrder, error) {
-	row, err := r.q.UpdateOrder(ctx, arg)
+func (r *OrderCommand) UpdateOrder(ctx context.Context, arg OrderUpdate) (Order, error) {
+	row, err := r.q.UpdateOrder(ctx, db.UpdateOrderParams{ID: arg.ID, Status: arg.Status})
 	if err != nil {
-		return db.OrderOrder{}, dberr.FromUpdate(err)
+		return Order{}, dberr.FromUpdate(err)
 	}
-	return row, nil
+	return toOrder(row), nil
 }
 
 // DeleteOrder は予約失敗時の補償で注文を取り消す。order_items は ON DELETE CASCADE で連れて消える。
@@ -70,41 +78,41 @@ func (r *OrderCommand) DeleteOrder(ctx context.Context, id int64) error {
 }
 
 // キャンセル可否の判定と遷移を 1 tx で直列化する (ADR-[[202606261702]])。
-func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent string) (db.OrderOrder, error) {
+func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent string) (Order, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return db.OrderOrder{}, err
+		return Order{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
 	order, err := qtx.GetOrderForUpdate(ctx, id)
 	if err != nil {
-		return db.OrderOrder{}, dberr.FromRead(err)
+		return Order{}, dberr.FromRead(err)
 	}
 	switch order.Status {
 	case "shipped":
-		return db.OrderOrder{}, ErrNotCancellable
+		return Order{}, ErrNotCancellable
 	case "cancelled":
-		return order, nil
+		return toOrder(order), nil
 	}
 	cancelled, err := qtx.CancelOrder(ctx, id)
 	if err != nil {
-		return db.OrderOrder{}, err
+		return Order{}, err
 	}
 	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, traceparent, orderevent.Cancelled{OrderID: cancelled.ID}); err != nil {
-		return db.OrderOrder{}, err
+		return Order{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return db.OrderOrder{}, err
+		return Order{}, err
 	}
-	return cancelled, nil
+	return toOrder(cancelled), nil
 }
 
-func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine, addr CheckoutAddress) (db.OrderOrder, []db.OrderOrderItem, error) {
+func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status string, totalCents int64, lines []CheckoutLine, addr CheckoutAddress) (Order, []OrderItem, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return db.OrderOrder{}, nil, err
+		return Order{}, nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
@@ -120,9 +128,9 @@ func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status stri
 		ShippingLine1:      addr.Line1,
 	})
 	if err != nil {
-		return db.OrderOrder{}, nil, err
+		return Order{}, nil, err
 	}
-	items := make([]db.OrderOrderItem, 0, len(lines))
+	items := make([]OrderItem, 0, len(lines))
 	for _, l := range lines {
 		item, err := qtx.CreateOrderItem(ctx, db.CreateOrderItemParams{
 			OrderID:        order.ID,
@@ -132,12 +140,12 @@ func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status stri
 			Quantity:       l.Quantity,
 		})
 		if err != nil {
-			return db.OrderOrder{}, nil, err
+			return Order{}, nil, err
 		}
-		items = append(items, item)
+		items = append(items, toOrderItem(item))
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return db.OrderOrder{}, nil, err
+		return Order{}, nil, err
 	}
-	return order, items, nil
+	return toOrder(order), items, nil
 }

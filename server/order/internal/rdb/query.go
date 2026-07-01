@@ -17,22 +17,34 @@ func NewOrderQuery(pool *pgxpool.Pool) *OrderQuery {
 	return &OrderQuery{q: db.New(pool)}
 }
 
-func (r *OrderQuery) ListOrders(ctx context.Context) ([]db.OrderOrder, error) {
-	return r.q.ListOrders(ctx)
+func (r *OrderQuery) ListOrders(ctx context.Context) ([]Order, error) {
+	rows, err := r.q.ListOrders(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toOrders(rows), nil
 }
 
-func (r *OrderQuery) ListOrdersByMember(ctx context.Context, memberID int64) ([]db.OrderOrder, error) {
-	return r.q.ListOrdersByMember(ctx, memberID)
+func (r *OrderQuery) ListOrdersByMember(ctx context.Context, memberID int64) ([]Order, error) {
+	rows, err := r.q.ListOrdersByMember(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+	return toOrders(rows), nil
 }
 
-func (r *OrderQuery) GetOrder(ctx context.Context, id int64) (db.OrderOrder, error) {
+func (r *OrderQuery) GetOrder(ctx context.Context, id int64) (Order, error) {
 	row, err := r.q.GetOrder(ctx, id)
 	if err != nil {
-		return db.OrderOrder{}, dberr.FromRead(err)
+		return Order{}, dberr.FromRead(err)
 	}
-	return row, nil
+	return toOrder(row), nil
 }
 
-func (r *OrderQuery) GetOrderItems(ctx context.Context, orderID int64) ([]db.OrderOrderItem, error) {
-	return r.q.ListOrderItems(ctx, orderID)
+func (r *OrderQuery) GetOrderItems(ctx context.Context, orderID int64) ([]OrderItem, error) {
+	rows, err := r.q.ListOrderItems(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	return toOrderItems(rows), nil
 }
