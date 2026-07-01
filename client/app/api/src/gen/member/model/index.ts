@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './address.ts';
+export * from './addressInput.ts';
 export * from './createMemberRequest.ts';
 export * from './createSessionRequest.ts';
 export * from './error.ts';

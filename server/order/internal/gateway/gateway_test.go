@@ -122,6 +122,94 @@ func TestPaymentClientCreatePayment(t *testing.T) {
 	}
 }
 
+func TestInventoryClientReserve(t *testing.T) {
+	type want struct {
+		errIs   error
+		wantErr bool
+	}
+	tests := []struct {
+		name    string
+		handler http.HandlerFunc
+		want    want
+	}{
+		{"正常系 201 は成功", jsonHandler(http.StatusCreated, `{}`), want{}},
+		{"準正常系 409 は ErrInsufficientStock", jsonHandler(http.StatusConflict, `{"code":"conflict"}`), want{errIs: gateway.ErrInsufficientStock, wantErr: true}},
+		{"異常系 500 は ErrUpstream", jsonHandler(http.StatusInternalServerError, `{"code":"internal"}`), want{errIs: gateway.ErrUpstream, wantErr: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(tt.handler)
+			defer srv.Close()
+			t.Setenv("INVENTORY_API_URL", srv.URL)
+			c, err := gateway.NewInventoryClient()
+			if err != nil {
+				t.Fatalf("NewInventoryClient: %v", err)
+			}
+
+			err = c.Reserve(t.Context(), 7, []gateway.ReserveLine{{ProductID: 100, Quantity: 2}})
+			if tt.want.wantErr {
+				if !errors.Is(err, tt.want.errIs) {
+					t.Fatalf("err = %v, want errors.Is %v", err, tt.want.errIs)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Reserve: %v", err)
+			}
+		})
+	}
+}
+
+func TestInventoryClientReserveTransportError(t *testing.T) {
+	srv := httptest.NewServer(jsonHandler(http.StatusCreated, `{}`))
+	t.Setenv("INVENTORY_API_URL", srv.URL)
+	c, err := gateway.NewInventoryClient()
+	if err != nil {
+		t.Fatalf("NewInventoryClient: %v", err)
+	}
+	srv.Close()
+
+	if err := c.Reserve(t.Context(), 7, nil); !errors.Is(err, gateway.ErrUpstream) {
+		t.Fatalf("err = %v, want ErrUpstream", err)
+	}
+}
+
+func TestInventoryClientRelease(t *testing.T) {
+	type want struct {
+		wantErr bool
+	}
+	tests := []struct {
+		name    string
+		handler http.HandlerFunc
+		want    want
+	}{
+		{"正常系 204 は成功", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }, want{}},
+		{"異常系 500 は ErrUpstream", jsonHandler(http.StatusInternalServerError, `{"code":"internal"}`), want{wantErr: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(tt.handler)
+			defer srv.Close()
+			t.Setenv("INVENTORY_API_URL", srv.URL)
+			c, err := gateway.NewInventoryClient()
+			if err != nil {
+				t.Fatalf("NewInventoryClient: %v", err)
+			}
+
+			err = c.Release(t.Context(), 7)
+			if tt.want.wantErr {
+				if !errors.Is(err, gateway.ErrUpstream) {
+					t.Fatalf("err = %v, want ErrUpstream", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Release: %v", err)
+			}
+		})
+	}
+}
+
 func TestNewClientRequiresEnv(t *testing.T) {
 	tests := []struct {
 		name string
@@ -130,6 +218,7 @@ func TestNewClientRequiresEnv(t *testing.T) {
 	}{
 		{"異常系 PRODUCT_API_URL 未設定はエラー", "PRODUCT_API_URL", func() error { _, err := gateway.NewProductClient(); return err }},
 		{"異常系 PAYMENT_API_URL 未設定はエラー", "PAYMENT_API_URL", func() error { _, err := gateway.NewPaymentClient(); return err }},
+		{"異常系 INVENTORY_API_URL 未設定はエラー", "INVENTORY_API_URL", func() error { _, err := gateway.NewInventoryClient(); return err }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

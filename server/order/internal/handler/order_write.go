@@ -110,7 +110,16 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 		totalCents += snap.UnitPriceCents * int64(item.Quantity)
 	}
 
-	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines)
+	// 宛先は BFF が member の住所帳から解決して値で渡す。order は受け取った値を注文時点で複写する (ADR-[[202606301100]] / ADR-[[202606190900]])。
+	addr := rdb.CheckoutAddress{
+		Recipient:  req.ShippingAddress.Recipient,
+		PostalCode: req.ShippingAddress.PostalCode,
+		Prefecture: req.ShippingAddress.Prefecture,
+		City:       req.ShippingAddress.City,
+		Line1:      req.ShippingAddress.Line1,
+	}
+
+	order, items, err := h.command.Checkout(c.Request.Context(), req.MemberId, "confirmed", totalCents, lines, addr)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -140,7 +149,6 @@ func (h *writeHandler) Checkout(c *gin.Context) {
 	// 1 つ発番して payment へ渡す (ADR-[[202606261214]])。
 	idempotencyKey := uuid.NewString()
 
-	// ADR-[[202606190900]]
 	if _, err := h.payment.CreatePayment(c.Request.Context(), order.ID, totalCents, req.PaymentMethod, idempotencyKey); err != nil {
 		// ADR-[[202606261216]]
 		if cerr := h.abandonCheckout(c.Request.Context(), order.ID); cerr != nil {

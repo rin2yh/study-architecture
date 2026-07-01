@@ -13,6 +13,27 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Address defines model for Address.
+type Address struct {
+	City       string    `json:"city"`
+	CreatedAt  time.Time `json:"createdAt"`
+	Id         int64     `json:"id"`
+	Line1      string    `json:"line1"`
+	MemberId   int64     `json:"memberId"`
+	PostalCode string    `json:"postalCode"`
+	Prefecture string    `json:"prefecture"`
+	Recipient  string    `json:"recipient"`
+}
+
+// AddressInput defines model for AddressInput.
+type AddressInput struct {
+	City       string `binding:"required" json:"city"`
+	Line1      string `binding:"required" json:"line1"`
+	PostalCode string `binding:"required" json:"postalCode"`
+	Prefecture string `binding:"required" json:"prefecture"`
+	Recipient  string `binding:"required" json:"recipient"`
+}
+
 // CreateMemberRequest defines model for CreateMemberRequest.
 type CreateMemberRequest struct {
 	DisplayName string              `binding:"required" json:"displayName"`
@@ -65,6 +86,9 @@ type UpdateMemberRequest struct {
 	Email       openapi_types.Email `binding:"required,email" json:"email"`
 }
 
+// AddressIdPath defines model for AddressIdPath.
+type AddressIdPath = int64
+
 // IdPath defines model for IdPath.
 type IdPath = int64
 
@@ -76,6 +100,12 @@ type CreateMemberJSONRequestBody = CreateMemberRequest
 
 // UpdateMemberJSONRequestBody defines body for UpdateMember for application/json ContentType.
 type UpdateMemberJSONRequestBody = UpdateMemberRequest
+
+// CreateAddressJSONRequestBody defines body for CreateAddress for application/json ContentType.
+type CreateAddressJSONRequestBody = AddressInput
+
+// UpdateAddressJSONRequestBody defines body for UpdateAddress for application/json ContentType.
+type UpdateAddressJSONRequestBody = AddressInput
 
 // CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
 type CreateSessionJSONRequestBody = CreateSessionRequest
@@ -97,6 +127,21 @@ type ServerInterface interface {
 	// 会員を更新
 	// (PUT /members/{id})
 	UpdateMember(c *gin.Context, id IdPath)
+	// 会員の住所帳一覧
+	// (GET /members/{id}/addresses)
+	ListAddresses(c *gin.Context, id IdPath)
+	// 住所を住所帳に追加
+	// (POST /members/{id}/addresses)
+	CreateAddress(c *gin.Context, id IdPath)
+	// 住所を削除
+	// (DELETE /members/{id}/addresses/{addressId})
+	DeleteAddress(c *gin.Context, id IdPath, addressId AddressIdPath)
+	// 住所を取得
+	// (GET /members/{id}/addresses/{addressId})
+	GetAddress(c *gin.Context, id IdPath, addressId AddressIdPath)
+	// 住所を更新
+	// (PUT /members/{id}/addresses/{addressId})
+	UpdateAddress(c *gin.Context, id IdPath, addressId AddressIdPath)
 	// ログイン (セッション作成)
 	// (POST /sessions)
 	CreateSession(c *gin.Context)
@@ -206,6 +251,158 @@ func (siw *ServerInterfaceWrapper) UpdateMember(c *gin.Context) {
 	siw.Handler.UpdateMember(c, id)
 }
 
+// ListAddresses operation middleware
+func (siw *ServerInterfaceWrapper) ListAddresses(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAddresses(c, id)
+}
+
+// CreateAddress operation middleware
+func (siw *ServerInterfaceWrapper) CreateAddress(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateAddress(c, id)
+}
+
+// DeleteAddress operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAddress(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "addressId" -------------
+	var addressId AddressIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "addressId", c.Param("addressId"), &addressId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter addressId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteAddress(c, id, addressId)
+}
+
+// GetAddress operation middleware
+func (siw *ServerInterfaceWrapper) GetAddress(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "addressId" -------------
+	var addressId AddressIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "addressId", c.Param("addressId"), &addressId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter addressId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAddress(c, id, addressId)
+}
+
+// UpdateAddress operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAddress(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id IdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "addressId" -------------
+	var addressId AddressIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "addressId", c.Param("addressId"), &addressId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter addressId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateAddress(c, id, addressId)
+}
+
 // CreateSession operation middleware
 func (siw *ServerInterfaceWrapper) CreateSession(c *gin.Context) {
 
@@ -301,6 +498,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/members", wrapper.CreateMember)
 	router.GET(options.BaseURL+"/members/:id", wrapper.GetMember)
 	router.PUT(options.BaseURL+"/members/:id", wrapper.UpdateMember)
+	router.GET(options.BaseURL+"/members/:id/addresses", wrapper.ListAddresses)
+	router.POST(options.BaseURL+"/members/:id/addresses", wrapper.CreateAddress)
+	router.DELETE(options.BaseURL+"/members/:id/addresses/:addressId", wrapper.DeleteAddress)
+	router.GET(options.BaseURL+"/members/:id/addresses/:addressId", wrapper.GetAddress)
+	router.PUT(options.BaseURL+"/members/:id/addresses/:addressId", wrapper.UpdateAddress)
 	router.POST(options.BaseURL+"/sessions", wrapper.CreateSession)
 	router.DELETE(options.BaseURL+"/sessions/:id", wrapper.DeleteSession)
 	router.GET(options.BaseURL+"/sessions/:id", wrapper.GetSession)

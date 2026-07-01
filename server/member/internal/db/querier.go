@@ -9,13 +9,18 @@ import (
 )
 
 type Querier interface {
+	CreateAddress(ctx context.Context, arg CreateAddressParams) (MemberAddress, error)
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MemberMember, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (MemberSession, error)
+	DeleteAddress(ctx context.Context, arg DeleteAddressParams) error
 	DeleteSession(ctx context.Context, id string) error
+	GetAddress(ctx context.Context, arg GetAddressParams) (MemberAddress, error)
 	GetMember(ctx context.Context, id int64) (MemberMember, error)
 	GetMemberByEmail(ctx context.Context, email string) (MemberMember, error)
 	GetSession(ctx context.Context, id string) (MemberSession, error)
+	ListAddresses(ctx context.Context, memberID int64) ([]MemberAddress, error)
 	ListMembers(ctx context.Context) ([]MemberMember, error)
+	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (MemberAddress, error)
 	UpdateMember(ctx context.Context, arg UpdateMemberParams) (MemberMember, error)
 }
 

@@ -51,3 +51,5 @@
 | [202606262000](202606262000-inventory-as-independent-service.md) | Accepted (戻しの表現は一部 ADR-[[202606281000]] で補足) | 在庫を独立サービス (独自 DB・量子) として切り出す |
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
 | [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
+| [202606301000](202606301000-shipping-pulls-destination-from-order.md) | Accepted | 配送先スナップショットは shipping が order から引く (settled は orderId のみ) |
+| [202606301100](202606301100-bff-resolves-shipping-address-for-checkout.md) | Accepted | checkout の配送先は BFF が解決し order へ値で渡す (order は member を引かない) |

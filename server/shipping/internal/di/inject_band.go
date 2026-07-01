@@ -7,6 +7,7 @@ import (
 	"github.com/mazrean/kessoku"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/consumer"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/rdb"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/worker"
@@ -32,10 +33,16 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 		return zero, err0
 	}
 	var err1 error
-	pool0, err1 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx0)
+	orderClient, err1 := kessoku.Bind[gateway.OrderPort](kessoku.Provide(gateway.NewOrderClient)).Fn()()
 	if err1 != nil {
 		var zero *worker.Worker
 		return zero, err1
+	}
+	var err2 error
+	pool0, err2 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx0)
+	if err2 != nil {
+		var zero *worker.Worker
+		return zero, err2
 	}
 	shipmentCommand0 := kessoku.Provide(rdb.NewShipmentCommand).Fn()(pool0)
 	shipmentCreator := kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCreator {
@@ -44,7 +51,7 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 	shipmentCanceller := kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCanceller {
 		return c
 	}).Fn()(shipmentCommand0)
-	consumer0 := kessoku.Provide(consumer.New).Fn()(client, shipmentCreator)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(client, shipmentCreator, orderClient)
 	cancelConsumer := kessoku.Provide(consumer.NewCancel).Fn()(client, shipmentCanceller)
 	worker0 := kessoku.Provide(worker.New).Fn()(consumer0, cancelConsumer)
 	return worker0, nil

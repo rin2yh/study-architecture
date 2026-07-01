@@ -135,6 +135,81 @@ func TestGetMemberByEmail(t *testing.T) {
 	})
 }
 
+func seedAddresses(t *testing.T, pool *pgxpool.Pool, memberID int64, rows ...db.MemberAddress) {
+	t.Helper()
+	ctx := t.Context()
+	if _, err := pool.Exec(ctx, `TRUNCATE member.addresses RESTART IDENTITY CASCADE`); err != nil {
+		t.Fatalf("truncate addresses: %v", err)
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO member.addresses (member_id, recipient, postal_code, prefecture, city, line1)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			memberID, r.Recipient, r.PostalCode, r.Prefecture, r.City, r.Line1); err != nil {
+			t.Fatalf("insert address: %v", err)
+		}
+	}
+}
+
+func TestListAddresses(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberQuery(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "h")
+
+	t.Run("正常系 member の住所を id 昇順で返す", func(t *testing.T) {
+		seedAddresses(t, pool, memberID,
+			db.MemberAddress{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"},
+			db.MemberAddress{Recipient: "山田花子", PostalCode: "1000001", Prefecture: "東京都", City: "千代田区", Line1: "丸の内1-1-1"},
+		)
+		got, err := r.ListAddresses(t.Context(), memberID)
+		if err != nil {
+			t.Fatalf("ListAddresses: %v", err)
+		}
+		if len(got) != 2 || got[0].Recipient != "山田太郎" || got[1].City != "千代田区" {
+			t.Fatalf("unexpected addresses: %+v", got)
+		}
+	})
+	t.Run("準正常系 住所 0 件なら空スライス (nil でない)", func(t *testing.T) {
+		seedAddresses(t, pool, memberID)
+		got, err := r.ListAddresses(t.Context(), memberID)
+		if err != nil {
+			t.Fatalf("ListAddresses: %v", err)
+		}
+		if got == nil {
+			t.Fatal("ListAddresses: want non-nil slice (emit_empty_slices)")
+		}
+	})
+}
+
+func TestGetAddress(t *testing.T) {
+	skip.Short(t)
+	pool := testdb.Open(t, dbEnv)
+	r := NewMemberQuery(pool)
+	memberID := seedOneMember(t, pool, "user@example.com", "h")
+	seedAddresses(t, pool, memberID, db.MemberAddress{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"})
+
+	t.Run("正常系 member 所有の住所を返す", func(t *testing.T) {
+		got, err := r.GetAddress(t.Context(), db.GetAddressParams{ID: 1, MemberID: memberID})
+		if err != nil {
+			t.Fatalf("GetAddress: %v", err)
+		}
+		if got.Recipient != "山田太郎" || got.Line1 != "神宮前1-2-3" {
+			t.Fatalf("unexpected address: %+v", got)
+		}
+	})
+	t.Run("準正常系 他 member の住所は引けず ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetAddress(t.Context(), db.GetAddressParams{ID: 1, MemberID: memberID + 1}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
+		if _, err := r.GetAddress(t.Context(), db.GetAddressParams{ID: 9999, MemberID: memberID}); !errors.Is(err, dberr.ErrNotFound) {
+			t.Fatalf("err = %v, want ErrNotFound", err)
+		}
+	})
+}
+
 func TestGetSession(t *testing.T) {
 	skip.Short(t)
 	pool := testdb.Open(t, dbEnv)

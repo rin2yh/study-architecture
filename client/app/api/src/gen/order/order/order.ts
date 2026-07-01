@@ -149,6 +149,48 @@ export const checkout = async (checkoutRequest: CheckoutRequest, options?: Reque
 );}
 
 
+export type cancelOrderResponse200 = {
+  data: Order
+  status: 200
+}
+
+export type cancelOrderResponseDefault = {
+  data: ErrorResponse
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type cancelOrderResponseSuccess = (cancelOrderResponse200) & {
+  headers: Headers;
+};
+export type cancelOrderResponseError = (cancelOrderResponseDefault) & {
+  headers: Headers;
+};
+
+export type cancelOrderResponse = (cancelOrderResponseSuccess | cancelOrderResponseError)
+
+export const getCancelOrderUrl = (id: number,) => {
+
+
+
+
+  return `/orders/${id}/cancel`
+}
+
+/**
+ * @summary 注文をキャンセルする (未発送=可・発送済み=409。補償は order.cancelled で各サービスが実施)
+ */
+export const cancelOrder = async (id: number, options?: RequestInit): Promise<cancelOrderResponse> => {
+
+  return orderFetch<cancelOrderResponse>(getCancelOrderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
 export type getOrderResponse200 = {
   data: Order
   status: 200

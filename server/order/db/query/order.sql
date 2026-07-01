@@ -16,6 +16,11 @@ INSERT INTO "order".orders (member_id, status, total_cents)
 VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: CreateOrderWithShipping :one
+INSERT INTO "order".orders (member_id, status, total_cents, shipping_recipient, shipping_postal_code, shipping_prefecture, shipping_city, shipping_line1)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
 -- name: UpdateOrder :one
 UPDATE "order".orders
 SET status = $2
@@ -37,7 +42,7 @@ ORDER BY id;
 DELETE FROM "order".orders
 WHERE id = $1;
 
--- 判定〜更新を 1 tx で直列化する行ロック付き取得 (ADR-[[202606261702]])。
+-- 判定〜更新を 1 tx で直列化する (ADR-[[202606261702]])。
 -- name: GetOrderForUpdate :one
 SELECT * FROM "order".orders
 WHERE id = $1

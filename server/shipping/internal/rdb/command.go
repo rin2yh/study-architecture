@@ -7,6 +7,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
+	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
 
 type ShipmentCommand struct {
@@ -21,8 +22,15 @@ func (r *ShipmentCommand) CreateShipment(ctx context.Context, arg db.CreateShipm
 	return r.q.CreateShipment(ctx, arg)
 }
 
-func (r *ShipmentCommand) CreateShipmentForOrder(ctx context.Context, orderID int64) (db.ShippingShipment, error) {
-	row, err := r.q.CreateShipmentForOrder(ctx, orderID)
+func (r *ShipmentCommand) CreateShipmentForOrder(ctx context.Context, orderID int64, dest gateway.Destination) (db.ShippingShipment, error) {
+	row, err := r.q.CreateShipmentForOrder(ctx, db.CreateShipmentForOrderParams{
+		OrderID:        orderID,
+		ShipRecipient:  dest.Recipient,
+		ShipPostalCode: dest.PostalCode,
+		ShipPrefecture: dest.Prefecture,
+		ShipCity:       dest.City,
+		ShipLine1:      dest.Line1,
+	})
 	return row, dberr.FromInsertSkipped(err)
 }
 

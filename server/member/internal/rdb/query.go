@@ -44,3 +44,15 @@ func (r *MemberQuery) GetSession(ctx context.Context, id string) (db.MemberSessi
 	}
 	return row, nil
 }
+
+func (r *MemberQuery) ListAddresses(ctx context.Context, memberID int64) ([]db.MemberAddress, error) {
+	return r.q.ListAddresses(ctx, memberID)
+}
+
+func (r *MemberQuery) GetAddress(ctx context.Context, arg db.GetAddressParams) (db.MemberAddress, error) {
+	row, err := r.q.GetAddress(ctx, arg)
+	if err != nil {
+		return db.MemberAddress{}, dberr.FromRead(err)
+	}
+	return row, nil
+}

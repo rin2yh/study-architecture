@@ -131,7 +131,7 @@ components:
           example: ok
     Shipment:
       type: object
-      required: [id, orderId, carrier, trackingNo, status, createdAt]
+      required: [id, orderId, carrier, trackingNo, status, destination, createdAt]
       properties:
         id:
           type: integer
@@ -145,9 +145,26 @@ components:
           type: string
         status:
           type: string
+        destination:
+          $ref: "#/components/schemas/Destination"
         createdAt:
           type: string
           format: date-time
+    Destination:
+      type: object
+      description: ADR-[[202606261704]]
+      required: [recipient, postalCode, prefecture, city, line1]
+      properties:
+        recipient:
+          type: string
+        postalCode:
+          type: string
+        prefecture:
+          type: string
+        city:
+          type: string
+        line1:
+          type: string
     CreateShipmentRequest:
       type: object
       required: [orderId, carrier, trackingNo, status]

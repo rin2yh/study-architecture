@@ -5,6 +5,7 @@
  * 配送ドメイン。Step 0 の薄い骨格（liveness + 一覧）。
  * OpenAPI spec version: 0.1.0
  */
+import type { Destination } from './destination.ts';
 
 export interface Shipment {
   id: number;
@@ -12,5 +13,6 @@ export interface Shipment {
   carrier: string;
   trackingNo: string;
   status: string;
+  destination: Destination;
   createdAt: string;
 }

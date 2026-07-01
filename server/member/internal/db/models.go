@@ -8,6 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type MemberAddress struct {
+	ID         int64              `json:"id"`
+	MemberID   int64              `json:"memberId"`
+	Recipient  string             `json:"recipient"`
+	PostalCode string             `json:"postalCode"`
+	Prefecture string             `json:"prefecture"`
+	City       string             `json:"city"`
+	Line1      string             `json:"line1"`
+	CreatedAt  pgtype.Timestamptz `json:"createdAt"`
+}
+
 type MemberMember struct {
 	ID           int64              `json:"id"`
 	Email        string             `json:"email"`

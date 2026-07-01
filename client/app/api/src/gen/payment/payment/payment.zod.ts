@@ -28,7 +28,8 @@ export const CreatePaymentBody = zod.object({
   "orderId": zod.number(),
   "amountCents": zod.number(),
   "method": zod.string(),
-  "status": zod.string()
+  "status": zod.string(),
+  "idempotencyKey": zod.string().describe('order が checkout 受付時に発番する冪等キー。再送で決済を二重生成しない (ADR-[[202606261214]])。')
 })
 
 export const CreatePaymentResponse = zod.object({

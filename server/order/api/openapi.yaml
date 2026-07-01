@@ -195,10 +195,27 @@ components:
         createdAt:
           type: string
           format: date-time
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
         items:
           type: array
           items:
             $ref: "#/components/schemas/OrderItem"
+    ShippingAddress:
+      type: object
+      description: 注文時点の配送先スナップショット (ADR-[[202606261704]])。
+      required: [recipient, postalCode, prefecture, city, line1]
+      properties:
+        recipient:
+          type: string
+        postalCode:
+          type: string
+        prefecture:
+          type: string
+        city:
+          type: string
+        line1:
+          type: string
     OrderItem:
       type: object
       required: [productId, productName, unitPriceCents, quantity]
@@ -228,13 +245,15 @@ components:
             binding: required,gt=0
     CheckoutRequest:
       type: object
-      required: [memberId, paymentMethod, items]
+      required: [memberId, shippingAddress, paymentMethod, items]
       properties:
         memberId:
           type: integer
           format: int64
           x-oapi-codegen-extra-tags:
             binding: required,gt=0
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
         paymentMethod:
           type: string
           x-oapi-codegen-extra-tags:

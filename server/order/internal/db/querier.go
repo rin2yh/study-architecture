@@ -13,9 +13,10 @@ type Querier interface {
 	CancelOrder(ctx context.Context, id int64) (OrderOrder, error)
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (OrderOrder, error)
 	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderOrderItem, error)
+	CreateOrderWithShipping(ctx context.Context, arg CreateOrderWithShippingParams) (OrderOrder, error)
 	DeleteOrder(ctx context.Context, id int64) error
 	GetOrder(ctx context.Context, id int64) (OrderOrder, error)
-	// 判定〜更新を 1 tx で直列化する行ロック付き取得 (ADR-[[202606261702]])。
+	// 判定〜更新を 1 tx で直列化する (ADR-[[202606261702]])。
 	GetOrderForUpdate(ctx context.Context, id int64) (OrderOrder, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	ListOrderItems(ctx context.Context, orderID int64) ([]OrderOrderItem, error)
