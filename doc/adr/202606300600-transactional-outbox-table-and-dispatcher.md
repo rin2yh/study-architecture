@@ -12,14 +12,14 @@
 
 ## Decision
 
-1. **専用テーブル**: サービスごとに `<schema>.outbox`（`aggregate_id, event_type, payload jsonb, traceparent, published_at`）を切り、集約から `*_event_*` 列を落とす。業務更新と outbox INSERT を同一トランザクションで確定し、リレーが未送信 (`published_at IS NULL`) を polling して `XAdd` する点は不変。
-2. **共有ディスパッチャ**: producer は `EventType()` / `AggregateID()` / `Values()` を実装したドメインイベントを `outbox.Dispatch` に渡すだけにする。payload 符号化 (`Dispatch`) と復号 (`DecodePayload`) を `server/internal/outbox` の対で単一情報源にし、traceparent 付与もそこへ寄せる。各サービスは sqlc 生成型を `outbox.Inserter` へ適合させる薄い adapter を 1 つ持つ。
+1. **専用テーブル**: サービスごとに専用 `<schema>.outbox`（汎用 `payload jsonb` を持つ）を切り、集約から `*_event_*` 列を落とす。業務更新と outbox INSERT を同一トランザクションで確定し、リレーが未送信 (`published_at IS NULL`) を polling して `XAdd` する点は不変。
+2. **共有ディスパッチャ**: producer はドメインイベントを `outbox.Dispatch` に渡すだけにし、payload 符号化 (`Dispatch`) と復号 (`DecodePayload`) を `server/internal/outbox` の対で単一情報源にする（traceparent 付与も同所）。各サービスは sqlc 生成型を `outbox.Inserter` へ適合させる薄い adapter を 1 つ持つ。
 3. **適用範囲**: オンランプ (outbox) を通すのは欠落が損害になるイベントに限る。損失許容イベント（監査・分析等）は直 publish を許す。現状の `payment.settled` / `order.cancelled` は前者。
 
 ## Consequences
 
 - 集約から発行の都合の列が消え、発行種が増えても集約スキーマは不変。新 producer は Event を実装して `Dispatch` を呼ぶだけで「commit 済みは必ず送出 (at-least-once)」を継承し、enqueue 忘れと手書きの marshal/INSERT が構造的に消える。
-- 発行保証と consumer 冪等性は不変。bigint は payload 復元時に `json.Number` → `int64` で桁落ちを防ぐ。
+- 発行保証と consumer 冪等性は不変。
 - 運用していないため移行時の in-flight 行はバックフィルしない（新規 DB 前提、ADR-[[202606261212]] 同様）。
 - リレーは単一インスタンス前提のまま。複数化は `SELECT … FOR UPDATE SKIP LOCKED`（将来）。高スループット / Kafka なら CDC（Debezium Outbox Router）でリレーを外部化する余地。
 
