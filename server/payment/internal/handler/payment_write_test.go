@@ -84,8 +84,8 @@ func TestUpdatePayment(t *testing.T) {
 	type args struct{ body string }
 	type want struct {
 		status string
-		// 確定への更新は同一 tx で outbox の未送信マークが立つ。送出はリレーが後追いする (ADR-[[202606261212]])。
-		pending bool
+		// 確定への更新は同一 tx で outbox に未送信行を積む。送出はリレーが後追いする (ADR-[[202606300600]])。
+		queued bool
 	}
 	tests := []struct {
 		name string
@@ -93,12 +93,12 @@ func TestUpdatePayment(t *testing.T) {
 		want want
 	}{
 		{
-			"正常系 確定 status へ更新すると outbox を未送信でマークする",
+			"正常系 確定 status へ更新すると outbox に未送信行を積む",
 			args{`{"status":"paid"}`},
 			want{"paid", true},
 		},
 		{
-			"準正常系 非確定 status への更新では outbox をマークしない",
+			"準正常系 非確定 status への更新では outbox に積まない",
 			args{`{"status":"refunded"}`},
 			want{"refunded", false},
 		},
@@ -131,12 +131,12 @@ func TestUpdatePayment(t *testing.T) {
 			want := api.Payment{OrderId: 20, AmountCents: 2980, Method: "card", Status: tt.want.status}
 			assert.DeepEqual(t, want, got, "Id", "CreatedAt")
 
-			var pending bool
-			if err := pool.QueryRow(ctx, `SELECT settled_event_pending FROM payment.payments WHERE id = 1`).Scan(&pending); err != nil {
-				t.Fatalf("query pending: %v", err)
+			var queued int
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM payment.outbox WHERE aggregate_id = 1 AND published_at IS NULL`).Scan(&queued); err != nil {
+				t.Fatalf("query outbox: %v", err)
 			}
-			if pending != tt.want.pending {
-				t.Fatalf("settled_event_pending = %v, want %v", pending, tt.want.pending)
+			if (queued > 0) != tt.want.queued {
+				t.Fatalf("outbox unpublished count = %d, want queued=%v", queued, tt.want.queued)
 			}
 		})
 	}

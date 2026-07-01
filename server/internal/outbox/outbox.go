@@ -4,7 +4,9 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -23,6 +25,81 @@ type Message struct {
 type Store interface {
 	FetchUnpublished(ctx context.Context, limit int) ([]Message, error)
 	MarkPublished(ctx context.Context, id int64) error
+}
+
+// W3C traceparent の Values キー。発行と消費を span link でつなぐためリレー層が送出に載せ直す
+// (ADR-[[202606250159]])。
+const FieldTraceparent = "traceparent"
+
+// Event は outbox に積めるドメインイベント。発行に必要な宛先 (種別・集約) と中身を自分で知っており、
+// producer は「起きた事実」をこの形で Dispatch に渡すだけでよい。
+type Event interface {
+	EventType() string
+	AggregateID() int64
+	Values() map[string]any
+}
+
+// Row は outbox 1 行ぶんの INSERT 値。各サービスの sqlc 実装をこの形へ薄く適合させる
+// (生成型がパッケージごとに違うため、共有層はこの中立な型で受ける)。
+type Row struct {
+	AggregateID int64
+	EventType   string
+	Payload     []byte
+	Traceparent string
+}
+
+// Inserter は呼び出し元の tx に紐づく Querier を包み、outbox 行を 1 件 INSERT する。
+type Inserter interface {
+	InsertOutbox(ctx context.Context, row Row) error
+}
+
+// Dispatch は発行イベントを payload(jsonb) 化し、業務更新と同一 tx の outbox へ積む。各 command が
+// marshal と INSERT を手書きしないための単一の発行口で、producer や発行イベント種が増えても
+// ここを通すだけで「commit 済みは必ず送出」の保証を継承できる。
+func Dispatch(ctx context.Context, ins Inserter, traceparent string, events ...Event) error {
+	for _, ev := range events {
+		payload, err := json.Marshal(ev.Values())
+		if err != nil {
+			return err
+		}
+		if err := ins.InsertOutbox(ctx, Row{
+			AggregateID: ev.AggregateID(),
+			EventType:   ev.EventType(),
+			Payload:     payload,
+			Traceparent: traceparent,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DecodePayload は outbox 行の payload (jsonb) と traceparent を XAdd 用の Values へ復元する。
+// Dispatch が載せた Values をそのまま戻すだけでよく、リレーはイベントの中身を知らないままにできる。
+// bigint が JSON 経由で float64 化して桁落ちしないよう、整数は json.Number から int64 へ戻す。
+func DecodePayload(raw []byte, traceparent string) (map[string]any, error) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var values map[string]any
+	if err := dec.Decode(&values); err != nil {
+		return nil, err
+	}
+	for k, v := range values {
+		n, ok := v.(json.Number)
+		if !ok {
+			continue
+		}
+		if i, err := n.Int64(); err == nil {
+			values[k] = i
+		} else {
+			values[k] = n.String()
+		}
+	}
+	// consumer 側の span link を切らさないため (ADR-[[202606250159]])。
+	if traceparent != "" {
+		values[FieldTraceparent] = traceparent
+	}
+	return values, nil
 }
 
 type Relay struct {

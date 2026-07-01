@@ -7,8 +7,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/outbox"
+	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
+
+// sqlc 生成型を共有層に持ち込まないためのアダプタ。
+type outboxInserter struct{ q db.Querier }
+
+func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
+	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
+		AggregateID: row.AggregateID,
+		EventType:   row.EventType,
+		Payload:     row.Payload,
+		Traceparent: row.Traceparent,
+	})
+}
 
 type PaymentCommand struct {
 	pool *pgxpool.Pool
@@ -28,10 +42,42 @@ func (r *PaymentCommand) CreatePayment(ctx context.Context, arg db.CreatePayment
 	return row, err
 }
 
-func (r *PaymentCommand) UpdatePayment(ctx context.Context, arg db.UpdatePaymentParams) (db.PaymentPayment, error) {
-	row, err := r.q.UpdatePayment(ctx, arg)
+// PaymentUpdate は status 更新と、確定時に発行する settled イベントの指定をまとめる。
+type PaymentUpdate struct {
+	ID          int64
+	Status      string
+	Settle      bool
+	Traceparent string
+}
+
+// ADR-[[202606300600]]
+func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db.PaymentPayment, error) {
+	// 確定でなければ outbox 投入がなく調整する 2 書き込みがないので、単文のままにする。
+	if !u.Settle {
+		row, err := r.q.UpdatePayment(ctx, db.UpdatePaymentParams{ID: u.ID, Status: u.Status})
+		if err != nil {
+			return db.PaymentPayment{}, dberr.FromUpdate(err)
+		}
+		return row, nil
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return db.PaymentPayment{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := db.New(tx)
+	row, err := qtx.UpdatePayment(ctx, db.UpdatePaymentParams{ID: u.ID, Status: u.Status})
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
+	}
+	ev := paymentevent.Settled{PaymentID: row.ID, OrderID: row.OrderID, AmountCents: row.AmountCents}
+	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, u.Traceparent, ev); err != nil {
+		return db.PaymentPayment{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.PaymentPayment{}, err
 	}
 	return row, nil
 }

@@ -19,22 +19,24 @@ RETURNING *;
 
 -- name: UpdatePayment :one
 UPDATE payment.payments
-SET status                    = sqlc.arg(status),
-    settled_event_pending     = settled_event_pending OR sqlc.arg(mark_settled),
-    settled_event_traceparent = CASE WHEN sqlc.arg(mark_settled) THEN sqlc.arg(traceparent) ELSE settled_event_traceparent END
-WHERE id = sqlc.arg(id)
+SET status = $2
+WHERE id = $1
 RETURNING *;
 
--- name: ListUnpublishedSettledEvents :many
-SELECT id, order_id, amount_cents, settled_event_traceparent
-FROM payment.payments
-WHERE settled_event_pending
+-- name: InsertOutbox :exec
+INSERT INTO payment.outbox (aggregate_id, event_type, payload, traceparent)
+VALUES ($1, $2, $3, $4);
+
+-- name: ListUnpublishedOutbox :many
+SELECT id, payload, traceparent
+FROM payment.outbox
+WHERE published_at IS NULL
 ORDER BY id
 LIMIT $1;
 
--- name: MarkSettledEventPublished :exec
-UPDATE payment.payments
-SET settled_event_pending = false, settled_event_published_at = now()
+-- name: MarkOutboxPublished :exec
+UPDATE payment.outbox
+SET published_at = now()
 WHERE id = $1;
 
 -- 終端でない確定済み決済だけ返金へ遷移。再配信は 0 行更新で吸収する (ADR-[[202606261214]])。

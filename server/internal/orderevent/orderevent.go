@@ -29,6 +29,10 @@ type Cancelled struct {
 	OrderID int64
 }
 
+func (c Cancelled) EventType() string { return TypeCancelled }
+
+func (c Cancelled) AggregateID() int64 { return c.OrderID }
+
 func (c Cancelled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:   TypeCancelled,

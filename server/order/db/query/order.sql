@@ -48,23 +48,25 @@ SELECT * FROM "order".orders
 WHERE id = $1
 FOR UPDATE;
 
--- 送出はリレーに後追いさせる (ADR-[[202606261212]])。
+-- 遷移と未送信イベントを同一 tx で確定し、送出はリレーに後追いさせる (ADR-[[202606300600]])。
 -- name: CancelOrder :one
 UPDATE "order".orders
-SET status                      = 'cancelled',
-    cancelled_event_pending     = true,
-    cancelled_event_traceparent = $2
+SET status = 'cancelled'
 WHERE id = $1
 RETURNING *;
 
--- name: ListUnpublishedCancelledEvents :many
-SELECT id, cancelled_event_traceparent
-FROM "order".orders
-WHERE cancelled_event_pending
+-- name: InsertOutbox :exec
+INSERT INTO "order".outbox (aggregate_id, event_type, payload, traceparent)
+VALUES ($1, $2, $3, $4);
+
+-- name: ListUnpublishedOutbox :many
+SELECT id, payload, traceparent
+FROM "order".outbox
+WHERE published_at IS NULL
 ORDER BY id
 LIMIT $1;
 
--- name: MarkCancelledEventPublished :exec
-UPDATE "order".orders
-SET cancelled_event_pending = false, cancelled_event_published_at = now()
+-- name: MarkOutboxPublished :exec
+UPDATE "order".outbox
+SET published_at = now()
 WHERE id = $1;

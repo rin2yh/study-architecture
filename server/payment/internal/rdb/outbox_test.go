@@ -16,7 +16,7 @@ func TestOutboxStoreFetchUnpublished(t *testing.T) {
 
 	t.Run("正常系 確定マーク済みの行を traceparent 付きで返す", func(t *testing.T) {
 		seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
-		if _, err := cmd.UpdatePayment(t.Context(), db.UpdatePaymentParams{ID: 1, Status: "paid", MarkSettled: true, Traceparent: "tp-1"}); err != nil {
+		if _, err := cmd.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "paid", Settle: true, Traceparent: "tp-1"}); err != nil {
 			t.Fatalf("UpdatePayment: %v", err)
 		}
 
@@ -27,9 +27,6 @@ func TestOutboxStoreFetchUnpublished(t *testing.T) {
 		if len(msgs) != 1 {
 			t.Fatalf("len(msgs) = %d, want 1", len(msgs))
 		}
-		if msgs[0].ID != 1 {
-			t.Fatalf("msg ID = %d, want 1", msgs[0].ID)
-		}
 		if got, _ := msgs[0].Values["orderId"].(int64); got != 20 {
 			t.Fatalf("values[orderId] = %v, want 20", msgs[0].Values["orderId"])
 		}
@@ -38,8 +35,11 @@ func TestOutboxStoreFetchUnpublished(t *testing.T) {
 		}
 	})
 
-	t.Run("準正常系 未確定 (pending でない) 行は返さない", func(t *testing.T) {
+	t.Run("準正常系 確定していない更新は outbox に積まない", func(t *testing.T) {
 		seedPayments(t, pool, db.PaymentPayment{OrderID: 21, AmountCents: 500, Method: "card", Status: "pending"})
+		if _, err := cmd.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "refunded"}); err != nil {
+			t.Fatalf("UpdatePayment: %v", err)
+		}
 
 		msgs, err := store.FetchUnpublished(t.Context(), 64)
 		if err != nil {
@@ -58,7 +58,7 @@ func TestOutboxStoreMarkPublished(t *testing.T) {
 	store := NewOutboxStore(pool)
 
 	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
-	if _, err := cmd.UpdatePayment(t.Context(), db.UpdatePaymentParams{ID: 1, Status: "paid", MarkSettled: true, Traceparent: "tp-1"}); err != nil {
+	if _, err := cmd.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "paid", Settle: true, Traceparent: "tp-1"}); err != nil {
 		t.Fatalf("UpdatePayment: %v", err)
 	}
 

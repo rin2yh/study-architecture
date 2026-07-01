@@ -21,20 +21,15 @@ func NewOutboxStore(pool *pgxpool.Pool) *OutboxStore {
 }
 
 func (s *OutboxStore) FetchUnpublished(ctx context.Context, limit int) ([]outbox.Message, error) {
-	rows, err := s.q.ListUnpublishedSettledEvents(ctx, int32(limit))
+	rows, err := s.q.ListUnpublishedOutbox(ctx, int32(limit))
 	if err != nil {
 		return nil, err
 	}
 	msgs := make([]outbox.Message, 0, len(rows))
 	for _, r := range rows {
-		values := paymentevent.Settled{
-			PaymentID:   r.ID,
-			OrderID:     r.OrderID,
-			AmountCents: r.AmountCents,
-		}.Values()
-		// 発行時に保持した traceparent を送出メッセージへ戻し、consumer 側の span link を切らさない。
-		if r.SettledEventTraceparent != "" {
-			values[paymentevent.FieldTraceparent] = r.SettledEventTraceparent
+		values, err := outbox.DecodePayload(r.Payload, r.Traceparent)
+		if err != nil {
+			return nil, err
 		}
 		msgs = append(msgs, outbox.Message{ID: r.ID, Stream: paymentevent.Stream, Values: values})
 	}
@@ -42,5 +37,5 @@ func (s *OutboxStore) FetchUnpublished(ctx context.Context, limit int) ([]outbox
 }
 
 func (s *OutboxStore) MarkPublished(ctx context.Context, id int64) error {
-	return s.q.MarkSettledEventPublished(ctx, id)
+	return s.q.MarkOutboxPublished(ctx, id)
 }

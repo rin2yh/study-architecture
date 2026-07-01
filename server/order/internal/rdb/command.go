@@ -7,8 +7,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/orderevent"
+	"github.com/rin2yh/study-architecture/server/internal/outbox"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
+
+// sqlc 生成型を共有層に持ち込まないためのアダプタ。
+type outboxInserter struct{ q db.Querier }
+
+func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
+	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
+		AggregateID: row.AggregateID,
+		EventType:   row.EventType,
+		Payload:     row.Payload,
+		Traceparent: row.Traceparent,
+	})
+}
 
 // 発送済み注文はキャンセル不可で返品フローへ分岐する (ADR-[[202606261702]])。handler は 409 に対応づける。
 var ErrNotCancellable = errors.New("order not cancellable")
@@ -74,8 +88,11 @@ func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent st
 	case "cancelled":
 		return order, nil
 	}
-	cancelled, err := qtx.CancelOrder(ctx, db.CancelOrderParams{ID: id, CancelledEventTraceparent: traceparent})
+	cancelled, err := qtx.CancelOrder(ctx, id)
 	if err != nil {
+		return db.OrderOrder{}, err
+	}
+	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, traceparent, orderevent.Cancelled{OrderID: cancelled.ID}); err != nil {
 		return db.OrderOrder{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -32,6 +32,10 @@ type Settled struct {
 	AmountCents int64
 }
 
+func (s Settled) EventType() string { return TypeSettled }
+
+func (s Settled) AggregateID() int64 { return s.PaymentID }
+
 func (s Settled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:       TypeSettled,

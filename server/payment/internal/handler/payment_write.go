@@ -12,6 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/event"
+	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
 
 func (h *writeHandler) CreatePayment(c *gin.Context) {
@@ -50,10 +51,10 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 	if settled {
 		traceparent = paymentevent.Traceparent(c.Request.Context())
 	}
-	row, err := h.command.UpdatePayment(c.Request.Context(), db.UpdatePaymentParams{
+	row, err := h.command.UpdatePayment(c.Request.Context(), rdb.PaymentUpdate{
 		ID:          id,
 		Status:      req.Status,
-		MarkSettled: settled,
+		Settle:      settled,
 		Traceparent: traceparent,
 	})
 	if err != nil {

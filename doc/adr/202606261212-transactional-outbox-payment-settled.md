@@ -1,6 +1,6 @@
 # ADR-202606261212: 決済確定イベントを Transactional Outbox (集約列 + プロセス内リレー) で確実に発行する
 
-- Status: Accepted
+- Status: Superseded by ADR-[[202606300600]]
 - Date: 2026-06-26
 - Relates to: ADR-[[202606211200]] (決済確定イベントで配送手配), ADR-[[202606250159]] (Redis span link 伝播), ADR-[[202606261214]] (冪等性。at-least-once を吸収), ADR-[[202606240522]] (DB-per-domain)
 
