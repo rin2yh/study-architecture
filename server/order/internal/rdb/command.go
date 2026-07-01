@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
 )
 
-// sqlc 生成型を共有層へ晒さないための適合。
+// sqlc 生成型を共有層に持ち込まないためのアダプタ。
 type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {

@@ -103,7 +103,7 @@ func TestUpdatePayment(t *testing.T) {
 	seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "pending"})
 
 	t.Run("正常系 status のみ更新し order_id/amount_cents/method は不変", func(t *testing.T) {
-		got, err := r.UpdatePayment(t.Context(), 1, "refunded", false, "")
+		got, err := r.UpdatePayment(t.Context(), PaymentUpdate{ID: 1, Status: "refunded"})
 		if err != nil {
 			t.Fatalf("UpdatePayment: %v", err)
 		}
@@ -112,7 +112,7 @@ func TestUpdatePayment(t *testing.T) {
 		}
 	})
 	t.Run("準正常系 未存在は ErrNotFound", func(t *testing.T) {
-		if _, err := r.UpdatePayment(t.Context(), 9999, "paid", false, ""); !errors.Is(err, dberr.ErrNotFound) {
+		if _, err := r.UpdatePayment(t.Context(), PaymentUpdate{ID: 9999, Status: "paid"}); !errors.Is(err, dberr.ErrNotFound) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})

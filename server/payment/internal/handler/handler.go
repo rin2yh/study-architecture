@@ -8,6 +8,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
+	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
 
 type Query interface {
@@ -17,7 +18,7 @@ type Query interface {
 
 type Command interface {
 	CreatePayment(ctx context.Context, arg db.CreatePaymentParams) (db.PaymentPayment, error)
-	UpdatePayment(ctx context.Context, id int64, status string, settle bool, traceparent string) (db.PaymentPayment, error)
+	UpdatePayment(ctx context.Context, u rdb.PaymentUpdate) (db.PaymentPayment, error)
 }
 
 type readHandler struct {

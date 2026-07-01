@@ -12,7 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
-// sqlc 生成型を共有層へ晒さないための適合。
+// sqlc 生成型を共有層に持ち込まないためのアダプタ。
 type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
@@ -42,11 +42,19 @@ func (r *PaymentCommand) CreatePayment(ctx context.Context, arg db.CreatePayment
 	return row, err
 }
 
+// PaymentUpdate は status 更新と、確定時に発行する settled イベントの指定をまとめる。
+type PaymentUpdate struct {
+	ID          int64
+	Status      string
+	Settle      bool
+	Traceparent string
+}
+
 // ADR-[[202606300600]]
-func (r *PaymentCommand) UpdatePayment(ctx context.Context, id int64, status string, settle bool, traceparent string) (db.PaymentPayment, error) {
+func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db.PaymentPayment, error) {
 	// 確定でなければ outbox 投入がなく調整する 2 書き込みがないので、単文のままにする。
-	if !settle {
-		row, err := r.q.UpdatePayment(ctx, db.UpdatePaymentParams{ID: id, Status: status})
+	if !u.Settle {
+		row, err := r.q.UpdatePayment(ctx, db.UpdatePaymentParams{ID: u.ID, Status: u.Status})
 		if err != nil {
 			return db.PaymentPayment{}, dberr.FromUpdate(err)
 		}
@@ -60,12 +68,12 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, id int64, status str
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
-	row, err := qtx.UpdatePayment(ctx, db.UpdatePaymentParams{ID: id, Status: status})
+	row, err := qtx.UpdatePayment(ctx, db.UpdatePaymentParams{ID: u.ID, Status: u.Status})
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
 	}
-	settled := paymentevent.Settled{PaymentID: row.ID, OrderID: row.OrderID, AmountCents: row.AmountCents}
-	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, traceparent, settled); err != nil {
+	ev := paymentevent.Settled{PaymentID: row.ID, OrderID: row.OrderID, AmountCents: row.AmountCents}
+	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, u.Traceparent, ev); err != nil {
 		return db.PaymentPayment{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
+	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
 
 type PaymentStub struct {
@@ -24,6 +25,6 @@ func (s PaymentStub) CreatePayment(context.Context, db.CreatePaymentParams) (db.
 	return s.Payment, s.Err
 }
 
-func (s PaymentStub) UpdatePayment(context.Context, int64, string, bool, string) (db.PaymentPayment, error) {
+func (s PaymentStub) UpdatePayment(context.Context, rdb.PaymentUpdate) (db.PaymentPayment, error) {
 	return s.Payment, s.Err
 }

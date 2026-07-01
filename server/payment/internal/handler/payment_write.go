@@ -12,6 +12,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/payment/api"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 	"github.com/rin2yh/study-architecture/server/payment/internal/event"
+	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
 )
 
 func (h *writeHandler) CreatePayment(c *gin.Context) {
@@ -50,7 +51,12 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 	if settled {
 		traceparent = paymentevent.Traceparent(c.Request.Context())
 	}
-	row, err := h.command.UpdatePayment(c.Request.Context(), id, req.Status, settled, traceparent)
+	row, err := h.command.UpdatePayment(c.Request.Context(), rdb.PaymentUpdate{
+		ID:          id,
+		Status:      req.Status,
+		Settle:      settled,
+		Traceparent: traceparent,
+	})
 	if err != nil {
 		if errors.Is(err, dberr.ErrNotFound) {
 			_ = c.Error(middleware.NotFound("payment not found"))
