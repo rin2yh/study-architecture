@@ -1,6 +1,6 @@
 # ADR-202606170900: サービスベースアーキテクチャを採用する
 
-- Status: Accepted
+- Status: Accepted (target style は ADR-[[202607011621]] でマイクロサービスへ段階移行中)
 - Date: 2026-06-17
 
 ## Context

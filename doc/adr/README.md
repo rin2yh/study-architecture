@@ -5,7 +5,7 @@
 
 | ID | Status | タイトル |
 | --- | --- | --- |
-| [202606170900](202606170900-service-based-architecture.md) | Accepted | サービスベースアーキテクチャを採用する |
+| [202606170900](202606170900-service-based-architecture.md) | Accepted (target style は ADR-[[202607011621]] で移行中) | サービスベースアーキテクチャを採用する |
 | [202606170901](202606170901-codegen-first-tech-stack.md) | Accepted | コード生成中心の技術スタック |
 | [202606170902](202606170902-single-root-gomod-monorepo.md) | Accepted | 単一ルート go.mod のモノレポ構成 |
 | [202606170903](202606170903-shared-postgres-schema-per-domain.md) | Accepted | 共有 Postgres + ドメインごとの schema 分離 |
@@ -52,3 +52,4 @@
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
 | [202606301000](202606301000-shipping-pulls-destination-from-order.md) | Accepted | 配送先スナップショットは shipping が order から引く (settled は orderId のみ) |
 | [202606301100](202606301100-bff-resolves-shipping-address-for-checkout.md) | Accepted | checkout の配送先は BFF が解決し order へ値で渡す (order は member を引かない) |
+| [202607011621](202607011621-microservices-migration-target-and-drivers.md) | Accepted | サービスベースからマイクロサービスへ段階移行する (主駆動特性と移行原則) |
