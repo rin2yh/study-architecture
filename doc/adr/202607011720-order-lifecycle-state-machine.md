@@ -1,6 +1,6 @@
 # ADR-202607011720: order のライフサイクルを状態機械 + 追記履歴で表す
 
-- Status: Accepted
+- Status: Accepted (語彙は ADR-[[202607020305]] で awaiting_payment / rejected を追加)
 - Date: 2026-07-01
 - Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR はその具体化タスク 1), ADR-[[202606261702]] (cancel 補償と現行のキャンセル可否判定), ADR-[[202606261700]] (inventory 台帳の append-only 思想), ADR-[[202606261212]] (Outbox 列。履歴テーブルとは別物), ADR-[[202606211200]] (payment.settled / shipment イベント = 前進トリガ), ADR-[[202606250159]] (traceparent 伝播), ADR-[[202606180902]] (実 DB 結合テスト), ADR-[[202606190903]] (repository CQRS), GitHub #98 (親), #96
 
