@@ -55,3 +55,4 @@
 | [202607011621](202607011621-microservices-migration-target-and-drivers.md) | Accepted | サービスベースからマイクロサービスへ段階移行する (主駆動特性と移行原則) |
 | [202607011720](202607011720-order-lifecycle-state-machine.md) | Accepted (語彙は ADR-[[202607020305]] で拡張) | order のライフサイクルを状態機械 + 追記履歴で表す |
 | [202607020305](202607020305-order-checkout-orchestration-saga.md) | Accepted | checkout を order オーケストレーション型サーガにし前進フローを非同期化する |
+| [202607020324](202607020324-cross-domain-read-model-ecst.md) | Accepted | 横断参照データの既定を ECST + ローカル read model にする (役割で snapshot / pull と使い分け) |
