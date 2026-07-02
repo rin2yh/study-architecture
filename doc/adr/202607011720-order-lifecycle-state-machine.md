@@ -2,7 +2,7 @@
 
 - Status: Accepted (語彙は ADR-[[202607020305]] で payment_pending / failed を追加)
 - Date: 2026-07-01
-- Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR はその具体化タスク 1), ADR-[[202606261702]] (cancel 補償と現行のキャンセル可否判定), ADR-[[202606261700]] (inventory 台帳の append-only 思想), ADR-[[202606261212]] (Outbox 列。履歴テーブルとは別物), ADR-[[202606211200]] (payment.settled / shipment イベント = 前進トリガ), ADR-[[202606250159]] (traceparent 伝播), ADR-[[202606180902]] (実 DB 結合テスト), ADR-[[202606190903]] (repository CQRS), GitHub #98 (親), #96
+- Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR はその具体化タスク 1), ADR-[[202606261702]] (cancel 補償と現行のキャンセル可否判定), ADR-[[202606261700]] (inventory 台帳の append-only 思想。Superseded・原案として参照), ADR-[[202606261212]] (Outbox 列。履歴テーブルとは別物), ADR-[[202606211200]] (payment.settled / shipment イベント = 前進トリガ), ADR-[[202606250159]] (traceparent 伝播), ADR-[[202606180902]] (実 DB 結合テスト), ADR-[[202606190903]] (repository CQRS), GitHub #98 (親), #96
 
 ## Context
 
@@ -31,7 +31,7 @@ order のライフサイクルを **明示的な状態機械**として定義し
 
 ## Alternatives considered
 
-- **イベントソーシング (状態を導出)**: 監査最強で inventory 台帳 (ADR-[[202606261700]]) と同思想だが、projection / snapshot と結果整合の読みを持ち込む。現在列の O(1) 読みと既存の同期的な注文履歴照会 (`ListOrdersByMember`) に対しオーバー。現在列 + 履歴のハイブリッドで読みの安さを採る。
+- **イベントソーシング (状態を導出)**: 監査最強で inventory 台帳 (ADR-[[202606261700]]、append-only の原案・Superseded) と同思想だが、projection / snapshot と結果整合の読みを持ち込む。現在列の O(1) 読みと既存の同期的な注文履歴照会 (`ListOrdersByMember`) に対しオーバー。現在列 + 履歴のハイブリッドで読みの安さを採る。
 - **単一 enum 列のみ (履歴なし)**: 最小だが履歴が残らず #96 の履歴化要望に未達。
 - **DB トリガで遷移も強制**: 不正遷移を DB で拒否できるが、遷移規則 (業務条件) が SQL に散りテスト・可視性が落ちる。このリポジトリにトリガの前例が無い。FSM は Go、DB は値域 (CHECK) のみに分ける。
 - **paid / shipped を order に集約せず各サービスへ委ねる**: order 単体でライフサイクルが読めず、注文履歴 UI とキャンセル可否判定が多サービス照会になる。フル語彙を order へ集約する (語彙決定どおり)。
