@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-02
-- Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR は具体化タスク 3), ADR-[[202606190900]] (注文時 snapshot), ADR-[[202606301000]] (shipping←order の同期 pull), ADR-[[202606301100]] (BFF→order の値渡し), ADR-[[202606261212]] (Outbox = 更新経路), ADR-[[202606261214]] (冪等投影), GitHub #98 (親)
+- Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR は具体化タスク 3), ADR-[[202606190900]] (注文時 snapshot), ADR-[[202606301000]] (shipping←order の同期 pull), ADR-[[202606301100]] (BFF→order の値渡し), ADR-[[202606261212]] (Outbox = 更新経路。#96 で ADR-202606300600 へ移行中), ADR-[[202606261214]] (冪等投影), GitHub #98 (親), #128 (本タスクの issue), #108 (イベント versioning = 前提)
 
 ## Context
 
@@ -28,6 +28,7 @@
 - read model 化した参照は結果整合になる (所有者から遅延)。請求価格など時点固定すべき値は引き続き snapshot が担う (使い分けの要)。
 - 複製が増える (product データが order にも載る)。マイクロサービスの独立と引き換えの想定内。
 - read model を持つ側にコンシューマと投影表・その冪等更新が要る。
+- **前提**: ECST は共有参照をイベント payload に載せるため payload が太る。イベントの versioning / 互換性ルール (#108) を先に定めないと、producer / consumer の独立デプロイで互換が黙って壊れる。#108 を前提に置く。
 - 最初の対象 order→product で checkout の同期結合が 1 つ減り、主駆動特性 (独立デプロイ / 可用性) に効く。
 
 ## Alternatives considered

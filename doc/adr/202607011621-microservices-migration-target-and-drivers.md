@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-01
-- Relates to: ADR-[[202606170900]] (出発点の service-based。本 ADR で target style を更新), ADR-[[202606240522]] (DB-per-domain), ADR-[[202606262000]] (inventory 独立量子), ADR-[[202606211200]] (event-driven shipment), ADR-[[202606261212]] (Transactional Outbox), ADR-[[202606261702]] (choreography 補償), ADR-[[202606261210]] (同期呼び出しの回復性), ADR-[[202606261216]] (致命/縮退分類), ADR-[[202606190900]] / ADR-[[202606301000]] / ADR-[[202606301100]] (横断データの現行 3 パターン)
+- Relates to: ADR-[[202606170900]] (出発点の service-based。本 ADR で target style を更新), ADR-[[202606240522]] (DB-per-domain), ADR-[[202606262000]] (inventory 独立量子), ADR-[[202606211200]] (event-driven shipment), ADR-[[202606261212]] (Transactional Outbox。#96 で ADR-202606300600 へ移行中), ADR-[[202606261702]] (choreography 補償), ADR-[[202606261210]] (同期呼び出しの回復性), ADR-[[202606261216]] (致命/縮退分類), ADR-[[202606190900]] / ADR-[[202606301000]] / ADR-[[202606301100]] (横断データの現行 3 パターン)
 
 ## Context
 
