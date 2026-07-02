@@ -20,7 +20,7 @@
   - **強整合 / PII 回避 → 同期 pull 限定**: 直近の強整合が要る、または payload に PII を載せたくない場合だけ同期 pull を残す (shipping←order 宛先 ADR-[[202606301000]] はこの枠)。
 - **read model は読み取り専用の投影**: 書けるのは所有者だけで所有権は割らない (横断 JOIN 禁止は不変)。更新は所有者の Outbox イベント (ADR-[[202606261212]]) 経由で、冪等に投影する (ADR-[[202606261214]] 同型)。結果整合を受け入れる。
 - **最初の変換対象は order→product**: order が product のローカル read model (id / name / price 等) を持ち、checkout の同期 `FetchProduct` を外す。注文明細への時点 snapshot は維持し、両パターンを共存させる。product 障害が checkout の価格解決を止めない (前進フロー非同期化のタスク 2 と噛む)。以降の対象は別 issue。
-- **既存パターンの位置づけ**: snapshot (ADR-[[202606190900]]) = 時点事実で据置、pull (ADR-[[202606301000]]) = PII 回避で同期維持、値渡し (ADR-[[202606301100]]) = edge 合成で不変。read model は新設の「現在の共有参照」枠。
+- **値渡し (ADR-[[202606301100]]) は不変**: edge での合成であり本軸の外 (snapshot / pull の位置づけは上の判断軸のとおり)。
 
 ## Consequences
 
