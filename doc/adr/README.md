@@ -5,7 +5,7 @@
 
 | ID | Status | タイトル |
 | --- | --- | --- |
-| [202606170900](202606170900-service-based-architecture.md) | Accepted | サービスベースアーキテクチャを採用する |
+| [202606170900](202606170900-service-based-architecture.md) | Accepted (target style は ADR-[[202607011621]] で移行中) | サービスベースアーキテクチャを採用する |
 | [202606170901](202606170901-codegen-first-tech-stack.md) | Accepted | コード生成中心の技術スタック |
 | [202606170902](202606170902-single-root-gomod-monorepo.md) | Accepted | 単一ルート go.mod のモノレポ構成 |
 | [202606170903](202606170903-shared-postgres-schema-per-domain.md) | Accepted | 共有 Postgres + ドメインごとの schema 分離 |
@@ -53,3 +53,8 @@
 | [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
 | [202606301000](202606301000-shipping-pulls-destination-from-order.md) | Accepted | 配送先スナップショットは shipping が order から引く (settled は orderId のみ) |
 | [202606301100](202606301100-bff-resolves-shipping-address-for-checkout.md) | Accepted | checkout の配送先は BFF が解決し order へ値で渡す (order は member を引かない) |
+| [202607011621](202607011621-microservices-migration-target-and-drivers.md) | Accepted | サービスベースからマイクロサービスへ段階移行する (主駆動特性と移行原則) |
+| [202607011720](202607011720-order-lifecycle-state-machine.md) | Accepted (語彙は ADR-[[202607020305]] で拡張) | order のライフサイクルを状態機械 + 追記履歴で表す |
+| [202607020305](202607020305-order-checkout-orchestration-saga.md) | Accepted | checkout を order オーケストレーション型サーガにし前進フローを非同期化する |
+| [202607020324](202607020324-cross-domain-read-model-ecst.md) | Accepted | 横断参照データの既定を ECST + ローカル read model にする (役割で snapshot / pull と使い分け) |
+| [202607020343](202607020343-fitness-functions-in-ci.md) | Accepted | アーキテクチャ特性を CI のフィットネス関数で守る (第一号は量子越え同期呼び出しの許可リスト) |
