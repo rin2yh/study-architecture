@@ -5,10 +5,8 @@ package consumer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -53,9 +51,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	if err := c.ensureGroup(ctx); err != nil {
 		return err
 	}
-	if err := redisx.ObserveDLQDepth(c.rdb, orderevent.Stream, consumerGroup); err != nil {
-		slog.Warn("payment consumer: dlq depth gauge unavailable", "error", err)
-	}
+	redisx.ObserveDLQDepth(c.rdb, orderevent.Stream, consumerGroup)
 	slog.Info("payment consumer started", "stream", orderevent.Stream, "group", consumerGroup, "consumer", c.name)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -134,11 +130,9 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	raw, _ := values[orderevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := orderevent.OrderID(values)
 	if err != nil {
-		// パース不能な payload も握り潰さず DLQ に委ねる (ADR-[[202607301418]])。
-		return fmt.Errorf("invalid orderId %q: %w", raw, err)
+		return err
 	}
 	return c.refunder.RefundByOrder(ctx, orderID)
 }

@@ -3,10 +3,8 @@ package consumer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -46,9 +44,7 @@ func (c *CancelConsumer) Run(ctx context.Context) error {
 	if err := c.ensureGroup(ctx); err != nil {
 		return err
 	}
-	if err := redisx.ObserveDLQDepth(c.rdb, orderevent.Stream, cancelConsumerGroup); err != nil {
-		slog.Warn("shipping cancel consumer: dlq depth gauge unavailable", "error", err)
-	}
+	redisx.ObserveDLQDepth(c.rdb, orderevent.Stream, cancelConsumerGroup)
 	slog.Info("shipping cancel consumer started", "stream", orderevent.Stream, "group", cancelConsumerGroup, "consumer", c.name)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -127,11 +123,9 @@ func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) erro
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	raw, _ := values[orderevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := orderevent.OrderID(values)
 	if err != nil {
-		// パース不能な payload も握り潰さず DLQ に委ねる (ADR-[[202607301418]])。
-		return fmt.Errorf("invalid orderId %q: %w", raw, err)
+		return err
 	}
 	return c.canceller.CancelShipmentForOrder(ctx, orderID)
 }

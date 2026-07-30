@@ -1,8 +1,6 @@
 package redisx_test
 
 import (
-	"context"
-	"errors"
 	"strconv"
 	"testing"
 
@@ -35,9 +33,7 @@ func TestDLQStream(t *testing.T) {
 
 func TestDeadLetteredMessageKeepsPayload(t *testing.T) {
 	mr, rc := newPending(t, settled)
-	claimUntilDLQ(t, mr, rc, func(context.Context, string, map[string]any) error {
-		return errors.New("still down")
-	})
+	claimUntilDLQ(t, mr, rc)
 
 	msgs, err := rc.XRange(t.Context(), redisx.DLQStream(testStream, testGroup), "-", "+").Result()
 	if err != nil {
@@ -66,24 +62,21 @@ func TestObserveDLQDepth(t *testing.T) {
 	otel.SetMeterProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
 
 	mr, rc := newPending(t, settled)
-	if err := redisx.ObserveDLQDepth(rc, testStream, testGroup); err != nil {
-		t.Fatalf("ObserveDLQDepth: %v", err)
-	}
+	redisx.ObserveDLQDepth(rc, testStream, testGroup)
 
 	// 退避前も系列が生えていないと、アラートが NoData と「滞留 0」を区別できない。
 	if got := collectDLQDepth(t, reader); got != 0 {
 		t.Fatalf("depth (退避前) = %d, want 0", got)
 	}
 
-	claimUntilDLQ(t, mr, rc, func(context.Context, string, map[string]any) error {
-		return errors.New("still down")
-	})
+	claimUntilDLQ(t, mr, rc)
 
 	if got := collectDLQDepth(t, reader); got != 1 {
 		t.Fatalf("depth (退避後) = %d, want 1", got)
 	}
 }
 
+// アラートの PromQL が名前とラベルに依存するので、収集値と一緒にそこも突き合わせる。
 func collectDLQDepth(t *testing.T, reader sdkmetric.Reader) int64 {
 	t.Helper()
 	var rm metricdata.ResourceMetrics
@@ -96,21 +89,17 @@ func collectDLQDepth(t *testing.T, reader sdkmetric.Reader) int64 {
 	)
 	for _, sm := range rm.ScopeMetrics {
 		for _, m := range sm.Metrics {
-			if m.Name != "messaging.dlq.depth" {
-				continue
-			}
 			g, ok := m.Data.(metricdata.Gauge[int64])
-			if !ok {
-				t.Fatalf("messaging.dlq.depth is %T, want Gauge[int64]", m.Data)
+			if m.Name != "messaging.dlq.depth" || !ok {
+				continue
 			}
 			for _, dp := range g.DataPoints {
 				if dp.Attributes.Equals(&want) {
 					return dp.Value
 				}
 			}
-			t.Fatalf("messaging.dlq.depth に %v の系列が無い", want.Encoded(attribute.DefaultEncoder()))
 		}
 	}
-	t.Fatal("messaging.dlq.depth が収集されていない")
+	t.Fatalf("messaging.dlq.depth{%s} が収集されていない", want.Encoded(attribute.DefaultEncoder()))
 	return 0
 }

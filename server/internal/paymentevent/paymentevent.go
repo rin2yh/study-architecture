@@ -5,6 +5,8 @@ package paymentevent
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -58,6 +60,17 @@ func Inject(ctx context.Context, values map[string]any) {
 	if tp := Traceparent(ctx); tp != "" {
 		values[FieldTraceparent] = tp
 	}
+}
+
+// OrderID は values の orderId を数値へ戻す。パース不能な payload は握り潰さず error にして DLQ へ
+// 委ねる (ADR-[[202607301418]])。
+func OrderID(values map[string]any) (int64, error) {
+	raw, _ := values[FieldOrderID].(string)
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid orderId %q: %w", raw, err)
+	}
+	return id, nil
 }
 
 // LinkFrom は consumer 側で values の traceparent を span link に変換する。発行と消費を親子でなく

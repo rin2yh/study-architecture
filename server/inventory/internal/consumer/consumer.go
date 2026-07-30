@@ -4,10 +4,8 @@ package consumer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -52,9 +50,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	if err := c.ensureGroup(ctx); err != nil {
 		return err
 	}
-	if err := redisx.ObserveDLQDepth(c.rdb, paymentevent.Stream, consumerGroup); err != nil {
-		slog.Warn("inventory consumer: dlq depth gauge unavailable", "error", err)
-	}
+	redisx.ObserveDLQDepth(c.rdb, paymentevent.Stream, consumerGroup)
 	slog.Info("inventory consumer started", "stream", paymentevent.Stream, "group", consumerGroup, "consumer", c.name)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -133,11 +129,9 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	raw, _ := values[paymentevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := paymentevent.OrderID(values)
 	if err != nil {
-		// パース不能な payload も握り潰さず DLQ に委ねる (ADR-[[202607301418]])。
-		return fmt.Errorf("invalid orderId %q: %w", raw, err)
+		return err
 	}
 	// 確定は ON CONFLICT DO NOTHING で冪等。再配信は no-op で ack される (ADR-[[202606261214]])。
 	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID)

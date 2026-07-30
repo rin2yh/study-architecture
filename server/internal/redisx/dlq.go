@@ -2,6 +2,7 @@ package redisx
 
 import (
 	"context"
+	"log/slog"
 	"maps"
 
 	"github.com/redis/go-redis/v9"
@@ -39,10 +40,17 @@ func deadLetter(ctx context.Context, rdb *redis.Client, stream, group string, m 
 	return rdb.XAdd(ctx, &redis.XAddArgs{Stream: DLQStream(stream, group), Values: values}).Err()
 }
 
-// ObserveDLQDepth は DLQ の滞留量を ObservableGauge として公開する。消費者のいない DLQ は
-// 自分では減らないので、退避の発生回数でなく滞留量で見る (ADR-[[202607301418]])。
-func ObserveDLQDepth(rdb *redis.Client, stream, group string) error {
+// 消費者のいない DLQ は自分では減らないので、退避の発生回数でなく滞留量で見る
+// (ADR-[[202607301418]])。
+// 計装の失敗は呼び出し側では扱えないので、ここでログに残して縮退する (ADR-[[202606261216]])。
+func ObserveDLQDepth(rdb *redis.Client, stream, group string) {
 	dlq := DLQStream(stream, group)
+	if err := registerDLQDepth(rdb, dlq, group); err != nil {
+		slog.Warn("redisx: dlq depth gauge unavailable", "dlq", dlq, "error", err)
+	}
+}
+
+func registerDLQDepth(rdb *redis.Client, dlq, group string) error {
 	depth, err := meter.Int64ObservableGauge("messaging.dlq.depth",
 		metric.WithDescription("Number of messages sitting in the dead letter queue"))
 	if err != nil {

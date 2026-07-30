@@ -18,8 +18,6 @@ const (
 	claimCount = 16
 	// 1 呼び出しあたりの走査回数の上限。PEL が肥大しても周回が長時間ブロックしないようにする。
 	claimPasses = 4
-	pelStart    = "-"
-	pelEnd      = "+"
 )
 
 // ClaimPending は min-idle を過ぎた未 ACK メッセージを consumer 名義で引き取り、process で
@@ -37,8 +35,8 @@ func ClaimPending(ctx context.Context, rdb *redis.Client, stream, group, consume
 			Stream: stream,
 			Group:  group,
 			Idle:   ClaimMinIdle,
-			Start:  pelStart,
-			End:    pelEnd,
+			Start:  "-",
+			End:    "+",
 			Count:  claimCount,
 		}).Result()
 		if err != nil {
@@ -71,12 +69,12 @@ func ClaimPending(ctx context.Context, rdb *redis.Client, stream, group, consume
 
 		acked := make([]string, 0, len(msgs))
 		for _, m := range msgs {
-			if deliveries[m.ID] >= MaxDeliveries {
-				if err := deadLetter(ctx, rdb, stream, group, m, deliveries[m.ID]); err != nil {
+			if d := deliveries[m.ID]; d >= MaxDeliveries {
+				if err := deadLetter(ctx, rdb, stream, group, m, d); err != nil {
 					slog.Error("redisx: dead letter failed", "stream", stream, "group", group, "id", m.ID, "error", err)
 					continue
 				}
-				slog.Error("redisx: message moved to dlq", "stream", stream, "group", group, "id", m.ID, "deliveries", deliveries[m.ID])
+				slog.Error("redisx: message moved to dlq", "stream", stream, "group", group, "id", m.ID, "deliveries", d)
 				acked = append(acked, m.ID)
 				continue
 			}
@@ -91,8 +89,11 @@ func ClaimPending(ctx context.Context, rdb *redis.Client, stream, group, consume
 				slog.Warn("redisx: xack failed", "stream", stream, "group", group, "ids", acked, "error", err)
 			}
 		}
+		// 引き取った分は idle が 0 に戻り次の XPENDING に載らないので、上限に満たない = 読み切り。
+		if len(pending) < claimCount {
+			return nil
+		}
 	}
-	// 引き取った分は idle が 0 に戻り次の XPENDING に載らないので、走査しきれなかった残りは
-	// 次の周回に委ねる。
+	// 走査しきれなかった残りは次の周回に委ねる。
 	return nil
 }

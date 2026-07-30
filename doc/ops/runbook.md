@@ -39,9 +39,10 @@ ADR-[[202606261100]])。`mise up:obs` 後、Grafana の `EC Service Alerts` フ�
   docker compose exec broker redis-cli XRANGE dlq:payment.events:shipping - + COUNT 10
   ```
 
-  `dlqSourceId` (元メッセージの ID) でログ・トレースを辿り、10 回とも失敗した理由を確認する。
-- よくある原因: 壊れた payload (`orderId` がパース不能など)、参照先が存在しない注文、5 分以上続いた
-  下流障害 (この場合は正常なメッセージも巻き込まれる)。
+  `dlqSourceId` (元メッセージの ID) でログ・トレースを辿り、上限回数 (`dlqDeliveries`) 失敗し続けた
+  理由を確認する。
+- よくある原因: 壊れた payload (`orderId` がパース不能など)、参照先が存在しない注文、上限に達するまで
+  続いた下流障害 (この場合は正常なメッセージも巻き込まれる)。
 - 対処: 原因を直したうえで、再投入するメッセージを元 stream へ `XADD` し直し、DLQ 側は `XDEL` で消す。
   再投入は同じ stream の他 group にも配信されるが、二重処理は冪等性 (ADR-[[202606261214]]) で吸収される。
   再投入しないと決めたものも、滞留アラートを解消するため `XDEL` する。
