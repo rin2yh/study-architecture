@@ -159,7 +159,6 @@ services:
       <<: *otel-env
       OTEL_SERVICE_NAME: order
       DATABASE_URL: postgres://order_svc:order_pass@db-order:5432/ec_order?sslmode=disable # ADR-[[202606231000]]
-      # (ADR 0008 / 0012)
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
       INVENTORY_API_URL: http://edge-proxy/inventory # ADR-[[202606262000]]

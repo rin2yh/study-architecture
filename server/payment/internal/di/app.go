@@ -7,7 +7,7 @@ import (
 )
 
 // App は payment プロセスが回す HTTP ハンドラ・outbox リレー (settled 発行)・consumer (cancelled 受信
-// で返金) をまとめる。いずれも同一の DB プールを共有するため (ADR-[[202606261212]])、1 つの DI グラフで
+// で返金) をまとめる。いずれも同一の DB プールを共有するため (ADR-[[202606300600]])、1 つの DI グラフで
 // 束ねて二重接続を避ける。発行 (outbox) と受信 (consumer) はどちらも payment プロセス内に同居する。
 type App struct {
 	Handler  *handler.Handler

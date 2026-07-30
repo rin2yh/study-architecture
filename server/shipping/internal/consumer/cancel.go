@@ -31,7 +31,8 @@ type CancelConsumer struct {
 }
 
 func NewCancel(rc *redis.Client, canceller ShipmentCanceller) *CancelConsumer {
-	// 再起動後も pending を引き取れるよう、識別名はランダムでなく安定値 (hostname) にする。
+	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の PEL が
+	// 孤児化して残る。pending の引き取り自体は未実装 (#105)。
 	name, _ := os.Hostname()
 	if name == "" {
 		name = cancelConsumerGroup

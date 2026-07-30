@@ -40,7 +40,7 @@ func run(ctx context.Context, addr string) error {
 		return err
 	}
 
-	// 決済確定イベントの送出は outbox リレーをプロセス内で回して後追いする (ADR-[[202606261212]])。
+	// (ADR-[[202606300600]])
 	go func() {
 		if err := app.Relay.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			slog.Error("outbox relay terminated", "error", err)

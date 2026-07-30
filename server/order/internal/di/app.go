@@ -6,7 +6,7 @@ import (
 )
 
 // App は order プロセスが回す HTTP ハンドラと outbox リレーをまとめる。両者は同一の DB プールを
-// 共有するため (ADR-[[202606261212]])、1 つの DI グラフで束ねて二重接続を避ける。
+// 共有するため (ADR-[[202606300600]])、1 つの DI グラフで束ねて二重接続を避ける。
 type App struct {
 	Handler *handler.Handler
 	Relay   *outbox.Relay
