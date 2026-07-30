@@ -11,6 +11,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
@@ -38,14 +39,14 @@ func (s *orderStub) FetchDestination(_ context.Context, _ int64) (gateway.Destin
 	return s.dest, s.err
 }
 
-func newTestConsumer(t *testing.T, creator ShipmentCreator, order gateway.OrderPort) (*Consumer, *redis.Client) {
+func newTestConsumer(t *testing.T, creator ShipmentCreator, order gateway.OrderPort) (*Consumer, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rc.Close() })
 	c := New(rc, creator, order)
 	c.block = 10 * time.Millisecond
-	return c, rc
+	return c, mr
 }
 
 func TestEnsureGroup(t *testing.T) {
@@ -113,12 +114,12 @@ func TestReadAndProcess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			creator := &creatorStub{err: tt.args.creatorErr}
-			c, rc := newTestConsumer(t, creator, &orderStub{dest: tt.args.orderDest, err: tt.args.orderErr})
+			c, _ := newTestConsumer(t, creator, &orderStub{dest: tt.args.orderDest, err: tt.args.orderErr})
 			ctx := t.Context()
 			if err := c.ensureGroup(ctx); err != nil {
 				t.Fatalf("ensureGroup: %v", err)
 			}
-			if err := rc.XAdd(ctx, &redis.XAddArgs{Stream: paymentevent.Stream, Values: tt.args.values}).Err(); err != nil {
+			if err := c.rdb.XAdd(ctx, &redis.XAddArgs{Stream: paymentevent.Stream, Values: tt.args.values}).Err(); err != nil {
 				t.Fatalf("XAdd: %v", err)
 			}
 
@@ -137,7 +138,7 @@ func TestReadAndProcess(t *testing.T) {
 			if len(creator.gotDest) > 0 && creator.gotDest[0] != tt.want.gotDest {
 				t.Fatalf("creator dest = %#v, want %#v", creator.gotDest[0], tt.want.gotDest)
 			}
-			p, err := rc.XPending(ctx, paymentevent.Stream, consumerGroup).Result()
+			p, err := c.rdb.XPending(ctx, paymentevent.Stream, consumerGroup).Result()
 			if err != nil {
 				t.Fatalf("XPending: %v", err)
 			}
@@ -154,5 +155,41 @@ func TestRunStopsOnCanceledContext(t *testing.T) {
 	cancel()
 	if err := c.Run(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Run() = %v, want context.Canceled", err)
+	}
+}
+
+// PEL の引き取りは redisx の min-idle 経過が条件なので、miniredis の時計を進めて再現する。
+var claimBase = time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+
+// 処理失敗で PEL に残った分が、min-idle 経過後の周回で引き取られ再処理されること。
+func TestReadAndProcessClaimsStalePending(t *testing.T) {
+	creator := &creatorStub{err: errors.New("db down")}
+	c, mr := newTestConsumer(t, creator, &orderStub{dest: fullDest})
+	mr.SetTime(claimBase)
+	ctx := t.Context()
+	if err := c.ensureGroup(ctx); err != nil {
+		t.Fatalf("ensureGroup: %v", err)
+	}
+	if err := c.rdb.XAdd(ctx, &redis.XAddArgs{Stream: paymentevent.Stream, Values: map[string]any{"event": "payment.settled", "orderId": "20"}}).Err(); err != nil {
+		t.Fatalf("XAdd: %v", err)
+	}
+	if err := c.readAndProcess(ctx); err != nil {
+		t.Fatalf("readAndProcess (1 周目): %v", err)
+	}
+	creator.err = nil
+	mr.SetTime(claimBase.Add(redisx.ClaimMinIdle + time.Second))
+	if err := c.readAndProcess(ctx); err != nil {
+		t.Fatalf("readAndProcess (2 周目): %v", err)
+	}
+
+	if len(creator.got) != 2 {
+		t.Fatalf("creator calls = %d, want 2 (1 周目の失敗 + 引き取り後の再処理)", len(creator.got))
+	}
+	p, err := c.rdb.XPending(ctx, paymentevent.Stream, consumerGroup).Result()
+	if err != nil {
+		t.Fatalf("XPending: %v", err)
+	}
+	if p.Count != 0 {
+		t.Fatalf("pending (2 周目) = %d, want 0", p.Count)
 	}
 }

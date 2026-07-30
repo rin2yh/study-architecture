@@ -17,6 +17,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
@@ -43,8 +44,8 @@ type Consumer struct {
 }
 
 func New(rc *redis.Client, creator ShipmentCreator, order gateway.OrderPort) *Consumer {
-	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の PEL が
-	// 孤児化して残る。pending の引き取り自体は未実装 (#105)。
+	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の consumer が
+	// 増え続ける (残った PEL 自体は ClaimPending が引き取る)。
 	name, _ := os.Hostname()
 	if name == "" {
 		name = consumerGroup
@@ -85,6 +86,9 @@ func (c *Consumer) ensureGroup(ctx context.Context) error {
 }
 
 func (c *Consumer) readAndProcess(ctx context.Context) error {
+	if err := redisx.ClaimPending(ctx, c.rdb, paymentevent.Stream, consumerGroup, c.name, c.process); err != nil {
+		return err
+	}
 	res, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 		Group:    consumerGroup,
 		Consumer: c.name,
@@ -101,8 +105,7 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 	for _, st := range res {
 		for _, m := range st.Messages {
 			if err := c.process(ctx, m.ID, m.Values); err != nil {
-				// span 内で記録済み。ack せず pending に残すが、">" 読みは pending を返さないため
-				// この 1 件は再処理されない (#105 で XAUTOCLAIM の引き取りを入れる)。
+				// span 内で記録済み。ack せず PEL に残し、min-idle 経過後の引き取りに委ねる。
 				continue
 			}
 			if err := c.rdb.XAck(ctx, paymentevent.Stream, consumerGroup, m.ID).Err(); err != nil {
