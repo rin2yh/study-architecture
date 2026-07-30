@@ -58,6 +58,7 @@
 | [202606261702](202606261702-order-cancel-event-driven-compensation.md) | Accepted | 注文キャンセルの補償をイベント駆動 (order.cancelled) で各サービスに分散する |
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
 | [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
+| [202607301418](202607301418-poison-message-dlq-by-delivery-count.md) | Accepted | 配送回数上限を超えたメッセージは group 別 DLQ へ隔離する |
 
 ## 可観測性
 

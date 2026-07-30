@@ -70,9 +70,9 @@ func TestReadAndProcess(t *testing.T) {
 			want{nil, 0},
 		},
 		{
-			"準正常系 不正な orderId は確定せず ack する",
+			"準正常系 不正な orderId は確定せず ack せず pending に残す",
 			args{map[string]any{"event": "payment.settled", "orderId": "abc"}, nil},
-			want{nil, 0},
+			want{nil, 1},
 		},
 		{
 			"異常系 確定が他のエラーなら ack せず pending に残す",

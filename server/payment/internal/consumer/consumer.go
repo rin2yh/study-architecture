@@ -5,6 +5,7 @@ package consumer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -51,6 +52,9 @@ func New(rc *redis.Client, refunder PaymentRefunder) *Consumer {
 func (c *Consumer) Run(ctx context.Context) error {
 	if err := c.ensureGroup(ctx); err != nil {
 		return err
+	}
+	if err := redisx.ObserveDLQDepth(c.rdb, orderevent.Stream, consumerGroup); err != nil {
+		slog.Warn("payment consumer: dlq depth gauge unavailable", "error", err)
 	}
 	slog.Info("payment consumer started", "stream", orderevent.Stream, "group", consumerGroup, "consumer", c.name)
 	for {
@@ -133,9 +137,8 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	raw, _ := values[orderevent.FieldOrderID].(string)
 	orderID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
-		slog.ErrorContext(ctx, "payment consumer: invalid orderId", "raw", raw, "error", err)
-		return nil
+		// パース不能な payload も握り潰さず DLQ に委ねる (ADR-[[202607301418]])。
+		return fmt.Errorf("invalid orderId %q: %w", raw, err)
 	}
 	return c.refunder.RefundByOrder(ctx, orderID)
 }

@@ -1,0 +1,63 @@
+# ADR-[[202607301418]]
+#
+# DLQ の滞留を Prometheus で評価する Grafana-managed alert (仕組みは ADR-[[202606261100]])。
+# メトリクスは redisx の ObservableGauge で、Prometheus OTLP 変換後 (UnderscoreEscapingWithSuffixes)
+# は messaging_dlq_depth / messaging_destination_name / messaging_consumer_group_name になる。
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Messaging
+    folder: EC Service Alerts
+    interval: 1m
+    rules:
+      # DLQ は誰も消費しないので、退避が止まっても滞留は残る。rate ではなく現在値で見る。
+      # consumer が全滅すると gauge も途切れるため、無データは滞留 0 と区別して OK に倒す。
+      - uid: messaging-dlq-backlog
+        title: DLQ backlog present
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.messaging_destination_name }} に {{ $values.B.Value }} 件のメッセージが滞留 (配送回数上限で退避)"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: false
+              range: true
+              intervalMs: 60000
+              maxDataPoints: 43200
+              expr: |
+                max by (messaging_destination_name) (messaging_dlq_depth)
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              reducer: last
+              expression: A
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]

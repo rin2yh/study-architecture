@@ -128,6 +128,35 @@ func TestClaimPending(t *testing.T) {
 	}
 }
 
+// 引き取りの条件は min-idle の経過なので、1 周ごとに miniredis の時計を進める。
+func claimUntilDLQ(t *testing.T, mr *miniredis.Miniredis, rc *redis.Client, process func(context.Context, string, map[string]any) error) {
+	t.Helper()
+	for i := 1; i <= redisx.MaxDeliveries; i++ {
+		mr.SetTime(base.Add(time.Duration(i) * (redisx.ClaimMinIdle + time.Second)))
+		if err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker, process); err != nil {
+			t.Fatalf("ClaimPending (%d 周目): %v", i, err)
+		}
+	}
+}
+
+func TestClaimPendingDeadLettersAtMaxDeliveries(t *testing.T) {
+	mr, rc := newPending(t, settled)
+
+	processed := 0
+	claimUntilDLQ(t, mr, rc, func(context.Context, string, map[string]any) error {
+		processed++
+		return errors.New("still down")
+	})
+
+	// 1 回目の配送は newPending の XReadGroup が消費している。
+	if want := redisx.MaxDeliveries - 1; processed != want {
+		t.Fatalf("processed = %d, want %d", processed, want)
+	}
+	if n := pendingCount(t, rc); n != 0 {
+		t.Fatalf("pending = %d, want 0 (DLQ へ退避して ack される)", n)
+	}
+}
+
 func TestClaimPendingDrainsBeyondOneBatch(t *testing.T) {
 	const total = 20
 	values := make([]map[string]any, 0, total)

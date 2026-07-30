@@ -96,9 +96,9 @@ func TestReadAndProcess(t *testing.T) {
 			want{nil, gateway.Destination{}, 0},
 		},
 		{
-			"準正常系 不正な orderId は手配せず ack する",
+			"準正常系 不正な orderId は手配せず ack せず pending に残す",
 			args{map[string]any{"event": "payment.settled", "orderId": "abc"}, fullDest, nil, nil},
-			want{nil, gateway.Destination{}, 0},
+			want{nil, gateway.Destination{}, 1},
 		},
 		{
 			"異常系 order 取得失敗は手配せず ack せず pending に残す",

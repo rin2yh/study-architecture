@@ -70,9 +70,9 @@ func TestCancelReadAndProcess(t *testing.T) {
 			want{nil, 0},
 		},
 		{
-			"準正常系 不正な orderId は中止せず ack する",
+			"準正常系 不正な orderId は中止せず ack せず pending に残す",
 			args{map[string]any{"event": "order.cancelled", "orderId": "abc"}, nil},
-			want{nil, 0},
+			want{nil, 1},
 		},
 		{
 			"異常系 中止が他のエラーなら ack せず pending に残す",
