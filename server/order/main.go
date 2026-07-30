@@ -40,7 +40,7 @@ func run(ctx context.Context, addr string) error {
 		return err
 	}
 
-	// (ADR-[[202606261212]])
+	// (ADR-[[202606300600]])
 	go func() {
 		if err := app.Relay.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			slog.Error("outbox relay terminated", "error", err)

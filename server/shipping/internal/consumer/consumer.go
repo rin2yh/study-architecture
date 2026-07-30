@@ -43,8 +43,8 @@ type Consumer struct {
 }
 
 func New(rc *redis.Client, creator ShipmentCreator, order gateway.OrderPort) *Consumer {
-	// 同一グループ内で consumer を識別する名前。再起動後も pending を引き取れるよう
-	// ランダムでなく安定値 (hostname) にする。
+	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の PEL が
+	// 孤児化して残る。pending の引き取り自体は未実装 (#105)。
 	name, _ := os.Hostname()
 	if name == "" {
 		name = consumerGroup
@@ -101,7 +101,8 @@ func (c *Consumer) readAndProcess(ctx context.Context) error {
 	for _, st := range res {
 		for _, m := range st.Messages {
 			if err := c.process(ctx, m.ID, m.Values); err != nil {
-				// span 内で記録済み。ack せず pending に残し、次回 (XReadGroup の再配送) に委ねる。
+				// span 内で記録済み。ack せず pending に残すが、">" 読みは pending を返さないため
+				// この 1 件は再処理されない (#105 で XAUTOCLAIM の引き取りを入れる)。
 				continue
 			}
 			if err := c.rdb.XAck(ctx, paymentevent.Stream, consumerGroup, m.ID).Err(); err != nil {
@@ -141,8 +142,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "raw", raw, "error", err)
 		return nil
 	}
-	// 宛先は order が注文時に確定したスナップショットを引く (ADR-[[202606301000]])。order 不調は
-	// 取得失敗を伝播させ ack せず再配送に委ねる。
+	// (ADR-[[202606301000]])
 	dest, err := c.order.FetchDestination(ctx, orderID)
 	if err != nil {
 		return err

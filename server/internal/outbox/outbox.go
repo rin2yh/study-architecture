@@ -1,5 +1,5 @@
-// Package outbox は Transactional Outbox のリレーを共有実装する (ADR-[[202606261212]])。
-// 送信状態を自DBの集約に持つサービスが、未送信行をポーリングして Redis Streams へ送出する
+// Package outbox は Transactional Outbox の発行口とリレーを共有実装する (ADR-[[202606300600]])。
+// 専用 outbox テーブルを持つサービスが、未送信行をポーリングして Redis Streams へ送出する
 // ループをここに 1 つ置く。発行サービスが増えても各自のプロセス内でこれを回すだけでよい。
 package outbox
 

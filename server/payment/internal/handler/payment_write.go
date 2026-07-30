@@ -45,7 +45,7 @@ func (h *writeHandler) UpdatePayment(c *gin.Context, id api.IdPath) {
 		_ = c.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
-	// 確定イベントの送出は後段のリレーに分離する (ADR-[[202606261212]])。
+	// 確定イベントの送出は後段のリレーに分離する (ADR-[[202606300600]])。
 	settled := event.IsSettled(req.Status)
 	var traceparent string
 	if settled {
