@@ -86,7 +86,6 @@ func (c *Consumer) ensureGroup(ctx context.Context) error {
 }
 
 func (c *Consumer) readAndProcess(ctx context.Context) error {
-	// ">" は PEL を返さないため、先に pending を処理する必要がある。
 	if err := redisx.ClaimPending(ctx, c.rdb, paymentevent.Stream, consumerGroup, c.name, c.process); err != nil {
 		return err
 	}

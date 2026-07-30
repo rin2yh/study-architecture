@@ -20,8 +20,11 @@ const (
 	nextWorker   = "worker-2"
 )
 
-// claimMinIdle は非公開なので、テストからは miniredis の時計を進めて経過を作る。
-var base = time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+var (
+	// 引き取り条件は min-idle の経過なので、miniredis の時計をこの時刻から進めて再現する。
+	base    = time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+	settled = map[string]any{"event": "payment.settled", "orderId": "20"}
+)
 
 // newPending は「読んだが ack しないまま落ちた consumer」の PEL を作る。
 func newPending(t *testing.T, values ...map[string]any) (*miniredis.Miniredis, *redis.Client) {
@@ -65,6 +68,7 @@ func pendingCount(t *testing.T, rc *redis.Client) int64 {
 
 func TestClaimPending(t *testing.T) {
 	type args struct {
+		values     []map[string]any
 		idleFor    time.Duration
 		processErr error
 	}
@@ -72,6 +76,7 @@ func TestClaimPending(t *testing.T) {
 		processed int
 		pending   int64
 	}
+	elapsed := redisx.ClaimMinIdle + time.Second
 	tests := []struct {
 		name string
 		args args
@@ -79,28 +84,33 @@ func TestClaimPending(t *testing.T) {
 	}{
 		{
 			"正常系 min-idle 経過後の未 ACK は引き取って再処理し ack する",
-			args{31 * time.Second, nil},
+			args{[]map[string]any{settled}, elapsed, nil},
 			want{1, 0},
 		},
 		{
 			"準正常系 min-idle 未経過は処理中とみなし引き取らない",
-			args{10 * time.Second, nil},
+			args{[]map[string]any{settled}, redisx.ClaimMinIdle / 3, nil},
 			want{0, 1},
 		},
 		{
+			"準正常系 PEL が空なら process を呼ばない",
+			args{nil, elapsed, nil},
+			want{0, 0},
+		},
+		{
 			"異常系 再処理が失敗した分は ack せず PEL に残す",
-			args{31 * time.Second, errors.New("still down")},
+			args{[]map[string]any{settled}, elapsed, errors.New("still down")},
 			want{1, 1},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mr, rc := newPending(t, map[string]any{"event": "payment.settled", "orderId": "20"})
+			mr, rc := newPending(t, tt.args.values...)
 			mr.SetTime(base.Add(tt.args.idleFor))
 
 			var got []string
 			err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
-				func(_ context.Context, id string, values map[string]any) error {
+				func(_ context.Context, _ string, values map[string]any) error {
 					got = append(got, values["orderId"].(string))
 					return tt.args.processErr
 				})
@@ -118,7 +128,6 @@ func TestClaimPending(t *testing.T) {
 	}
 }
 
-// PEL が 1 バッチ (claimCount) を超えても、カーソルを進めて全件引き取れること。
 func TestClaimPendingDrainsBeyondOneBatch(t *testing.T) {
 	const total = 20
 	values := make([]map[string]any, 0, total)
@@ -126,7 +135,7 @@ func TestClaimPendingDrainsBeyondOneBatch(t *testing.T) {
 		values = append(values, map[string]any{"event": "payment.settled", "orderId": fmt.Sprint(i)})
 	}
 	mr, rc := newPending(t, values...)
-	mr.SetTime(base.Add(31 * time.Second))
+	mr.SetTime(base.Add(redisx.ClaimMinIdle + time.Second))
 
 	processed := 0
 	err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
@@ -146,27 +155,9 @@ func TestClaimPendingDrainsBeyondOneBatch(t *testing.T) {
 	}
 }
 
-func TestClaimPendingNoPending(t *testing.T) {
-	mr, rc := newPending(t)
-	mr.SetTime(base.Add(31 * time.Second))
-
-	called := false
-	err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
-		func(_ context.Context, _ string, _ map[string]any) error {
-			called = true
-			return nil
-		})
-	if err != nil {
-		t.Fatalf("ClaimPending: %v", err)
-	}
-	if called {
-		t.Fatal("process called, want no call")
-	}
-}
-
 func TestClaimPendingStopsOnCanceledContext(t *testing.T) {
-	mr, rc := newPending(t, map[string]any{"event": "payment.settled", "orderId": "20"})
-	mr.SetTime(base.Add(31 * time.Second))
+	mr, rc := newPending(t, settled)
+	mr.SetTime(base.Add(redisx.ClaimMinIdle + time.Second))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 

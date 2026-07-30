@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
 type compensatorStub struct {
@@ -22,18 +23,18 @@ func (s *compensatorStub) CompensateByOrder(_ context.Context, orderID int64) er
 	return s.err
 }
 
-func newTestCancelConsumer(t *testing.T, compensator ReservationCompensator) (*CancelConsumer, *redis.Client, *miniredis.Miniredis) {
+func newTestCancelConsumer(t *testing.T, compensator ReservationCompensator) (*CancelConsumer, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rc.Close() })
 	c := NewCancel(rc, compensator)
 	c.block = 10 * time.Millisecond
-	return c, rc, mr
+	return c, mr
 }
 
 func TestCancelEnsureGroup(t *testing.T) {
-	c, _, _ := newTestCancelConsumer(t, &compensatorStub{})
+	c, _ := newTestCancelConsumer(t, &compensatorStub{})
 	ctx := t.Context()
 
 	if err := c.ensureGroup(ctx); err != nil {
@@ -82,12 +83,12 @@ func TestCancelReadAndProcess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			compensator := &compensatorStub{err: tt.args.compensateErr}
-			c, rc, _ := newTestCancelConsumer(t, compensator)
+			c, _ := newTestCancelConsumer(t, compensator)
 			ctx := t.Context()
 			if err := c.ensureGroup(ctx); err != nil {
 				t.Fatalf("ensureGroup: %v", err)
 			}
-			if err := rc.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: tt.args.values}).Err(); err != nil {
+			if err := c.rdb.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: tt.args.values}).Err(); err != nil {
 				t.Fatalf("XAdd: %v", err)
 			}
 
@@ -98,7 +99,7 @@ func TestCancelReadAndProcess(t *testing.T) {
 			if len(compensator.got) != len(tt.want.gotOrderIDs) {
 				t.Fatalf("compensator called with %v, want %v", compensator.got, tt.want.gotOrderIDs)
 			}
-			p, err := rc.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
+			p, err := c.rdb.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
 			if err != nil {
 				t.Fatalf("XPending: %v", err)
 			}
@@ -110,7 +111,7 @@ func TestCancelReadAndProcess(t *testing.T) {
 }
 
 func TestCancelRunStopsOnCanceledContext(t *testing.T) {
-	c, _, _ := newTestCancelConsumer(t, &compensatorStub{})
+	c, _ := newTestCancelConsumer(t, &compensatorStub{})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err := c.Run(ctx); !errors.Is(err, context.Canceled) {
@@ -121,28 +122,20 @@ func TestCancelRunStopsOnCanceledContext(t *testing.T) {
 // 処理失敗で PEL に残った分が、min-idle 経過後の周回で引き取られ再処理されること。
 func TestCancelReadAndProcessClaimsStalePending(t *testing.T) {
 	compensator := &compensatorStub{err: errors.New("db down")}
-	c, rc, mr := newTestCancelConsumer(t, compensator)
+	c, mr := newTestCancelConsumer(t, compensator)
 	mr.SetTime(claimBase)
 	ctx := t.Context()
 	if err := c.ensureGroup(ctx); err != nil {
 		t.Fatalf("ensureGroup: %v", err)
 	}
-	if err := rc.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: map[string]any{"event": "order.cancelled", "orderId": "20"}}).Err(); err != nil {
+	if err := c.rdb.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: map[string]any{"event": "order.cancelled", "orderId": "20"}}).Err(); err != nil {
 		t.Fatalf("XAdd: %v", err)
 	}
 	if err := c.readAndProcess(ctx); err != nil {
 		t.Fatalf("readAndProcess (1 周目): %v", err)
 	}
-	p, err := rc.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
-	if err != nil {
-		t.Fatalf("XPending: %v", err)
-	}
-	if p.Count != 1 {
-		t.Fatalf("pending (1 周目) = %d, want 1", p.Count)
-	}
-
 	compensator.err = nil
-	mr.SetTime(claimBase.Add(31 * time.Second))
+	mr.SetTime(claimBase.Add(redisx.ClaimMinIdle + time.Second))
 	if err := c.readAndProcess(ctx); err != nil {
 		t.Fatalf("readAndProcess (2 周目): %v", err)
 	}
@@ -150,7 +143,7 @@ func TestCancelReadAndProcessClaimsStalePending(t *testing.T) {
 	if len(compensator.got) != 2 {
 		t.Fatalf("compensator calls = %d, want 2 (1 周目の失敗 + 引き取り後の再処理)", len(compensator.got))
 	}
-	p, err = rc.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
+	p, err := c.rdb.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
 	if err != nil {
 		t.Fatalf("XPending: %v", err)
 	}
