@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
 const (
@@ -37,8 +38,8 @@ type Consumer struct {
 }
 
 func New(rc *redis.Client, confirmer ReservationConfirmer) *Consumer {
-	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の PEL が
-	// 孤児化して残る。pending の引き取り自体は未実装 (#105)。
+	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の consumer が
+	// 増え続ける (残った PEL 自体は ClaimPending が引き取る)。
 	name, _ := os.Hostname()
 	if name == "" {
 		name = consumerGroup
@@ -78,6 +79,10 @@ func (c *Consumer) ensureGroup(ctx context.Context) error {
 }
 
 func (c *Consumer) readAndProcess(ctx context.Context) error {
+	// ">" は PEL を返さないため、先に pending を処理する必要がある。
+	if err := redisx.ClaimPending(ctx, c.rdb, paymentevent.Stream, consumerGroup, c.name, c.process); err != nil {
+		return err
+	}
 	res, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 		Group:    consumerGroup,
 		Consumer: c.name,

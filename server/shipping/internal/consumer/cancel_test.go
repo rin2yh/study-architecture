@@ -22,18 +22,18 @@ func (s *cancellerStub) CancelShipmentForOrder(_ context.Context, orderID int64)
 	return s.err
 }
 
-func newTestCancelConsumer(t *testing.T, canceller ShipmentCanceller) (*CancelConsumer, *redis.Client) {
+func newTestCancelConsumer(t *testing.T, canceller ShipmentCanceller) (*CancelConsumer, *redis.Client, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rc.Close() })
 	c := NewCancel(rc, canceller)
 	c.block = 10 * time.Millisecond
-	return c, rc
+	return c, rc, mr
 }
 
 func TestCancelEnsureGroup(t *testing.T) {
-	c, _ := newTestCancelConsumer(t, &cancellerStub{})
+	c, _, _ := newTestCancelConsumer(t, &cancellerStub{})
 	ctx := t.Context()
 
 	if err := c.ensureGroup(ctx); err != nil {
@@ -82,7 +82,7 @@ func TestCancelReadAndProcess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			canceller := &cancellerStub{err: tt.args.cancelErr}
-			c, rc := newTestCancelConsumer(t, canceller)
+			c, rc, _ := newTestCancelConsumer(t, canceller)
 			ctx := t.Context()
 			if err := c.ensureGroup(ctx); err != nil {
 				t.Fatalf("ensureGroup: %v", err)
@@ -110,10 +110,51 @@ func TestCancelReadAndProcess(t *testing.T) {
 }
 
 func TestCancelRunStopsOnCanceledContext(t *testing.T) {
-	c, _ := newTestCancelConsumer(t, &cancellerStub{})
+	c, _, _ := newTestCancelConsumer(t, &cancellerStub{})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err := c.Run(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Run() = %v, want context.Canceled", err)
+	}
+}
+
+// 処理失敗で PEL に残った分が、min-idle 経過後の周回で引き取られ再処理されること。
+func TestCancelReadAndProcessClaimsStalePending(t *testing.T) {
+	canceller := &cancellerStub{err: errors.New("db down")}
+	c, rc, mr := newTestCancelConsumer(t, canceller)
+	mr.SetTime(claimBase)
+	ctx := t.Context()
+	if err := c.ensureGroup(ctx); err != nil {
+		t.Fatalf("ensureGroup: %v", err)
+	}
+	if err := rc.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: map[string]any{"event": "order.cancelled", "orderId": "20"}}).Err(); err != nil {
+		t.Fatalf("XAdd: %v", err)
+	}
+	if err := c.readAndProcess(ctx); err != nil {
+		t.Fatalf("readAndProcess (1 周目): %v", err)
+	}
+	p, err := rc.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
+	if err != nil {
+		t.Fatalf("XPending: %v", err)
+	}
+	if p.Count != 1 {
+		t.Fatalf("pending (1 周目) = %d, want 1", p.Count)
+	}
+
+	canceller.err = nil
+	mr.SetTime(claimBase.Add(31 * time.Second))
+	if err := c.readAndProcess(ctx); err != nil {
+		t.Fatalf("readAndProcess (2 周目): %v", err)
+	}
+
+	if len(canceller.got) != 2 {
+		t.Fatalf("canceller calls = %d, want 2 (1 周目の失敗 + 引き取り後の再処理)", len(canceller.got))
+	}
+	p, err = rc.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
+	if err != nil {
+		t.Fatalf("XPending: %v", err)
+	}
+	if p.Count != 0 {
+		t.Fatalf("pending (2 周目) = %d, want 0", p.Count)
 	}
 }
