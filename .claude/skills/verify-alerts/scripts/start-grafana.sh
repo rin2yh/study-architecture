@@ -9,6 +9,8 @@ set -eu
 rootfs=$1
 repo=$2
 prom=${3:-http://127.0.0.1:9090}
+# 既に 3000 が埋まっている / 複数スタックを並行させるときのために外から差し替えられる。
+port=${GRAFANA_PORT:-3000}
 
 mkdir -p "$rootfs/etc/grafana/provisioning/datasources" \
 	"$rootfs/etc/grafana/provisioning/alerting" \
@@ -34,18 +36,19 @@ export GF_AUTH_ANONYMOUS_ENABLED=true
 export GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
 export GF_AUTH_DISABLE_LOGIN_FORM=true
 export GF_SERVER_HTTP_ADDR=127.0.0.1
+export GF_SERVER_HTTP_PORT=${GRAFANA_PORT:-3000}
 cd /usr/share/grafana
 exec /usr/share/grafana/bin/grafana server --homepath=/usr/share/grafana --config=/usr/share/grafana/conf/defaults.ini
 EOF
 chmod +x "$rootfs/run-grafana.sh"
 
-nohup chroot "$rootfs" /run-grafana.sh > "$rootfs/../grafana.log" 2>&1 &
+GRAFANA_PORT=$port nohup chroot "$rootfs" /run-grafana.sh > "$rootfs/../grafana.log" 2>&1 &
 echo "grafana pid: $!" >&2
 
 i=0
 while [ "$i" -lt 40 ]; do
-	if curl -sf http://127.0.0.1:3000/api/health > /dev/null; then
-		curl -s http://127.0.0.1:3000/api/health
+	if curl -sf "http://127.0.0.1:$port/api/health" > /dev/null; then
+		curl -s "http://127.0.0.1:$port/api/health"
 		exit 0
 	fi
 	i=$((i + 1))

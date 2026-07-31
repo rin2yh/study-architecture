@@ -71,7 +71,7 @@ nohup ./prometheus-3.5.0.linux-amd64/prometheus \
 .claude/skills/verify-alerts/scripts/start-grafana.sh "$WORK/grafana-root" /home/user/study-architecture
 ```
 
-`start-grafana.sh` は compose と同じ provisioning (datasources / alerting / dashboards) を rootfs へ写し、datasource の URL だけ `prometheus:9090` → `127.0.0.1:9090` に差し替える。匿名 Admin も compose と同じなのでログイン画面は出ない。
+`start-grafana.sh` は compose と同じ provisioning (datasources / alerting / dashboards) を rootfs へ写し、datasource の URL だけ `prometheus:9090` → `127.0.0.1:9090` に差し替える。匿名 Admin も compose と同じなのでログイン画面は出ない。ポートが埋まっているときは `GRAFANA_PORT=3001` のように渡す。
 
 起動ログに `Failed to install plugin ... Forbidden` が並ぶが、プラグイン取得が塞がれているだけで検証には影響しない。
 
