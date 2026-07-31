@@ -1,6 +1,6 @@
 ---
 name: verify-alerts
-description: "docker デーモンが無いエージェント環境でも Prometheus + Grafana を実際に起動し、infra/o11y/alerting の Grafana-managed alert が本当に firing まで行くかを確認してスクリーンショットを撮る。ユーザーが「アラートが本当に鳴るか確認して」「Grafana のスクショが見たい」「provisioning が効いてるか確かめて」「ダッシュボードを実際に見せて」などと言ったとき、またアラートルールやメトリクス計装を追加・変更した直後のセルフ点検で必ず使う。docker が使えないからと諦めて YAML の目視確認で済ませない (mirror.gcr.io からイメージを取れる)。メトリクス名やラベルが OTLP 変換後にどうなるかを実測したいときも同じ手順が使える。"
+description: "compose の可観測性スタック (Prometheus + Grafana + Alloy) をエージェント環境で実際に起動し、infra/o11y/alerting の Grafana-managed alert が本当に firing まで行くかを確認してスクリーンショットを撮る。ユーザーが「アラートが本当に鳴るか確認して」「Grafana のスクショが見たい」「provisioning が効いてるか確かめて」「ダッシュボードを実際に見せて」などと言ったとき、またアラートルールやメトリクス計装を追加・変更した直後のセルフ点検で必ず使う。docker デーモンは既定で動いていないが自分で起動でき、イメージも mirror.gcr.io から取れるので、「docker が無いから」と諦めて YAML の目視確認で済ませない。メトリクス名やラベルが OTLP 変換後にどうなるかを実測したいときも同じ手順が使える。"
 argument-hint: "[確認したいアラート名・ルール uid・ダッシュボード (任意)]"
 allowed-tools:
   - Read
@@ -19,63 +19,68 @@ allowed-tools:
 - annotation のテンプレートは**評価時に**壊れる (`$values.B.Value` が nil で `humanizePercentage` が失敗する等)
 - `for:` と閾値は、実際に系列を跨がせないと合っているか分からない
 
-CLAUDE.md の「推測するな、計測せよ」をアラートに適用したのがこのスキル。**docker デーモンが無くても実際に立てられる**ので、設定ファイルの目視確認で終わらせない。
+CLAUDE.md の「推測するな、計測せよ」をアラートに適用したのがこのスキル。**compose のスタックはこの環境でもそのまま動く**ので、設定ファイルの目視確認で終わらせない。
 
-## この環境の制約 (先に知っておく)
+## この環境の事実
 
 | 事実 | 対処 |
 | --- | --- |
-| docker デーモンが無い | イメージを手で取って chroot で走らせる (`scripts/pull-oci-image.sh`) |
-| `dl.grafana.com` / Docker Hub の blob CDN はネットワークポリシーで 403 | **`mirror.gcr.io`** (Docker Hub の pull-through cache) は認証なしで通る |
-| GitHub release の資材 (`objects.githubusercontent.com`) は通る | Prometheus はここからバイナリを取る |
+| docker デーモンは起動していないが、`dockerd` は入っている | `nohup dockerd &` で自分で上げる。10 秒ほどで `docker info` が通る |
+| Docker Hub 直の pull は blob の CDN で 403 になる | `mirror.gcr.io/<image>` から引いて `docker tag` で compose のイメージ名に付け替える |
 | フォアグラウンドの `sleep` は禁止 | 待ちは `run_in_background: true` のポーリングループにする |
 | `pkill -f <pattern>` は**自分のシェルのコマンドラインにも当たって落ちる** | PID 指定か `pkill -x <実行ファイル名>` を使う |
-
-バージョンは `compose.yaml` の image タグに合わせる (違う版で確認しても再現にならない)。
+| 一時的に書く検証コードにもコメント規約のフックが効く | 使い捨てでもコメントは why だけ。what を書くと弾かれて往復が増える |
 
 ## 手順
 
-作業ディレクトリはスクラッチパッド配下に取る。リポジトリを汚さない。
+作業ファイルはスクラッチパッド配下に置く。リポジトリは読むだけで、汚さない。
 
-### 1. Prometheus を立てる
+### 1. スタックを上げる
 
-compose と同じ版のバイナリを取り、**リポジトリの設定をそのまま**使う。OTLP 受信は明示的に有効化が要る。
+compose をそのまま使う。**確認したいのはリポジトリが配る設定そのもの**なので、設定を書き写した自前の起動は最後の手段にする。
 
 ```bash
-curl -sSL -o prom.tar.gz https://github.com/prometheus/prometheus/releases/download/v3.5.0/prometheus-3.5.0.linux-amd64.tar.gz
-tar xzf prom.tar.gz
-nohup ./prometheus-3.5.0.linux-amd64/prometheus \
-  --config.file=/home/user/study-architecture/infra/o11y/prometheus.yaml \
-  --web.enable-otlp-receiver --storage.tsdb.path=./data --web.listen-address=127.0.0.1:9090 &
+nohup dockerd > "$WORK/dockerd.log" 2>&1 &   # 起動済みなら不要
+for img in prom/prometheus:v3.5.0 grafana/grafana:12.2.0 grafana/alloy:v1.7.5; do
+  docker pull -q "mirror.gcr.io/$img" && docker tag "mirror.gcr.io/$img" "$img"
+done
+docker compose -f compose.yaml -f "$WORK/verify-ports.yml" --profile observability \
+  up -d --no-build --no-deps prometheus grafana alloy
+```
+
+イメージのタグは `compose.yaml` から読む (違う版で確認しても再現にならない)。`--no-deps` は tempo / loki を巻き込まないため。トレースやログまで見たいなら足す。
+
+compose はホストへ Grafana (3000) しか公開しないので、検証プロセスから直接叩く分だけ override で開ける:
+
+```yaml
+# $WORK/verify-ports.yml
+services:
+  alloy:
+    ports: ["4317:4317"]
+  prometheus:
+    ports: ["9090:9090"]
 ```
 
 ### 2. メトリクスを流す
 
 **本番の計装コードをそのまま呼ぶ**のが肝心。ここで手書きのダミー値を送ると、確認したかった「名前とラベルが式と一致するか」が検証できない。
 
-一時プログラムの置き場所と依存に注意:
-
-- `server/internal/...` を import するため、プログラムは **`server/` 配下** に置く (リポジトリ直下だと internal 制約で弾かれる)
-- Prometheus の OTLP receiver は **HTTP のみ**。アプリが使う `otlpmetricgrpc` は届かないので `otlpmetrichttp` を一時的に `go get` する (エンドポイントは `127.0.0.1:9090`、パスは `/api/v1/otlp/v1/metrics`)
-- DB や Redis が要る計装は `miniredis` 等のインプロセス実装で足りることが多い
-- `resource` の `service.name` が Prometheus の `job` ラベルになる
-
-例 (DLQ 滞留 gauge を確認したときの構成): miniredis に DLQ ストリームを作って数件 XADD し、`redisx.ObserveDLQDepth` を本番のまま呼んで 15 分間 push し続ける。
-
-終わったら**必ず**一時プログラムを消し `go.mod` / `go.sum` を戻す。最後に `git status` がクリーンであることを確認する。
-
-### 3. Grafana を立てる
+`server/` 配下に使い捨てのプログラムを置き、`otelx.Setup` + 対象の計装関数を呼ぶだけにする (`server/internal/...` を import するので、リポジトリ直下では internal 制約に弾かれる)。宛先は **Alloy** にする:
 
 ```bash
-.claude/skills/verify-alerts/scripts/pull-oci-image.sh grafana/grafana 12.2.0 "$WORK/grafana-root"
-.claude/skills/verify-alerts/scripts/start-grafana.sh "$WORK/grafana-root" /home/user/study-architecture
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./probe &
 ```
 
-`start-grafana.sh` は compose と同じ provisioning (datasources / alerting / dashboards) を rootfs へ写し、datasource の URL だけ `prometheus:9090` → `127.0.0.1:9090` に差し替える。匿名 Admin も compose と同じなのでログイン画面は出ない。ポートが埋まっているときは `GRAFANA_PORT=3001` のように渡す。
+Alloy 経由にすると、アプリ本来の `otlpmetricgrpc` がそのまま使えて **`go.mod` を触らずに済む**。しかも取り込み経路 (アプリ → Alloy → Prometheus) が本番と同じになる。Prometheus の OTLP receiver へ直接送る道もあるが、そちらは HTTP のみで `otlpmetrichttp` の一時追加が要るうえ、Alloy 段のマスキングを飛ばすので忠実度が落ちる。
 
-起動ログに `Failed to install plugin ... Forbidden` が並ぶが、プラグイン取得が塞がれているだけで検証には影響しない。
+- DB や Redis が要る計装は `miniredis` 等のインプロセス実装で足りることが多い
+- `resource` の `service.name` が Prometheus の `job` ラベルになる。複数サービスを再現したいならプロセスを分ける
+- 閾値を跨がせる値の作り方は対象次第 (例: p95 なら「2 割だけ 1〜1.5s、残りは 50ms」のテール偏重にすると、平均は閾値以下のまま p95 だけ超える)
+- 別の検証が並行しているときは、リポジトリをスクラッチパッドへ複製してそこでビルドする (`go.mod` の取り合いを避ける)
 
-### 4. firing まで待つ
+終わったら一時プログラムを消し、`git status` がクリーンであることを確認する。
+
+### 3. firing まで待つ
 
 状態は API で見る。`for:` の分だけ `pending` に留まってから `firing` に変わる。**バックグラウンドで**待つ:
 
@@ -84,9 +89,9 @@ until curl -s "http://127.0.0.1:3000/api/prometheus/grafana/api/v1/rules" \
   | jq -e '.data.groups[].rules[] | select(.name=="<ルール名>" and .state=="firing")' >/dev/null; do sleep 15; done
 ```
 
-このとき `Provisioned` 扱いになっているか (= リポジトリの YAML が読まれたか) も確認する。UI から編集できない旨のバナーが出ていれば provisioning 経由。
+`Provisioned` 扱いになっているか (= リポジトリの YAML が読まれたか) も確認する。UI から編集できない旨のバナーが出ていれば provisioning 経由。
 
-### 5. スクリーンショットを撮る
+### 4. スクリーンショットを撮る
 
 ```bash
 NODE_PATH=/opt/node22/lib/node_modules node .claude/skills/verify-alerts/scripts/screenshot.js <url> <out.png> [waitMs]
@@ -98,26 +103,41 @@ NODE_PATH=/opt/node22/lib/node_modules node .claude/skills/verify-alerts/scripts
 | --- | --- |
 | `/alerting/grafana/<rule-uid>/view` | 式 A → Reduce B → Threshold C の連鎖と各系列の値。**まずこれ** |
 | `/alerting/grafana/<rule-uid>/view?tab=instances` | annotation が展開された実際の通知文面 |
+| `/alerting/grafana/<rule-uid>/view?tab=history` | pending → alerting の遷移。`for:` が効いている証拠になる |
 | `/alerting/list` | firing / normal の全体像 |
 
 `<rule-uid>` は YAML の `uid` そのもの。
 
-### 6. 後片付け
+### 5. 後片付け
 
-Prometheus / Grafana / メトリクス送出プロセスを止め (PID 指定)、一時プログラムと `go.mod` の変更を戻す。作業ディレクトリはスクラッチパッドなので残してよい。
+`docker compose ... down` でコンテナを落とし、検証プロセスを止め (PID 指定)、一時プログラムを消す。`git status` がクリーンであることを最後に確認する。
 
 ## 報告のしかた
 
-撮れた画面が何を証明しているかを書く。「アラートが firing した」だけでなく、**実測できたメトリクス名とラベル**を添えると、式の正しさまで示せる。
+撮れた画面が何を証明しているかを書く。「アラートが firing した」だけでなく、**実測できたメトリクス名とラベル**と、**pending → firing の実時刻**を添えると、式と `for:` の正しさまで示せる。
 
-Grafana をどうしても起動できなかった場合は、同じ式・同じ `for:`・同じ annotation を Prometheus 単体のルールファイルに移して `/alerts` を撮る手もある。ただしその場合は **「Grafana の画面ではない」と明記する**。等価物であって同じものではない。
+スタックをどうしても起動できなかった場合は、同じ式・同じ `for:`・同じ annotation を Prometheus 単体のルールファイルに移して `/alerts` を撮る手もある。ただしその場合は **「Grafana の画面ではない」と明記する**。等価物であって同じものではない。
 
 ## つまずいたときの勘所
 
 | 症状 | 原因 |
 | --- | --- |
-| `page.goto` が networkidle で 30s タイムアウト | Grafana/Prometheus の UI はポーリングし続ける。`domcontentloaded` + 固定待ちにする (同梱スクリプトは対応済み) |
-| Playwright が chromium を見つけられない | ディレクトリはバージョン付き (`/opt/pw-browsers/chromium-<n>/`)。決め打ちしない |
+| 起動直後に `Normal (NoData)` のゴーストインスタンスが出る | まだ系列が無い 1 評価分だけ。次の評価で消える (`noDataState: OK` なら誤検知にならない) |
+| Grafana の画面が真っ黒 / "failed to load its application files" | ホストのロケール由来で bootstrap の `Intl.NumberFormat` が落ちている。`LANG=en_US.UTF-8` を与える |
 | ルールが `NoData` のまま | 式のメトリクス名が OTLP 変換後の実体と違う。`/api/v1/query` で実際の系列を引いて突き合わせる |
-| 無関係のルールがエラーを吐く | そのルールが要求するメトリクスを流していないだけ (例: HTTP を流さずに RED アラートを見ると template error)。確認対象でなければ無視してよい |
-| `chroot` した Grafana が即死 | rootfs の展開が不完全。レイヤを manifest の順に重ねられているか確認する |
+| データを止めたのに firing が続く | `relativeTimeRange` の窓 (既定 10 分) に最後の点が残る限り `reducer: last` が拾い続ける。仕様であって不具合ではない |
+| alert instance の Value が `1e+00` | それは Threshold C の真偽値。件数や実測値は `$values.B.Value` (Reduce の出力) 側 |
+| 無関係のルールがエラーを吐く | そのルールが要求するメトリクスを流していないだけ (例: HTTP を流さずに RED を見ると template error)。確認対象でなければ無視してよい |
+| `playwright install` が 403 | `cdn.playwright.dev` は塞がれている。`/opt/pw-browsers` のプリインストール版を使う (同梱スクリプトは対応済み) |
+| `page.goto` が networkidle で 30s タイムアウト | Grafana/Prometheus の UI はポーリングし続ける。`domcontentloaded` + 固定待ちにする (同梱スクリプトは対応済み) |
+
+## docker が使えないときのフォールバック
+
+`dockerd` が上がらない環境向けに、イメージを手で展開して chroot で走らせる道も用意してある。compose を経由しないぶん忠実度は落ちる (Alloy 段を飛ばす、datasource の URL を書き換える) ので、**docker が動くならこちらは使わない**。
+
+```bash
+scripts/pull-oci-image.sh grafana/grafana 12.2.0 "$WORK/grafana-root"
+scripts/start-grafana.sh "$WORK/grafana-root" /home/user/study-architecture   # GRAFANA_PORT で移せる
+```
+
+この経路では Prometheus をバイナリで別途起動し (`--web.enable-otlp-receiver`)、メトリクスは `otlpmetrichttp` で `/api/v1/otlp/v1/metrics` へ直接送ることになる (`go.mod` の一時変更が要る。終わったら戻す)。
