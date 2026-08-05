@@ -1,25 +1,36 @@
 #!/bin/sh
-# usage: up.sh [repo-root] [work-dir]
+# usage: up.sh <work-dir> [service...]   (リポジトリルートで実行する)
 #   → Grafana http://127.0.0.1:3000 (匿名 Admin)、Prometheus :9090、Alloy OTLP :4317
 set -eu
 
-repo=${1:-/home/user/study-architecture}
-work=${2:-/tmp/grafana-shot}
+work=${1:?usage: up.sh <work-dir> [service...]}
+shift
+services=${*:-prometheus grafana alloy}
 mkdir -p "$work"
+
+wait_for() {
+	limit=$1
+	shift
+	i=0
+	while ! "$@" > /dev/null 2>&1; do
+		i=$((i + 1))
+		[ "$i" -lt "$limit" ] || return 1
+		sleep 1
+	done
+}
 
 if ! docker info > /dev/null 2>&1; then
 	nohup dockerd > "$work/dockerd.log" 2>&1 &
-	i=0
-	while ! docker info > /dev/null 2>&1; do
-		i=$((i + 1))
-		[ "$i" -lt 40 ] || { echo "dockerd did not start; see $work/dockerd.log" >&2; exit 1; }
-		sleep 1
-	done
+	wait_for 40 docker info || {
+		echo "dockerd did not start; see $work/dockerd.log" >&2
+		exit 1
+	}
 fi
 
-# Docker Hub 直は blob の CDN がネットワークポリシーに弾かれるので、pull-through cache から取って
-# compose のイメージ名に付け替える。
-for img in $(grep -oE 'image: (prom/prometheus|grafana/grafana|grafana/alloy):[^ ]+' "$repo/compose.yaml" | awk '{print $2}'); do
+# Docker Hub 直は blob の CDN がネットワークポリシーに弾かれる。
+conf=$(docker compose --profile observability config --format json)
+for svc in $services; do
+	img=$(echo "$conf" | jq -r --arg s "$svc" '.services[$s].image')
 	docker image inspect "$img" > /dev/null 2>&1 && continue
 	echo "pulling $img" >&2
 	docker pull -q "mirror.gcr.io/$img" > /dev/null
@@ -35,14 +46,9 @@ services:
     ports: ["9090:9090"]
 EOF
 
-docker compose -f "$repo/compose.yaml" -f "$work/ports.yml" --profile observability \
-	up -d --no-build --no-deps prometheus grafana alloy >&2
-
-i=0
-while ! curl -sf http://127.0.0.1:3000/api/health > /dev/null; do
-	i=$((i + 1))
-	[ "$i" -lt 60 ] || { echo "grafana did not become healthy" >&2; exit 1; }
-	sleep 1
-done
-curl -s http://127.0.0.1:3000/api/health
-echo "compose file: $work/ports.yml" >&2
+# shellcheck disable=SC2086
+docker compose -f compose.yaml -f "$work/ports.yml" --profile observability up -d --no-deps $services >&2
+wait_for 60 curl -sf --max-time 2 http://127.0.0.1:3000/api/health || {
+	echo "grafana did not become healthy" >&2
+	exit 1
+}
