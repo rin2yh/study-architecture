@@ -10,21 +10,21 @@ import (
 // FieldID は注文 ID を wire に載せるときのキー。
 const FieldID = "orderId"
 
-// ID は注文の識別子。素の int64 と混ざらないよう独自型にし、生成は New / Parse に限る。
-type ID int64
+// ID の値を未公開にするのは、検証を通らない値の混入を型で禁じるため。生成は New / Parse だけ。
+type ID struct{ v int64 }
 
-// 0 以下は採番されないので、混入をここで止める。
+// 採番は 1 始まりなので、0 以下は「未設定のまま渡された」ことを意味する。
 func New(v int64) (ID, error) {
 	if v <= 0 {
-		return 0, fmt.Errorf("invalid orderId %d", v)
+		return ID{}, fmt.Errorf("invalid orderId %d", v)
 	}
-	return ID(v), nil
+	return ID{v: v}, nil
 }
 
 func Parse(raw string) (ID, error) {
 	v, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid orderId %q: %w", raw, err)
+		return ID{}, fmt.Errorf("invalid orderId %q: %w", raw, err)
 	}
 	return New(v)
 }
@@ -36,6 +36,6 @@ func IDFrom(values map[string]any) (ID, error) {
 }
 
 // sqlc 生成コードは int64 を受けるので、その境界で取り出す。
-func (id ID) Int64() int64 { return int64(id) }
+func (id ID) Int64() int64 { return id.v }
 
-func (id ID) String() string { return strconv.FormatInt(int64(id), 10) }
+func (id ID) String() string { return strconv.FormatInt(id.v, 10) }
