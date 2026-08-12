@@ -30,7 +30,7 @@ const (
 
 type Settled struct {
 	PaymentID   int64
-	OrderID     int64
+	OrderID     order.ID
 	AmountCents int64
 }
 
@@ -42,7 +42,7 @@ func (s Settled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:       TypeSettled,
 		FieldPaymentID:   s.PaymentID,
-		FieldOrderID:     s.OrderID,
+		FieldOrderID:     s.OrderID.Int64(),
 		FieldAmountCents: s.AmountCents,
 	}
 }

@@ -135,5 +135,5 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		return err
 	}
 	// 確定は ON CONFLICT DO NOTHING で冪等。再配信は no-op で ack される (ADR-[[202606261214]])。
-	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID)
+	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID.Int64())
 }

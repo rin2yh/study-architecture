@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
 	"github.com/rin2yh/study-architecture/server/order/internal/db"
@@ -78,21 +79,25 @@ func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent st
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
-	order, err := qtx.GetOrderForUpdate(ctx, id)
+	current, err := qtx.GetOrderForUpdate(ctx, id)
 	if err != nil {
 		return db.OrderOrder{}, dberr.FromRead(err)
 	}
-	switch order.Status {
+	switch current.Status {
 	case "shipped":
 		return db.OrderOrder{}, ErrNotCancellable
 	case "cancelled":
-		return order, nil
+		return current, nil
 	}
 	cancelled, err := qtx.CancelOrder(ctx, id)
 	if err != nil {
 		return db.OrderOrder{}, err
 	}
-	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, traceparent, orderevent.Cancelled{OrderID: cancelled.ID}); err != nil {
+	orderID, err := order.New(cancelled.ID)
+	if err != nil {
+		return db.OrderOrder{}, err
+	}
+	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, traceparent, orderevent.Cancelled{OrderID: orderID}); err != nil {
 		return db.OrderOrder{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
