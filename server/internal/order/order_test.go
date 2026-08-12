@@ -77,12 +77,12 @@ func TestIDFromEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := order.IDFromEvent(tt.values)
+			got, err := order.ParseIDFromEvent(tt.values)
 			if (err != nil) != tt.want.wantErr {
-				t.Fatalf("IDFromEvent() error = %v, wantErr %v", err, tt.want.wantErr)
+				t.Fatalf("ParseIDFromEvent() error = %v, wantErr %v", err, tt.want.wantErr)
 			}
 			if got.Int64() != tt.want.id {
-				t.Fatalf("IDFromEvent() = %d, want %d", got.Int64(), tt.want.id)
+				t.Fatalf("ParseIDFromEvent() = %d, want %d", got.Int64(), tt.want.id)
 			}
 		})
 	}

@@ -131,7 +131,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	orderID, err := order.IDFromEvent(values)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		return err
 	}
