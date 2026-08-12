@@ -37,5 +37,3 @@ func IDFrom(values map[string]any) (ID, error) {
 
 // sqlc 生成コードは int64 を受けるので、その境界で取り出す。
 func (id ID) Int64() int64 { return id.v }
-
-func (id ID) String() string { return strconv.FormatInt(id.v, 10) }
