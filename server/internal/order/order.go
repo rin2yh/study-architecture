@@ -7,10 +7,9 @@ import (
 	"strconv"
 )
 
-// FieldID は注文 ID を wire に載せるときのキー。
 const FieldID = "orderId"
 
-// ID の値を未公開にするのは、検証を通らない値の混入を型で禁じるため。生成は New / Parse だけ。
+// 値を未公開にするのは、検証を通らない値の混入を型で禁じるため。
 type ID struct{ v int64 }
 
 // 採番は 1 始まりなので、0 以下は「未設定のまま渡された」ことを意味する。
