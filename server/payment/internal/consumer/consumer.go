@@ -135,5 +135,5 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return c.refunder.RefundByOrder(ctx, orderID)
+	return c.refunder.RefundByOrder(ctx, orderID.Int64())
 }

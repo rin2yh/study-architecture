@@ -144,11 +144,11 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		return err
 	}
 	// (ADR-[[202606301000]])
-	dest, err := c.order.FetchDestination(ctx, orderID)
+	dest, err := c.order.FetchDestination(ctx, orderID.Int64())
 	if err != nil {
 		return err
 	}
-	_, err = c.creator.CreateShipmentForOrder(ctx, orderID, dest)
+	_, err = c.creator.CreateShipmentForOrder(ctx, orderID.Int64(), dest)
 	if errors.Is(err, dberr.ErrConflict) {
 		return nil
 	}

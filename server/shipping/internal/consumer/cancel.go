@@ -128,5 +128,5 @@ func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) erro
 	if err != nil {
 		return err
 	}
-	return c.canceller.CancelShipmentForOrder(ctx, orderID)
+	return c.canceller.CancelShipmentForOrder(ctx, orderID.Int64())
 }
