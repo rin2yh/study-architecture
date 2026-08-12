@@ -34,5 +34,4 @@ func ParseIDFromEvent(event map[string]any) (ID, error) {
 	return Parse(raw)
 }
 
-// 生成コード (sqlc / OpenAPI クライアント) が int64 しか受けないので、それに接する層だけで使う。
 func (id ID) Int64() int64 { return id.v }
