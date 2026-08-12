@@ -126,7 +126,6 @@ func TestClaimPending(t *testing.T) {
 	}
 }
 
-// claimUntilDLQ は恒久的に失敗するメッセージを上限まで再配送させ、再処理された回数を返す。
 // 引き取りの条件は min-idle の経過なので、1 周ごとに miniredis の時計を進める。
 func claimUntilDLQ(t *testing.T, mr *miniredis.Miniredis, rc *redis.Client) int {
 	t.Helper()

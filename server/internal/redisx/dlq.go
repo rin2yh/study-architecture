@@ -26,8 +26,8 @@ const (
 // MeterProvider 設定前に取得しても問題ない。
 var meter = otel.Meter("redisx")
 
-// dlqStream は stream / group に対応する退避先ストリーム名を返す。stream だけでなく group でも
-// 分けるのは、同じ stream を複数 group が読むため (ADR-[[202607301418]])。
+// stream だけでなく group でも分けるのは、同じ stream を複数 group が読むため
+// (ADR-[[202607301418]])。
 func dlqStream(stream, group string) string {
 	return dlqPrefix + stream + ":" + group
 }
