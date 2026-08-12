@@ -61,7 +61,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestIDFromEvent(t *testing.T) {
+func TestParseIDFromEvent(t *testing.T) {
 	type want struct {
 		id      int64
 		wantErr bool
