@@ -26,7 +26,7 @@ const (
 // MeterProvider 設定前に取得しても問題ない。
 var meter = otel.Meter("redisx")
 
-// 同じ stream を複数 group が読むため (ADR-[[202607301418]])。
+// (ADR-[[202607301418]])
 func dlqStream(stream, group string) string {
 	return dlqPrefix + stream + ":" + group
 }
