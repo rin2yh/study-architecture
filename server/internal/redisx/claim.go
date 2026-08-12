@@ -23,7 +23,7 @@ const (
 // ClaimPending は min-idle を過ぎた未 ACK メッセージを consumer 名義で引き取り、process で
 // 再処理する (nil を返した分だけ ack する)。XReadGroup の ">" は PEL を返さないため、これを
 // 回さない限り一度失敗したメッセージは再処理されない。
-// 配送回数が MaxDeliveries に達したものは process へ通さず DLQ へ退避して ack する
+// 配送回数が maxDeliveries に達したものは process へ通さず DLQ へ退避して ack する
 // (ADR-[[202607301418]])。
 func ClaimPending(ctx context.Context, rdb *redis.Client, stream, group, consumer string, process func(ctx context.Context, id string, values map[string]any) error) error {
 	for range claimPasses {
@@ -69,7 +69,7 @@ func ClaimPending(ctx context.Context, rdb *redis.Client, stream, group, consume
 
 		acked := make([]string, 0, len(msgs))
 		for _, m := range msgs {
-			if d := deliveries[m.ID]; d >= MaxDeliveries {
+			if d := deliveries[m.ID]; d >= maxDeliveries {
 				if err := deadLetter(ctx, rdb, stream, group, m, d); err != nil {
 					slog.Error("redisx: dead letter failed", "stream", stream, "group", group, "id", m.ID, "error", err)
 					continue
