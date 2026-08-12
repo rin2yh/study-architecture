@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -123,7 +124,7 @@ func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) erro
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	orderID, err := orderevent.OrderID(values)
+	orderID, err := order.IDFrom(values)
 	if err != nil {
 		return err
 	}
