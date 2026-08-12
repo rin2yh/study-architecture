@@ -28,7 +28,7 @@ const (
 var tracer = otel.Tracer("payment")
 
 type PaymentRefunder interface {
-	RefundByOrder(ctx context.Context, orderID int64) error
+	RefundByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type Consumer struct {
@@ -135,5 +135,5 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return c.refunder.RefundByOrder(ctx, orderID.Int64())
+	return c.refunder.RefundByOrder(ctx, orderID)
 }

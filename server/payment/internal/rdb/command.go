@@ -89,7 +89,7 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db
 
 // RefundByOrder は order.cancelled の補償。確定済みは返金・未確定はキャンセルへ倒す。状態ガード付き
 // UPDATE で冪等にし、再配信での二重返金を防ぐ (ADR-[[202606261702]] / ADR-[[202606261214]])。
-func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID int64) error {
+func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID order.ID) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -97,10 +97,10 @@ func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID int64) error
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
-	if err := qtx.RefundPaymentByOrder(ctx, orderID); err != nil {
+	if err := qtx.RefundPaymentByOrder(ctx, orderID.Int64()); err != nil {
 		return err
 	}
-	if err := qtx.VoidPendingPaymentByOrder(ctx, orderID); err != nil {
+	if err := qtx.VoidPendingPaymentByOrder(ctx, orderID.Int64()); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

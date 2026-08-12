@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
@@ -71,13 +72,13 @@ func TestRefundByOrder(t *testing.T) {
 
 	t.Run("正常系 確定済みは返金され再実行でも 1 回に収束", func(t *testing.T) {
 		seedPayments(t, pool, db.PaymentPayment{OrderID: 20, AmountCents: 2980, Method: "card", Status: "settled"})
-		if err := r.RefundByOrder(t.Context(), 20); err != nil {
+		if err := r.RefundByOrder(t.Context(), mustOrderID(t, 20)); err != nil {
 			t.Fatalf("RefundByOrder: %v", err)
 		}
 		if got := statusOf(t, 20); got != "refunded" {
 			t.Fatalf("status = %q, want refunded", got)
 		}
-		if err := r.RefundByOrder(t.Context(), 20); err != nil {
+		if err := r.RefundByOrder(t.Context(), mustOrderID(t, 20)); err != nil {
 			t.Fatalf("RefundByOrder again: %v", err)
 		}
 		if got := statusOf(t, 20); got != "refunded" {
@@ -87,7 +88,7 @@ func TestRefundByOrder(t *testing.T) {
 
 	t.Run("正常系 未確定 (入金前) はキャンセルへ倒す", func(t *testing.T) {
 		seedPayments(t, pool, db.PaymentPayment{OrderID: 30, AmountCents: 500, Method: "card", Status: "pending"})
-		if err := r.RefundByOrder(t.Context(), 30); err != nil {
+		if err := r.RefundByOrder(t.Context(), mustOrderID(t, 30)); err != nil {
 			t.Fatalf("RefundByOrder: %v", err)
 		}
 		if got := statusOf(t, 30); got != "cancelled" {
@@ -116,4 +117,13 @@ func TestUpdatePayment(t *testing.T) {
 			t.Fatalf("err = %v, want ErrNotFound", err)
 		}
 	})
+}
+
+func mustOrderID(t *testing.T, v int64) order.ID {
+	t.Helper()
+	id, err := order.New(v)
+	if err != nil {
+		t.Fatalf("order.New(%d): %v", v, err)
+	}
+	return id
 }

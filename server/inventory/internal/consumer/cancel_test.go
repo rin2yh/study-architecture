@@ -9,6 +9,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -18,8 +19,8 @@ type compensatorStub struct {
 	err error
 }
 
-func (s *compensatorStub) CompensateByOrder(_ context.Context, orderID int64) error {
-	s.got = append(s.got, orderID)
+func (s *compensatorStub) CompensateByOrder(_ context.Context, orderID order.ID) error {
+	s.got = append(s.got, orderID.Int64())
 	return s.err
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 )
@@ -113,11 +114,11 @@ func TestReserveConfirmRelease(t *testing.T) {
 		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
 			t.Fatalf("Reserve: %v", err)
 		}
-		if err := cmd.ConfirmReservationsByOrder(ctx, 2); err != nil {
+		if err := cmd.ConfirmReservationsByOrder(ctx, mustOrderID(t, 2)); err != nil {
 			t.Fatalf("Confirm: %v", err)
 		}
 		// 確定の二重適用は冪等 (ON CONFLICT DO NOTHING)。
-		if err := cmd.ConfirmReservationsByOrder(ctx, 2); err != nil {
+		if err := cmd.ConfirmReservationsByOrder(ctx, mustOrderID(t, 2)); err != nil {
 			t.Fatalf("Confirm again: %v", err)
 		}
 		if err := cmd.ReleaseReservationsByOrder(ctx, 2); err != nil {
@@ -150,13 +151,13 @@ func TestCompensateByOrder(t *testing.T) {
 		if got := mustAvail(t, q, ctx, 200); got != 6 {
 			t.Fatalf("available after reserve = %d, want 6", got)
 		}
-		if err := cmd.CompensateByOrder(ctx, 1); err != nil {
+		if err := cmd.CompensateByOrder(ctx, mustOrderID(t, 1)); err != nil {
 			t.Fatalf("CompensateByOrder: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 200); got != 10 {
 			t.Fatalf("available after compensate = %d, want 10", got)
 		}
-		if err := cmd.CompensateByOrder(ctx, 1); err != nil {
+		if err := cmd.CompensateByOrder(ctx, mustOrderID(t, 1)); err != nil {
 			t.Fatalf("CompensateByOrder again: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 200); got != 10 {
@@ -168,19 +169,19 @@ func TestCompensateByOrder(t *testing.T) {
 		if err := cmd.Reserve(ctx, 2, []ReserveLine{{ProductID: 100, Quantity: 4}}); err != nil {
 			t.Fatalf("Reserve: %v", err)
 		}
-		if err := cmd.ConfirmReservationsByOrder(ctx, 2); err != nil {
+		if err := cmd.ConfirmReservationsByOrder(ctx, mustOrderID(t, 2)); err != nil {
 			t.Fatalf("Confirm: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 6 {
 			t.Fatalf("available after confirm = %d, want 6", got)
 		}
-		if err := cmd.CompensateByOrder(ctx, 2); err != nil {
+		if err := cmd.CompensateByOrder(ctx, mustOrderID(t, 2)); err != nil {
 			t.Fatalf("CompensateByOrder: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 10 {
 			t.Fatalf("available after cancel = %d, want 10", got)
 		}
-		if err := cmd.CompensateByOrder(ctx, 2); err != nil {
+		if err := cmd.CompensateByOrder(ctx, mustOrderID(t, 2)); err != nil {
 			t.Fatalf("CompensateByOrder again: %v", err)
 		}
 		if got := mustAvail(t, q, ctx, 100); got != 10 {
@@ -216,7 +217,7 @@ func TestExpireReservations(t *testing.T) {
 	}
 
 	// 終端状態は相互排他 (期限切れ済みは確定できない)。
-	if err := cmd.ConfirmReservationsByOrder(ctx, 1); err != nil {
+	if err := cmd.ConfirmReservationsByOrder(ctx, mustOrderID(t, 1)); err != nil {
 		t.Fatalf("Confirm after expire: %v", err)
 	}
 	if got := mustAvail(t, q, ctx, 100); got != 10 {
@@ -269,4 +270,13 @@ func TestReserveConcurrentNoOversell(t *testing.T) {
 	if got := mustAvail(t, q, ctx, 100); got != 0 {
 		t.Fatalf("final available = %d, want 0 (never negative)", got)
 	}
+}
+
+func mustOrderID(t *testing.T, v int64) order.ID {
+	t.Helper()
+	id, err := order.New(v)
+	if err != nil {
+		t.Fatalf("order.New(%d): %v", v, err)
+	}
+	return id
 }

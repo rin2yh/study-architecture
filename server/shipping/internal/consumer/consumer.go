@@ -32,7 +32,7 @@ const (
 var tracer = otel.Tracer("shipping-worker")
 
 type ShipmentCreator interface {
-	CreateShipmentForOrder(ctx context.Context, orderID int64, dest gateway.Destination) (db.ShippingShipment, error)
+	CreateShipmentForOrder(ctx context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error)
 }
 
 type Consumer struct {
@@ -144,11 +144,11 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		return err
 	}
 	// (ADR-[[202606301000]])
-	dest, err := c.order.FetchDestination(ctx, orderID.Int64())
+	dest, err := c.order.FetchDestination(ctx, orderID)
 	if err != nil {
 		return err
 	}
-	_, err = c.creator.CreateShipmentForOrder(ctx, orderID.Int64(), dest)
+	_, err = c.creator.CreateShipmentForOrder(ctx, orderID, dest)
 	if errors.Is(err, dberr.ErrConflict) {
 		return nil
 	}

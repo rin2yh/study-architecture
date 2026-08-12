@@ -21,7 +21,7 @@ import (
 const cancelConsumerGroup = "shipping-cancel"
 
 type ShipmentCanceller interface {
-	CancelShipmentForOrder(ctx context.Context, orderID int64) error
+	CancelShipmentForOrder(ctx context.Context, orderID order.ID) error
 }
 
 type CancelConsumer struct {
@@ -128,5 +128,5 @@ func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) erro
 	if err != nil {
 		return err
 	}
-	return c.canceller.CancelShipmentForOrder(ctx, orderID.Int64())
+	return c.canceller.CancelShipmentForOrder(ctx, orderID)
 }

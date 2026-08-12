@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
@@ -24,10 +25,10 @@ type creatorStub struct {
 	err     error
 }
 
-func (s *creatorStub) CreateShipmentForOrder(_ context.Context, orderID int64, dest gateway.Destination) (db.ShippingShipment, error) {
-	s.got = append(s.got, orderID)
+func (s *creatorStub) CreateShipmentForOrder(_ context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error) {
+	s.got = append(s.got, orderID.Int64())
 	s.gotDest = append(s.gotDest, dest)
-	return db.ShippingShipment{OrderID: orderID}, s.err
+	return db.ShippingShipment{OrderID: orderID.Int64()}, s.err
 }
 
 type orderStub struct {
@@ -35,7 +36,7 @@ type orderStub struct {
 	err  error
 }
 
-func (s *orderStub) FetchDestination(_ context.Context, _ int64) (gateway.Destination, error) {
+func (s *orderStub) FetchDestination(_ context.Context, _ order.ID) (gateway.Destination, error) {
 	return s.dest, s.err
 }
 

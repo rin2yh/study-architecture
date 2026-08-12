@@ -8,7 +8,8 @@ import (
 	"os"
 
 	"github.com/rin2yh/study-architecture/server/internal/httpx/resilience"
-	"github.com/rin2yh/study-architecture/server/shipping/internal/client/order"
+	"github.com/rin2yh/study-architecture/server/internal/order"
+	orderapi "github.com/rin2yh/study-architecture/server/shipping/internal/client/order"
 )
 
 var ErrUpstream = errors.New("upstream service error")
@@ -23,11 +24,11 @@ type Destination struct {
 }
 
 type OrderPort interface {
-	FetchDestination(ctx context.Context, orderID int64) (Destination, error)
+	FetchDestination(ctx context.Context, orderID order.ID) (Destination, error)
 }
 
 type OrderClient struct {
-	c order.ClientWithResponsesInterface
+	c orderapi.ClientWithResponsesInterface
 }
 
 var _ OrderPort = (*OrderClient)(nil)
@@ -37,20 +38,20 @@ func NewOrderClient() (*OrderClient, error) {
 	if base == "" {
 		return nil, errors.New("ORDER_API_URL is required")
 	}
-	c, err := order.NewClientWithResponses(base, order.WithHTTPClient(resilience.NewClient("shipping->order")))
+	c, err := orderapi.NewClientWithResponses(base, orderapi.WithHTTPClient(resilience.NewClient("shipping->order")))
 	if err != nil {
 		return nil, err
 	}
 	return &OrderClient{c: c}, nil
 }
 
-func (o *OrderClient) FetchDestination(ctx context.Context, orderID int64) (Destination, error) {
-	res, err := o.c.GetOrderWithResponse(ctx, orderID)
+func (o *OrderClient) FetchDestination(ctx context.Context, orderID order.ID) (Destination, error) {
+	res, err := o.c.GetOrderWithResponse(ctx, orderID.Int64())
 	if err != nil {
-		return Destination{}, fmt.Errorf("%w: get order %d: %v", ErrUpstream, orderID, err)
+		return Destination{}, fmt.Errorf("%w: get order %d: %v", ErrUpstream, orderID.Int64(), err)
 	}
 	if res.JSON200 == nil {
-		return Destination{}, fmt.Errorf("%w: get order %d returned %d", ErrUpstream, orderID, res.StatusCode())
+		return Destination{}, fmt.Errorf("%w: get order %d returned %d", ErrUpstream, orderID.Int64(), res.StatusCode())
 	}
 	addr := res.JSON200.ShippingAddress
 	if addr == nil {

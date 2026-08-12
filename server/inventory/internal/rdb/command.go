@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/db"
 )
 
@@ -66,8 +67,8 @@ func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []R
 	return tx.Commit(ctx)
 }
 
-func (r *InventoryCommand) ConfirmReservationsByOrder(ctx context.Context, orderID int64) error {
-	return r.q.ConfirmReservationsByOrder(ctx, orderID)
+func (r *InventoryCommand) ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error {
+	return r.q.ConfirmReservationsByOrder(ctx, orderID.Int64())
 }
 
 func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
@@ -76,7 +77,7 @@ func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, order
 
 // CompensateByOrder は order.cancelled の補償。未確定は解放・確定済みは cancelled_at で戻す
 // (冪等。ADR-[[202606281000]] / ADR-[[202606261214]])。
-func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID int64) error {
+func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID order.ID) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -84,10 +85,10 @@ func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID int64)
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
-	if err := qtx.ReleaseReservationsByOrder(ctx, orderID); err != nil {
+	if err := qtx.ReleaseReservationsByOrder(ctx, orderID.Int64()); err != nil {
 		return err
 	}
-	if err := qtx.CancelConfirmedReservationsByOrder(ctx, orderID); err != nil {
+	if err := qtx.CancelConfirmedReservationsByOrder(ctx, orderID.Int64()); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

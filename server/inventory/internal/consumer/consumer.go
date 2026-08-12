@@ -27,7 +27,7 @@ const (
 var tracer = otel.Tracer("inventory-worker")
 
 type ReservationConfirmer interface {
-	ConfirmReservationsByOrder(ctx context.Context, orderID int64) error
+	ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type Consumer struct {
@@ -135,5 +135,5 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		return err
 	}
 	// 確定は ON CONFLICT DO NOTHING で冪等。再配信は no-op で ack される (ADR-[[202606261214]])。
-	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID.Int64())
+	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID)
 }
