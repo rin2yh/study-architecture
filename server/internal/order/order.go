@@ -29,8 +29,8 @@ func Parse(raw string) (ID, error) {
 }
 
 // パース不能な payload は握り潰さず error にして DLQ へ委ねる (ADR-[[202607301418]])。
-func IDFrom(values map[string]any) (ID, error) {
-	raw, _ := values[FieldID].(string)
+func IDFromEvent(event map[string]any) (ID, error) {
+	raw, _ := event[FieldID].(string)
 	return Parse(raw)
 }
 

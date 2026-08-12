@@ -61,7 +61,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestIDFrom(t *testing.T) {
+func TestIDFromEvent(t *testing.T) {
 	type want struct {
 		id      int64
 		wantErr bool
@@ -77,12 +77,12 @@ func TestIDFrom(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := order.IDFrom(tt.values)
+			got, err := order.IDFromEvent(tt.values)
 			if (err != nil) != tt.want.wantErr {
-				t.Fatalf("IDFrom() error = %v, wantErr %v", err, tt.want.wantErr)
+				t.Fatalf("IDFromEvent() error = %v, wantErr %v", err, tt.want.wantErr)
 			}
 			if got.Int64() != tt.want.id {
-				t.Fatalf("IDFrom() = %d, want %d", got.Int64(), tt.want.id)
+				t.Fatalf("IDFromEvent() = %d, want %d", got.Int64(), tt.want.id)
 			}
 		})
 	}

@@ -124,7 +124,7 @@ func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) erro
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	orderID, err := order.IDFrom(values)
+	orderID, err := order.IDFromEvent(values)
 	if err != nil {
 		return err
 	}
