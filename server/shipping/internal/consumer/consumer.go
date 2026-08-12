@@ -15,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
@@ -139,16 +138,16 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	orderID, err := order.IDFrom(values)
+	orderID, err := paymentevent.OrderID(values)
 	if err != nil {
 		return err
 	}
 	// (ADR-[[202606301000]])
-	dest, err := c.order.FetchDestination(ctx, orderID.Int64())
+	dest, err := c.order.FetchDestination(ctx, orderID)
 	if err != nil {
 		return err
 	}
-	_, err = c.creator.CreateShipmentForOrder(ctx, orderID.Int64(), dest)
+	_, err = c.creator.CreateShipmentForOrder(ctx, orderID, dest)
 	if errors.Is(err, dberr.ErrConflict) {
 		return nil
 	}

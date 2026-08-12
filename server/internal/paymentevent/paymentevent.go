@@ -5,12 +5,12 @@ package paymentevent
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/rin2yh/study-architecture/server/internal/order"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 const (
 	FieldEvent       = "event"
 	FieldPaymentID   = "paymentId"
-	FieldOrderID     = order.FieldID
+	FieldOrderID     = "orderId"
 	FieldAmountCents = "amountCents"
 	// W3C propagator が使うキー。伝播フィールドは traceparent のみで秘匿情報は混ぜない
 	// (ADR-[[202606250159]] / ADR-[[202606250141]])。
@@ -30,7 +30,7 @@ const (
 
 type Settled struct {
 	PaymentID   int64
-	OrderID     order.ID
+	OrderID     int64
 	AmountCents int64
 }
 
@@ -42,7 +42,7 @@ func (s Settled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:       TypeSettled,
 		FieldPaymentID:   s.PaymentID,
-		FieldOrderID:     s.OrderID.Int64(),
+		FieldOrderID:     s.OrderID,
 		FieldAmountCents: s.AmountCents,
 	}
 }
@@ -60,6 +60,17 @@ func Inject(ctx context.Context, values map[string]any) {
 	if tp := Traceparent(ctx); tp != "" {
 		values[FieldTraceparent] = tp
 	}
+}
+
+// OrderID は values の orderId を数値へ戻す。パース不能な payload は握り潰さず error にして DLQ へ
+// 委ねる (ADR-[[202607301418]])。
+func OrderID(values map[string]any) (int64, error) {
+	raw, _ := values[FieldOrderID].(string)
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid orderId %q: %w", raw, err)
+	}
+	return id, nil
 }
 
 // LinkFrom は consumer 側で values の traceparent を span link に変換する。発行と消費を親子でなく

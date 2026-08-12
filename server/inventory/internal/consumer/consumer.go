@@ -14,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -130,10 +129,10 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	orderID, err := order.IDFrom(values)
+	orderID, err := paymentevent.OrderID(values)
 	if err != nil {
 		return err
 	}
 	// 確定は ON CONFLICT DO NOTHING で冪等。再配信は no-op で ack される (ADR-[[202606261214]])。
-	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID.Int64())
+	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID)
 }

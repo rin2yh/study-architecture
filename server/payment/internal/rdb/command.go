@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
-	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
@@ -73,11 +72,7 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
 	}
-	orderID, err := order.New(row.OrderID)
-	if err != nil {
-		return db.PaymentPayment{}, err
-	}
-	ev := paymentevent.Settled{PaymentID: row.ID, OrderID: orderID, AmountCents: row.AmountCents}
+	ev := paymentevent.Settled{PaymentID: row.ID, OrderID: row.OrderID, AmountCents: row.AmountCents}
 	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, u.Traceparent, ev); err != nil {
 		return db.PaymentPayment{}, err
 	}
