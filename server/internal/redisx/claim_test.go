@@ -1,4 +1,4 @@
-package redisx_test
+package redisx
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
-
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
 const (
@@ -76,7 +74,7 @@ func TestClaimPending(t *testing.T) {
 		processed int
 		pending   int64
 	}
-	elapsed := redisx.ClaimMinIdle + time.Second
+	elapsed := ClaimMinIdle + time.Second
 	tests := []struct {
 		name string
 		args args
@@ -89,7 +87,7 @@ func TestClaimPending(t *testing.T) {
 		},
 		{
 			"準正常系 min-idle 未経過は処理中とみなし引き取らない",
-			args{[]map[string]any{settled}, redisx.ClaimMinIdle / 3, nil},
+			args{[]map[string]any{settled}, ClaimMinIdle / 3, nil},
 			want{0, 1},
 		},
 		{
@@ -109,7 +107,7 @@ func TestClaimPending(t *testing.T) {
 			mr.SetTime(base.Add(tt.args.idleFor))
 
 			var got []string
-			err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
+			err := ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
 				func(_ context.Context, _ string, values map[string]any) error {
 					got = append(got, values["orderId"].(string))
 					return tt.args.processErr
@@ -133,9 +131,9 @@ func TestClaimPending(t *testing.T) {
 func claimUntilDLQ(t *testing.T, mr *miniredis.Miniredis, rc *redis.Client) int {
 	t.Helper()
 	processed := 0
-	for i := 1; i <= redisx.MaxDeliveries; i++ {
-		mr.SetTime(base.Add(time.Duration(i) * (redisx.ClaimMinIdle + time.Second)))
-		err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
+	for i := 1; i <= maxDeliveries; i++ {
+		mr.SetTime(base.Add(time.Duration(i) * (ClaimMinIdle + time.Second)))
+		err := ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
 			func(context.Context, string, map[string]any) error {
 				processed++
 				return errors.New("still down")
@@ -153,7 +151,7 @@ func TestClaimPendingDeadLettersAtMaxDeliveries(t *testing.T) {
 	processed := claimUntilDLQ(t, mr, rc)
 
 	// 1 回目の配送は newPending の XReadGroup が消費している。
-	if want := redisx.MaxDeliveries - 1; processed != want {
+	if want := maxDeliveries - 1; processed != want {
 		t.Fatalf("processed = %d, want %d", processed, want)
 	}
 	if n := pendingCount(t, rc); n != 0 {
@@ -168,10 +166,10 @@ func TestClaimPendingDrainsBeyondOneBatch(t *testing.T) {
 		values = append(values, map[string]any{"event": "payment.settled", "orderId": fmt.Sprint(i)})
 	}
 	mr, rc := newPending(t, values...)
-	mr.SetTime(base.Add(redisx.ClaimMinIdle + time.Second))
+	mr.SetTime(base.Add(ClaimMinIdle + time.Second))
 
 	processed := 0
-	err := redisx.ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
+	err := ClaimPending(t.Context(), rc, testStream, testGroup, nextWorker,
 		func(_ context.Context, _ string, _ map[string]any) error {
 			processed++
 			return nil
@@ -190,11 +188,11 @@ func TestClaimPendingDrainsBeyondOneBatch(t *testing.T) {
 
 func TestClaimPendingStopsOnCanceledContext(t *testing.T) {
 	mr, rc := newPending(t, settled)
-	mr.SetTime(base.Add(redisx.ClaimMinIdle + time.Second))
+	mr.SetTime(base.Add(ClaimMinIdle + time.Second))
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	err := redisx.ClaimPending(ctx, rc, testStream, testGroup, nextWorker,
+	err := ClaimPending(ctx, rc, testStream, testGroup, nextWorker,
 		func(_ context.Context, _ string, _ map[string]any) error { return nil })
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("ClaimPending() = %v, want context.Canceled", err)

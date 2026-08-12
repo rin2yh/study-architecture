@@ -13,38 +13,38 @@ import (
 
 // DB 再起動程度の一過性障害では正常なメッセージを退避させない値に取る (隔離までの猶予は
 // ClaimMinIdle 倍で効く: ADR-[[202607301418]])。
-const MaxDeliveries = 10
+const maxDeliveries = 10
 
 const (
 	dlqPrefix = "dlq:"
 	// 元メッセージの値をそのまま複製するため、退避時のメタ情報は接頭辞付きのキーに逃がす。
-	FieldDLQSourceID   = "dlqSourceId"
-	FieldDLQDeliveries = "dlqDeliveries"
+	fieldDLQSourceID   = "dlqSourceId"
+	fieldDLQDeliveries = "dlqDeliveries"
 )
 
 // メッセージごとに引かないよう保持する。otel の global は遅延差し替えに対応するので、
 // MeterProvider 設定前に取得しても問題ない。
 var meter = otel.Meter("redisx")
 
-// DLQStream は stream / group に対応する退避先ストリーム名を返す。stream だけでなく group でも
+// dlqStream は stream / group に対応する退避先ストリーム名を返す。stream だけでなく group でも
 // 分けるのは、同じ stream を複数 group が読むため (ADR-[[202607301418]])。
-func DLQStream(stream, group string) string {
+func dlqStream(stream, group string) string {
 	return dlqPrefix + stream + ":" + group
 }
 
 func deadLetter(ctx context.Context, rdb *redis.Client, stream, group string, m redis.XMessage, deliveries int64) error {
 	values := make(map[string]any, len(m.Values)+2)
 	maps.Copy(values, m.Values)
-	values[FieldDLQSourceID] = m.ID
-	values[FieldDLQDeliveries] = deliveries
-	return rdb.XAdd(ctx, &redis.XAddArgs{Stream: DLQStream(stream, group), Values: values}).Err()
+	values[fieldDLQSourceID] = m.ID
+	values[fieldDLQDeliveries] = deliveries
+	return rdb.XAdd(ctx, &redis.XAddArgs{Stream: dlqStream(stream, group), Values: values}).Err()
 }
 
 // 消費者のいない DLQ は自分では減らないので、退避の発生回数でなく滞留量で見る
 // (ADR-[[202607301418]])。
 // 計装の失敗は呼び出し側では扱えないので、ここでログに残して縮退する (ADR-[[202606261216]])。
 func ObserveDLQDepth(rdb *redis.Client, stream, group string) {
-	dlq := DLQStream(stream, group)
+	dlq := dlqStream(stream, group)
 	if err := registerDLQDepth(rdb, dlq, group); err != nil {
 		slog.Warn("redisx: dlq depth gauge unavailable", "dlq", dlq, "error", err)
 	}
