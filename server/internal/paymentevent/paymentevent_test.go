@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 )
 
@@ -34,7 +35,11 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
 
-	values := paymentevent.Settled{PaymentID: 1, OrderID: 2, AmountCents: 300}.Values()
+	id, err := order.New(2)
+	if err != nil {
+		t.Fatalf("order.New: %v", err)
+	}
+	values := paymentevent.Settled{PaymentID: 1, OrderID: id, AmountCents: 300}.Values()
 	paymentevent.Inject(ctx, values)
 
 	if _, ok := values[paymentevent.FieldTraceparent].(string); !ok {

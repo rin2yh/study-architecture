@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 )
 
@@ -35,7 +36,11 @@ func TestTraceparentLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
 
-	values := orderevent.Cancelled{OrderID: 20}.Values()
+	id, err := order.New(20)
+	if err != nil {
+		t.Fatalf("order.New: %v", err)
+	}
+	values := orderevent.Cancelled{OrderID: id}.Values()
 	values[orderevent.FieldTraceparent] = orderevent.Traceparent(ctx)
 
 	link := orderevent.LinkFrom(context.Background(), values)

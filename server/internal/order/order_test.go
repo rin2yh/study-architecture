@@ -8,7 +8,7 @@ import (
 
 func TestNew(t *testing.T) {
 	type want struct {
-		id      order.ID
+		id      int64
 		wantErr bool
 	}
 	tests := []struct {
@@ -26,8 +26,8 @@ func TestNew(t *testing.T) {
 			if (err != nil) != tt.want.wantErr {
 				t.Fatalf("New() error = %v, wantErr %v", err, tt.want.wantErr)
 			}
-			if got != tt.want.id {
-				t.Fatalf("New() = %d, want %d", got, tt.want.id)
+			if got.Int64() != tt.want.id {
+				t.Fatalf("New() = %d, want %d", got.Int64(), tt.want.id)
 			}
 		})
 	}
@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	type want struct {
-		id      order.ID
+		id      int64
 		wantErr bool
 	}
 	tests := []struct {
@@ -54,8 +54,8 @@ func TestParse(t *testing.T) {
 			if (err != nil) != tt.want.wantErr {
 				t.Fatalf("Parse() error = %v, wantErr %v", err, tt.want.wantErr)
 			}
-			if got != tt.want.id {
-				t.Fatalf("Parse() = %d, want %d", got, tt.want.id)
+			if got.Int64() != tt.want.id {
+				t.Fatalf("Parse() = %d, want %d", got.Int64(), tt.want.id)
 			}
 		})
 	}
@@ -63,7 +63,7 @@ func TestParse(t *testing.T) {
 
 func TestIDFrom(t *testing.T) {
 	type want struct {
-		id      order.ID
+		id      int64
 		wantErr bool
 	}
 	tests := []struct {
@@ -81,8 +81,8 @@ func TestIDFrom(t *testing.T) {
 			if (err != nil) != tt.want.wantErr {
 				t.Fatalf("IDFrom() error = %v, wantErr %v", err, tt.want.wantErr)
 			}
-			if got != tt.want.id {
-				t.Fatalf("IDFrom() = %d, want %d", got, tt.want.id)
+			if got.Int64() != tt.want.id {
+				t.Fatalf("IDFrom() = %d, want %d", got.Int64(), tt.want.id)
 			}
 		})
 	}
