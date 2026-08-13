@@ -36,7 +36,7 @@ func TestTraceparentLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
 
-	id, err := order.New(20)
+	id, err := order.Parse("20")
 	if err != nil {
 		t.Fatalf("order.New: %v", err)
 	}

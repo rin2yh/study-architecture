@@ -3,6 +3,8 @@ package rdb
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -68,7 +70,11 @@ func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []R
 }
 
 func (r *InventoryCommand) ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error {
-	return r.q.ConfirmReservationsByOrder(ctx, orderID.Int64())
+	id, err := toInt64(orderID.String())
+	if err != nil {
+		return err
+	}
+	return r.q.ConfirmReservationsByOrder(ctx, id)
 }
 
 func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
@@ -84,11 +90,15 @@ func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID order.
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qtx := db.New(tx)
-	if err := qtx.ReleaseReservationsByOrder(ctx, orderID.Int64()); err != nil {
+	id, err := toInt64(orderID.String())
+	if err != nil {
 		return err
 	}
-	if err := qtx.CancelConfirmedReservationsByOrder(ctx, orderID.Int64()); err != nil {
+	qtx := db.New(tx)
+	if err := qtx.ReleaseReservationsByOrder(ctx, id); err != nil {
+		return err
+	}
+	if err := qtx.CancelConfirmedReservationsByOrder(ctx, id); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -96,4 +106,14 @@ func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID order.
 
 func (r *InventoryCommand) ExpireReservations(ctx context.Context) error {
 	return r.q.ExpireReservations(ctx)
+}
+
+// ID を数値へ戻すのはここだけ。列と生成コードが bigint / int64 なのはこの層の事情で、
+// ドメインの order.ID は表現を持たない。
+func toInt64(raw string) (int64, error) {
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid id %q: %w", raw, err)
+	}
+	return v, nil
 }

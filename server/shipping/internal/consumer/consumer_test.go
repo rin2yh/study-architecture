@@ -20,15 +20,15 @@ import (
 var fullDest = gateway.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
 
 type creatorStub struct {
-	got     []int64
+	got     []string
 	gotDest []gateway.Destination
 	err     error
 }
 
 func (s *creatorStub) CreateShipmentForOrder(_ context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error) {
-	s.got = append(s.got, orderID.Int64())
+	s.got = append(s.got, orderID.String())
 	s.gotDest = append(s.gotDest, dest)
-	return db.ShippingShipment{OrderID: orderID.Int64()}, s.err
+	return db.ShippingShipment{}, s.err
 }
 
 type orderStub struct {
@@ -71,7 +71,7 @@ func TestReadAndProcess(t *testing.T) {
 		creatorErr error
 	}
 	type want struct {
-		gotOrderIDs []int64
+		gotOrderIDs []string
 		gotDest     gateway.Destination
 		pending     int64
 	}
@@ -84,12 +84,12 @@ func TestReadAndProcess(t *testing.T) {
 		{
 			"正常系 payment.settled で order から宛先を引き手配し ack する",
 			args{settled, fullDest, nil, nil},
-			want{[]int64{20}, fullDest, 0},
+			want{[]string{"20"}, fullDest, 0},
 		},
 		{
 			"準正常系 既に手配済み (ErrConflict) でも冪等に ack する",
 			args{settled, fullDest, nil, dberr.ErrConflict},
-			want{[]int64{20}, fullDest, 0},
+			want{[]string{"20"}, fullDest, 0},
 		},
 		{
 			"準正常系 関心外イベントは order を引かず手配せず ack する",
@@ -109,7 +109,7 @@ func TestReadAndProcess(t *testing.T) {
 		{
 			"異常系 手配が他のエラーなら ack せず pending に残す",
 			args{settled, fullDest, nil, errors.New("db down")},
-			want{[]int64{20}, fullDest, 1},
+			want{[]string{"20"}, fullDest, 1},
 		},
 	}
 	for _, tt := range tests {

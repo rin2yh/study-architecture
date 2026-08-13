@@ -5,6 +5,7 @@ package paymentevent
 
 import (
 	"context"
+	"strconv"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -36,13 +37,13 @@ type Settled struct {
 
 func (s Settled) EventType() string { return TypeSettled }
 
-func (s Settled) AggregateID() int64 { return s.PaymentID }
+func (s Settled) AggregateID() string { return strconv.FormatInt(s.PaymentID, 10) }
 
 func (s Settled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:       TypeSettled,
 		FieldPaymentID:   s.PaymentID,
-		FieldOrderID:     s.OrderID.Int64(),
+		FieldOrderID:     s.OrderID.String(),
 		FieldAmountCents: s.AmountCents,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/rin2yh/study-architecture/server/internal/httpx/resilience"
 	"github.com/rin2yh/study-architecture/server/internal/order"
@@ -46,12 +47,17 @@ func NewOrderClient() (*OrderClient, error) {
 }
 
 func (o *OrderClient) FetchDestination(ctx context.Context, orderID order.ID) (Destination, error) {
-	res, err := o.c.GetOrderWithResponse(ctx, orderID.Int64())
+	// 生成クライアントが int64 を受けるのはこの層の事情で、ドメインの order.ID は表現を持たない。
+	id, err := strconv.ParseInt(orderID.String(), 10, 64)
 	if err != nil {
-		return Destination{}, fmt.Errorf("%w: get order %d: %v", ErrUpstream, orderID.Int64(), err)
+		return Destination{}, fmt.Errorf("%w: invalid order id %q: %v", ErrUpstream, orderID, err)
+	}
+	res, err := o.c.GetOrderWithResponse(ctx, id)
+	if err != nil {
+		return Destination{}, fmt.Errorf("%w: get order %s: %v", ErrUpstream, orderID, err)
 	}
 	if res.JSON200 == nil {
-		return Destination{}, fmt.Errorf("%w: get order %d returned %d", ErrUpstream, orderID.Int64(), res.StatusCode())
+		return Destination{}, fmt.Errorf("%w: get order %s returned %d", ErrUpstream, orderID, res.StatusCode())
 	}
 	addr := res.JSON200.ShippingAddress
 	if addr == nil {

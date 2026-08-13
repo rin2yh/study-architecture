@@ -2,6 +2,8 @@ package rdb
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -24,8 +26,12 @@ func (r *ShipmentCommand) CreateShipment(ctx context.Context, arg db.CreateShipm
 }
 
 func (r *ShipmentCommand) CreateShipmentForOrder(ctx context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error) {
+	id, err := toInt64(orderID.String())
+	if err != nil {
+		return db.ShippingShipment{}, err
+	}
 	row, err := r.q.CreateShipmentForOrder(ctx, db.CreateShipmentForOrderParams{
-		OrderID:        orderID.Int64(),
+		OrderID:        id,
 		ShipRecipient:  dest.Recipient,
 		ShipPostalCode: dest.PostalCode,
 		ShipPrefecture: dest.Prefecture,
@@ -44,5 +50,19 @@ func (r *ShipmentCommand) UpdateShipment(ctx context.Context, arg db.UpdateShipm
 }
 
 func (r *ShipmentCommand) CancelShipmentForOrder(ctx context.Context, orderID order.ID) error {
-	return r.q.CancelShipmentForOrder(ctx, orderID.Int64())
+	id, err := toInt64(orderID.String())
+	if err != nil {
+		return err
+	}
+	return r.q.CancelShipmentForOrder(ctx, id)
+}
+
+// ID を数値へ戻すのはここだけ。列と生成コードが bigint / int64 なのはこの層の事情で、
+// ドメインの order.ID は表現を持たない。
+func toInt64(raw string) (int64, error) {
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid id %q: %w", raw, err)
+	}
+	return v, nil
 }

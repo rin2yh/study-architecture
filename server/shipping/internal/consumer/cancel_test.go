@@ -15,12 +15,12 @@ import (
 )
 
 type cancellerStub struct {
-	got []int64
+	got []string
 	err error
 }
 
 func (s *cancellerStub) CancelShipmentForOrder(_ context.Context, orderID order.ID) error {
-	s.got = append(s.got, orderID.Int64())
+	s.got = append(s.got, orderID.String())
 	return s.err
 }
 
@@ -52,7 +52,7 @@ func TestCancelReadAndProcess(t *testing.T) {
 		cancelErr error
 	}
 	type want struct {
-		gotOrderIDs []int64
+		gotOrderIDs []string
 		pending     int64
 	}
 	tests := []struct {
@@ -63,7 +63,7 @@ func TestCancelReadAndProcess(t *testing.T) {
 		{
 			"正常系 order.cancelled で配送中止し ack する",
 			args{map[string]any{"event": "order.cancelled", "orderId": "20"}, nil},
-			want{[]int64{20}, 0},
+			want{[]string{"20"}, 0},
 		},
 		{
 			"準正常系 関心外イベントは中止せず ack する",
@@ -78,7 +78,7 @@ func TestCancelReadAndProcess(t *testing.T) {
 		{
 			"異常系 中止が他のエラーなら ack せず pending に残す",
 			args{map[string]any{"event": "order.cancelled", "orderId": "20"}, errors.New("db down")},
-			want{[]int64{20}, 1},
+			want{[]string{"20"}, 1},
 		},
 	}
 	for _, tt := range tests {

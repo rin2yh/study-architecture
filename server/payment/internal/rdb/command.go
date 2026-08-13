@@ -3,6 +3,8 @@ package rdb
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -17,8 +19,12 @@ import (
 type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
+	aggregateID, err := toInt64(row.AggregateID)
+	if err != nil {
+		return err
+	}
 	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
-		AggregateID: row.AggregateID,
+		AggregateID: aggregateID,
 		EventType:   row.EventType,
 		Payload:     row.Payload,
 		Traceparent: row.Traceparent,
@@ -73,7 +79,7 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
 	}
-	orderID, err := order.New(row.OrderID)
+	orderID, err := order.Parse(strconv.FormatInt(row.OrderID, 10))
 	if err != nil {
 		return db.PaymentPayment{}, err
 	}
@@ -96,12 +102,26 @@ func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID order.ID) er
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qtx := db.New(tx)
-	if err := qtx.RefundPaymentByOrder(ctx, orderID.Int64()); err != nil {
+	id, err := toInt64(orderID.String())
+	if err != nil {
 		return err
 	}
-	if err := qtx.VoidPendingPaymentByOrder(ctx, orderID.Int64()); err != nil {
+	qtx := db.New(tx)
+	if err := qtx.RefundPaymentByOrder(ctx, id); err != nil {
+		return err
+	}
+	if err := qtx.VoidPendingPaymentByOrder(ctx, id); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// ID を数値へ戻すのはここだけ。列と生成コードが bigint / int64 なのはこの層の事情で、
+// ドメインの order.ID は表現を持たない。
+func toInt64(raw string) (int64, error) {
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid id %q: %w", raw, err)
+	}
+	return v, nil
 }

@@ -35,7 +35,7 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
 
-	id, err := order.New(2)
+	id, err := order.Parse("2")
 	if err != nil {
 		t.Fatalf("order.New: %v", err)
 	}

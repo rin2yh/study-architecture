@@ -33,12 +33,12 @@ type Cancelled struct {
 
 func (c Cancelled) EventType() string { return TypeCancelled }
 
-func (c Cancelled) AggregateID() int64 { return c.OrderID.Int64() }
+func (c Cancelled) AggregateID() string { return c.OrderID.String() }
 
 func (c Cancelled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:   TypeCancelled,
-		FieldOrderID: c.OrderID.Int64(),
+		FieldOrderID: c.OrderID.String(),
 	}
 }
 
