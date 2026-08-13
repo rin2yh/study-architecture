@@ -5,13 +5,13 @@ package paymentevent
 
 import (
 	"context"
-	"strconv"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/order"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 )
 
 const (
@@ -37,7 +37,7 @@ type Settled struct {
 
 func (s Settled) EventType() string { return TypeSettled }
 
-func (s Settled) AggregateID() string { return strconv.FormatInt(s.PaymentID, 10) }
+func (s Settled) AggregateID() string { return strconvx.FormatInt64(s.PaymentID) }
 
 func (s Settled) Values() map[string]any {
 	return map[string]any{

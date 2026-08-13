@@ -4,7 +4,8 @@ package order
 
 import (
 	"fmt"
-	"strconv"
+
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 )
 
 const FieldID = "orderId"
@@ -14,7 +15,7 @@ type ID struct{ v int64 }
 
 // 採番は 1 始まりなので、0 以下は「未設定のまま渡された」ことを意味する。
 func Parse(raw string) (ID, error) {
-	v, err := strconv.ParseInt(raw, 10, 64)
+	v, err := strconvx.ParseInt64(raw)
 	if err != nil {
 		return ID{}, fmt.Errorf("invalid orderId %q: %w", raw, err)
 	}
@@ -30,4 +31,4 @@ func ParseIDFromEvent(event map[string]any) (ID, error) {
 	return Parse(raw)
 }
 
-func (id ID) String() string { return strconv.FormatInt(id.v, 10) }
+func (id ID) String() string { return strconvx.FormatInt64(id.v) }

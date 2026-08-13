@@ -3,7 +3,6 @@ package rdb
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -95,7 +94,7 @@ func (r *OrderCommand) CancelOrder(ctx context.Context, id int64, traceparent st
 	if err != nil {
 		return db.OrderOrder{}, err
 	}
-	orderID, err := order.Parse(strconv.FormatInt(cancelled.ID, 10))
+	orderID, err := order.Parse(strconvx.FormatInt64(cancelled.ID))
 	if err != nil {
 		return db.OrderOrder{}, err
 	}

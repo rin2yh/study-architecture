@@ -3,7 +3,6 @@ package rdb
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -75,7 +74,7 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
 	}
-	orderID, err := order.Parse(strconv.FormatInt(row.OrderID, 10))
+	orderID, err := order.Parse(strconvx.FormatInt64(row.OrderID))
 	if err != nil {
 		return db.PaymentPayment{}, err
 	}
