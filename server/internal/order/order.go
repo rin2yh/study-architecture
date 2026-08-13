@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-// FieldID は注文 ID を wire に載せるときのキー。
 const FieldID = "orderId"
 
 // 検証を通らない値の混入を型で禁じるため。
