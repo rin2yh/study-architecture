@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rin2yh/study-architecture/server/internal/order"
+	"github.com/rin2yh/study-architecture/server/internal/test/orderid"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
 
@@ -57,7 +57,7 @@ func TestOrderClientFetchDestination(t *testing.T) {
 				t.Fatalf("NewOrderClient: %v", err)
 			}
 
-			got, err := c.FetchDestination(t.Context(), mustOrderID(t, "20"))
+			got, err := c.FetchDestination(t.Context(), orderid.Must(t, "20"))
 			if tt.want.wantErr {
 				if !errors.Is(err, tt.want.errIs) {
 					t.Fatalf("err = %v, want errors.Is %v", err, tt.want.errIs)
@@ -83,16 +83,7 @@ func TestOrderClientFetchDestinationTransportError(t *testing.T) {
 	}
 	srv.Close()
 
-	if _, err := c.FetchDestination(t.Context(), mustOrderID(t, "20")); !errors.Is(err, gateway.ErrUpstream) {
+	if _, err := c.FetchDestination(t.Context(), orderid.Must(t, "20")); !errors.Is(err, gateway.ErrUpstream) {
 		t.Fatalf("err = %v, want ErrUpstream", err)
 	}
-}
-
-func mustOrderID(t *testing.T, raw string) order.ID {
-	t.Helper()
-	id, err := order.Parse(raw)
-	if err != nil {
-		t.Fatalf("order.Parse(%q): %v", raw, err)
-	}
-	return id
 }

@@ -26,7 +26,7 @@ func (r *ShipmentCommand) CreateShipment(ctx context.Context, arg db.CreateShipm
 
 func (r *ShipmentCommand) CreateShipmentForOrder(ctx context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error) {
 	row, err := r.q.CreateShipmentForOrder(ctx, db.CreateShipmentForOrderParams{
-		OrderID:        strconvx.MustInt64(orderID.String()),
+		OrderID:        strconvx.MustParseInt64(orderID.String()),
 		ShipRecipient:  dest.Recipient,
 		ShipPostalCode: dest.PostalCode,
 		ShipPrefecture: dest.Prefecture,
@@ -45,5 +45,5 @@ func (r *ShipmentCommand) UpdateShipment(ctx context.Context, arg db.UpdateShipm
 }
 
 func (r *ShipmentCommand) CancelShipmentForOrder(ctx context.Context, orderID order.ID) error {
-	return r.q.CancelShipmentForOrder(ctx, strconvx.MustInt64(orderID.String()))
+	return r.q.CancelShipmentForOrder(ctx, strconvx.MustParseInt64(orderID.String()))
 }

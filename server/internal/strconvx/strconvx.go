@@ -16,7 +16,7 @@ func FormatInt64(v int64) string {
 }
 
 // 呼び出し側が扱えない失敗を error にしないための契約。検証済みの値しか渡らない箇所に限って使う。
-func MustInt64(raw string) int64 {
+func MustParseInt64(raw string) int64 {
 	v, err := ParseInt64(raw)
 	if err != nil {
 		panic(fmt.Sprintf("strconvx: invalid int64 %q: %v", raw, err))

@@ -47,7 +47,7 @@ func NewOrderClient() (*OrderClient, error) {
 }
 
 func (o *OrderClient) FetchDestination(ctx context.Context, orderID order.ID) (Destination, error) {
-	res, err := o.c.GetOrderWithResponse(ctx, strconvx.MustInt64(orderID.String()))
+	res, err := o.c.GetOrderWithResponse(ctx, strconvx.MustParseInt64(orderID.String()))
 	if err != nil {
 		return Destination{}, fmt.Errorf("%w: get order %s: %v", ErrUpstream, orderID, err)
 	}

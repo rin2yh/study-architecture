@@ -19,7 +19,7 @@ type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
 	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
-		AggregateID: strconvx.MustInt64(row.AggregateID),
+		AggregateID: strconvx.MustParseInt64(row.AggregateID),
 		EventType:   row.EventType,
 		Payload:     row.Payload,
 		Traceparent: row.Traceparent,

@@ -53,7 +53,7 @@ func TestFormatInt64(t *testing.T) {
 	}
 }
 
-func TestMustInt64(t *testing.T) {
+func TestMustParseInt64(t *testing.T) {
 	type want struct {
 		v         int64
 		wantPanic bool
@@ -76,8 +76,8 @@ func TestMustInt64(t *testing.T) {
 					t.Fatalf("panic = %v, wantPanic %v", r, tt.want.wantPanic)
 				}
 			}()
-			if got := strconvx.MustInt64(tt.raw); got != tt.want.v {
-				t.Fatalf("MustInt64() = %d, want %d", got, tt.want.v)
+			if got := strconvx.MustParseInt64(tt.raw); got != tt.want.v {
+				t.Fatalf("MustParseInt64() = %d, want %d", got, tt.want.v)
 			}
 		})
 	}

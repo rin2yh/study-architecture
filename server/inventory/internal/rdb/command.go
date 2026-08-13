@@ -69,7 +69,7 @@ func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []R
 }
 
 func (r *InventoryCommand) ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error {
-	return r.q.ConfirmReservationsByOrder(ctx, strconvx.MustInt64(orderID.String()))
+	return r.q.ConfirmReservationsByOrder(ctx, strconvx.MustParseInt64(orderID.String()))
 }
 
 func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
@@ -85,7 +85,7 @@ func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID order.
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	id := strconvx.MustInt64(orderID.String())
+	id := strconvx.MustParseInt64(orderID.String())
 	qtx := db.New(tx)
 	if err := qtx.ReleaseReservationsByOrder(ctx, id); err != nil {
 		return err
