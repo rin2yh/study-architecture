@@ -19,12 +19,8 @@ import (
 type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
-	aggregateID, err := toInt64(row.AggregateID)
-	if err != nil {
-		return err
-	}
 	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
-		AggregateID: aggregateID,
+		AggregateID: mustInt64(row.AggregateID),
 		EventType:   row.EventType,
 		Payload:     row.Payload,
 		Traceparent: row.Traceparent,
@@ -154,11 +150,12 @@ func (r *OrderCommand) Checkout(ctx context.Context, memberID int64, status stri
 }
 
 // ID を数値へ戻すのはここだけ。列と生成コードが bigint / int64 なのはこの層の事情で、
-// ドメインの order.ID は表現を持たない。
-func toInt64(raw string) (int64, error) {
+// ドメインの order.ID は表現を持たない。渡るのは生成口を通った ID だけなので、
+// ここで失敗するのは実装の誤り。
+func mustInt64(raw string) int64 {
 	v, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid id %q: %w", raw, err)
+		panic(fmt.Sprintf("invalid id %q: %v", raw, err))
 	}
-	return v, nil
+	return v
 }

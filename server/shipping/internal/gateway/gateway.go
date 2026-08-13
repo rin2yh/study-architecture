@@ -47,12 +47,7 @@ func NewOrderClient() (*OrderClient, error) {
 }
 
 func (o *OrderClient) FetchDestination(ctx context.Context, orderID order.ID) (Destination, error) {
-	// 生成クライアントが int64 を受けるのはこの層の事情で、ドメインの order.ID は表現を持たない。
-	id, err := strconv.ParseInt(orderID.String(), 10, 64)
-	if err != nil {
-		return Destination{}, fmt.Errorf("%w: invalid order id %q: %v", ErrUpstream, orderID, err)
-	}
-	res, err := o.c.GetOrderWithResponse(ctx, id)
+	res, err := o.c.GetOrderWithResponse(ctx, mustInt64(orderID.String()))
 	if err != nil {
 		return Destination{}, fmt.Errorf("%w: get order %s: %v", ErrUpstream, orderID, err)
 	}
@@ -70,4 +65,14 @@ func (o *OrderClient) FetchDestination(ctx context.Context, orderID order.ID) (D
 		City:       addr.City,
 		Line1:      addr.Line1,
 	}, nil
+}
+
+// 生成クライアントが int64 を受けるのはこの層の事情で、ドメインの order.ID は表現を持たない。
+// 渡るのは生成口を通った ID だけなので、ここで失敗するのは実装の誤り。
+func mustInt64(raw string) int64 {
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		panic(fmt.Sprintf("invalid id %q: %v", raw, err))
+	}
+	return v
 }
