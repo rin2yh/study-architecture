@@ -3,13 +3,12 @@ package rdb
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	"github.com/rin2yh/study-architecture/server/internal/order"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/db"
 )
 
@@ -70,7 +69,7 @@ func (r *InventoryCommand) Reserve(ctx context.Context, orderID int64, lines []R
 }
 
 func (r *InventoryCommand) ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error {
-	return r.q.ConfirmReservationsByOrder(ctx, mustInt64(orderID.String()))
+	return r.q.ConfirmReservationsByOrder(ctx, strconvx.MustInt64(orderID.String()))
 }
 
 func (r *InventoryCommand) ReleaseReservationsByOrder(ctx context.Context, orderID int64) error {
@@ -86,7 +85,7 @@ func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID order.
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	id := mustInt64(orderID.String())
+	id := strconvx.MustInt64(orderID.String())
 	qtx := db.New(tx)
 	if err := qtx.ReleaseReservationsByOrder(ctx, id); err != nil {
 		return err
@@ -99,15 +98,4 @@ func (r *InventoryCommand) CompensateByOrder(ctx context.Context, orderID order.
 
 func (r *InventoryCommand) ExpireReservations(ctx context.Context) error {
 	return r.q.ExpireReservations(ctx)
-}
-
-// ID を数値へ戻すのはここだけ。列と生成コードが bigint / int64 なのはこの層の事情で、
-// ドメインの order.ID は表現を持たない。渡るのは生成口を通った ID だけなので、
-// ここで失敗するのは実装の誤り。
-func mustInt64(raw string) int64 {
-	v, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		panic(fmt.Sprintf("invalid id %q: %v", raw, err))
-	}
-	return v
 }

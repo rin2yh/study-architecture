@@ -3,7 +3,6 @@ package rdb
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,6 +11,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
@@ -20,7 +20,7 @@ type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
 	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
-		AggregateID: mustInt64(row.AggregateID),
+		AggregateID: strconvx.MustInt64(row.AggregateID),
 		EventType:   row.EventType,
 		Payload:     row.Payload,
 		Traceparent: row.Traceparent,
@@ -98,7 +98,7 @@ func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID order.ID) er
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	id := mustInt64(orderID.String())
+	id := strconvx.MustInt64(orderID.String())
 	qtx := db.New(tx)
 	if err := qtx.RefundPaymentByOrder(ctx, id); err != nil {
 		return err
@@ -107,15 +107,4 @@ func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID order.ID) er
 		return err
 	}
 	return tx.Commit(ctx)
-}
-
-// ID を数値へ戻すのはここだけ。列と生成コードが bigint / int64 なのはこの層の事情で、
-// ドメインの order.ID は表現を持たない。渡るのは生成口を通った ID だけなので、
-// ここで失敗するのは実装の誤り。
-func mustInt64(raw string) int64 {
-	v, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		panic(fmt.Sprintf("invalid id %q: %v", raw, err))
-	}
-	return v
 }
