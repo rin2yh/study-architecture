@@ -9,17 +9,18 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
 type confirmerStub struct {
-	got []int64
+	got []string
 	err error
 }
 
-func (s *confirmerStub) ConfirmReservationsByOrder(_ context.Context, orderID int64) error {
-	s.got = append(s.got, orderID)
+func (s *confirmerStub) ConfirmReservationsByOrder(_ context.Context, orderID order.ID) error {
+	s.got = append(s.got, orderID.String())
 	return s.err
 }
 
@@ -51,7 +52,7 @@ func TestReadAndProcess(t *testing.T) {
 		confirmerErr error
 	}
 	type want struct {
-		gotOrderIDs []int64
+		gotOrderIDs []string
 		pending     int64
 	}
 	tests := []struct {
@@ -62,7 +63,7 @@ func TestReadAndProcess(t *testing.T) {
 		{
 			"正常系 payment.settled で確定し ack する",
 			args{map[string]any{"event": "payment.settled", "orderId": "20"}, nil},
-			want{[]int64{20}, 0},
+			want{[]string{"20"}, 0},
 		},
 		{
 			"準正常系 関心外イベントは確定せず ack する",
@@ -77,7 +78,7 @@ func TestReadAndProcess(t *testing.T) {
 		{
 			"異常系 確定が他のエラーなら ack せず pending に残す",
 			args{map[string]any{"event": "payment.settled", "orderId": "20"}, errors.New("db down")},
-			want{[]int64{20}, 1},
+			want{[]string{"20"}, 1},
 		},
 	}
 	for _, tt := range tests {

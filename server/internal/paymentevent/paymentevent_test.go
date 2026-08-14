@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 )
 
@@ -34,7 +35,11 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
 
-	values := paymentevent.Settled{PaymentID: 1, OrderID: 2, AmountCents: 300}.Values()
+	id, err := order.Parse("2")
+	if err != nil {
+		t.Fatalf("order.New: %v", err)
+	}
+	values := paymentevent.Settled{PaymentID: 1, OrderID: id, AmountCents: 300}.Values()
 	paymentevent.Inject(ctx, values)
 
 	if _, ok := values[paymentevent.FieldTraceparent].(string); !ok {
@@ -54,32 +59,5 @@ func TestLinkFromMissingTraceparent(t *testing.T) {
 	link := paymentevent.LinkFrom(context.Background(), map[string]any{})
 	if link.SpanContext.IsValid() {
 		t.Fatalf("expected invalid span context for missing traceparent, got valid")
-	}
-}
-
-func TestOrderID(t *testing.T) {
-	type want struct {
-		id      int64
-		wantErr bool
-	}
-	tests := []struct {
-		name   string
-		values map[string]any
-		want   want
-	}{
-		{"正常系 数値文字列を数値へ戻す", map[string]any{paymentevent.FieldOrderID: "20"}, want{20, false}},
-		{"準正常系 パース不能な値は error にして DLQ へ委ねる", map[string]any{paymentevent.FieldOrderID: "abc"}, want{0, true}},
-		{"準正常系 フィールドが無い payload も error", map[string]any{}, want{0, true}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := paymentevent.OrderID(tt.values)
-			if (err != nil) != tt.want.wantErr {
-				t.Fatalf("OrderID() error = %v, wantErr %v", err, tt.want.wantErr)
-			}
-			if got != tt.want.id {
-				t.Fatalf("OrderID() = %d, want %d", got, tt.want.id)
-			}
-		})
 	}
 }

@@ -59,6 +59,7 @@
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
 | [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
 | [202607301418](202607301418-poison-message-dlq-by-delivery-count.md) | Accepted | 配送回数上限を超えたメッセージは group 別 DLQ へ隔離する |
+| [202608122000](202608122000-order-id-value-object-without-numeric-representation.md) | Accepted | 注文 ID を値オブジェクトにし、数値表現をデータ層に閉じる |
 
 ## 可観測性
 

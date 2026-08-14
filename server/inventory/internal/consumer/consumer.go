@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -26,7 +27,7 @@ const (
 var tracer = otel.Tracer("inventory-worker")
 
 type ReservationConfirmer interface {
-	ConfirmReservationsByOrder(ctx context.Context, orderID int64) error
+	ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type Consumer struct {
@@ -129,7 +130,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	orderID, err := paymentevent.OrderID(values)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		return err
 	}

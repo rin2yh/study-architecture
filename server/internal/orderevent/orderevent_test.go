@@ -1,34 +1,60 @@
 package orderevent_test
 
 import (
+	"context"
 	"testing"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 )
 
-func TestOrderID(t *testing.T) {
-	type want struct {
-		id      int64
-		wantErr bool
+func sampledContext(t *testing.T) (context.Context, trace.TraceID) {
+	t.Helper()
+	tid, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+	if err != nil {
+		t.Fatalf("trace id: %v", err)
 	}
-	tests := []struct {
-		name   string
-		values map[string]any
-		want   want
-	}{
-		{"正常系 数値文字列を数値へ戻す", map[string]any{orderevent.FieldOrderID: "20"}, want{20, false}},
-		{"準正常系 パース不能な値は error にして DLQ へ委ねる", map[string]any{orderevent.FieldOrderID: "abc"}, want{0, true}},
-		{"準正常系 フィールドが無い payload も error", map[string]any{}, want{0, true}},
+	sid, err := trace.SpanIDFromHex("0123456789abcdef")
+	if err != nil {
+		t.Fatalf("span id: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := orderevent.OrderID(tt.values)
-			if (err != nil) != tt.want.wantErr {
-				t.Fatalf("OrderID() error = %v, wantErr %v", err, tt.want.wantErr)
-			}
-			if got != tt.want.id {
-				t.Fatalf("OrderID() = %d, want %d", got, tt.want.id)
-			}
-		})
+	sc := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    tid,
+		SpanID:     sid,
+		TraceFlags: trace.FlagsSampled,
+		Remote:     true,
+	})
+	return trace.ContextWithSpanContext(context.Background(), sc), tid
+}
+
+// 発行側は outbox 行に traceparent を持たせるため Traceparent で取り出す (Inject は持たない)。
+func TestTraceparentLinkRoundTrip(t *testing.T) {
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	ctx, want := sampledContext(t)
+
+	id, err := order.Parse("20")
+	if err != nil {
+		t.Fatalf("order.New: %v", err)
+	}
+	values := orderevent.Cancelled{OrderID: id}.Values()
+	values[orderevent.FieldTraceparent] = orderevent.Traceparent(ctx)
+
+	link := orderevent.LinkFrom(context.Background(), values)
+	if got := link.SpanContext.TraceID(); got != want {
+		t.Fatalf("link trace id = %s, want %s", got, want)
+	}
+}
+
+// 旧 producer や計装オフでは traceparent が載らないが、その場合も consumer は動き続ける。
+func TestLinkFromMissingTraceparent(t *testing.T) {
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	link := orderevent.LinkFrom(context.Background(), map[string]any{})
+	if link.SpanContext.IsValid() {
+		t.Fatalf("expected invalid span context for missing traceparent, got valid")
 	}
 }

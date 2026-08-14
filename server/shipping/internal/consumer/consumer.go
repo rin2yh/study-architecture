@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
@@ -31,7 +32,7 @@ const (
 var tracer = otel.Tracer("shipping-worker")
 
 type ShipmentCreator interface {
-	CreateShipmentForOrder(ctx context.Context, orderID int64, dest gateway.Destination) (db.ShippingShipment, error)
+	CreateShipmentForOrder(ctx context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error)
 }
 
 type Consumer struct {
@@ -138,7 +139,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	orderID, err := paymentevent.OrderID(values)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		return err
 	}

@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -27,7 +28,7 @@ const (
 var tracer = otel.Tracer("payment")
 
 type PaymentRefunder interface {
-	RefundByOrder(ctx context.Context, orderID int64) error
+	RefundByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type Consumer struct {
@@ -130,7 +131,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	orderID, err := orderevent.OrderID(values)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		return err
 	}

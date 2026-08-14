@@ -6,12 +6,12 @@ package orderevent
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/rin2yh/study-architecture/server/internal/order"
 )
 
 const (
@@ -21,24 +21,24 @@ const (
 
 const (
 	FieldEvent   = "event"
-	FieldOrderID = "orderId"
+	FieldOrderID = order.FieldID
 	// W3C propagator が使うキー。伝播フィールドは traceparent のみで秘匿情報は混ぜない
 	// (ADR-[[202606250159]] / ADR-[[202606250141]])。
 	FieldTraceparent = "traceparent"
 )
 
 type Cancelled struct {
-	OrderID int64
+	OrderID order.ID
 }
 
 func (c Cancelled) EventType() string { return TypeCancelled }
 
-func (c Cancelled) AggregateID() int64 { return c.OrderID }
+func (c Cancelled) AggregateID() string { return c.OrderID.String() }
 
 func (c Cancelled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:   TypeCancelled,
-		FieldOrderID: c.OrderID,
+		FieldOrderID: c.OrderID.String(),
 	}
 }
 
@@ -48,17 +48,6 @@ func Traceparent(ctx context.Context) string {
 	carrier := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, carrier)
 	return carrier.Get(FieldTraceparent)
-}
-
-// OrderID は values の orderId を数値へ戻す。パース不能な payload は握り潰さず error にして DLQ へ
-// 委ねる (ADR-[[202607301418]])。
-func OrderID(values map[string]any) (int64, error) {
-	raw, _ := values[FieldOrderID].(string)
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid orderId %q: %w", raw, err)
-	}
-	return id, nil
 }
 
 // LinkFrom は consumer 側で values の traceparent を span link に変換する。発行と消費を親子でなく
