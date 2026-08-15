@@ -35,8 +35,8 @@ func TestOutboxStore(t *testing.T) {
 		if m.Values[orderevent.FieldEvent] != orderevent.TypeCancelled {
 			t.Fatalf("event = %v, want %q", m.Values[orderevent.FieldEvent], orderevent.TypeCancelled)
 		}
-		if m.Values[orderevent.FieldOrderID] != int64(1) {
-			t.Fatalf("orderId = %v, want 1", m.Values[orderevent.FieldOrderID])
+		if m.Values[orderevent.FieldOrderID] != "1" {
+			t.Fatalf("orderId = %v, want \"1\"", m.Values[orderevent.FieldOrderID])
 		}
 		if m.Values[orderevent.FieldTraceparent] != "tp-xyz" {
 			t.Fatalf("traceparent = %v, want tp-xyz", m.Values[orderevent.FieldTraceparent])
