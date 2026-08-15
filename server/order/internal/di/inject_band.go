@@ -5,8 +5,9 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/internal/sqsx"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
@@ -32,13 +33,13 @@ func InitApp(ctx context.Context) (*App, error) {
 		return zero, err1
 	}
 	var err2 error
-	client, err2 := kessoku.Provide(redisx.NewClient).Fn()()
+	pool, err2 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
 	if err2 != nil {
 		var zero *App
 		return zero, err2
 	}
 	var err3 error
-	pool, err3 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	client, err3 := kessoku.Provide(sqsx.NewClient).Fn()(ctx)
 	if err3 != nil {
 		var zero *App
 		return zero, err3
@@ -46,8 +47,11 @@ func InitApp(ctx context.Context) (*App, error) {
 	orderQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewOrderQuery)).Fn()(pool)
 	orderCommand := kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewOrderCommand)).Fn()(pool)
 	outboxStore := kessoku.Bind[outbox.Store](kessoku.Provide(rdb.NewOutboxStore)).Fn()(pool)
+	publisher := kessoku.Provide(func(c *sqsx.Client) messaging.Publisher {
+		return c
+	}).Fn()(client)
 	handler0 := kessoku.Provide(handler.New).Fn()(orderQuery, orderCommand, productClient, paymentClient, inventoryClient)
-	relay := kessoku.Provide(outbox.NewRelay).Fn()(client, outboxStore)
+	relay := kessoku.Provide(outbox.NewRelay).Fn()(publisher, outboxStore)
 	app := kessoku.Provide(NewApp).Fn()(handler0, relay)
 	return app, nil
 }

@@ -1,5 +1,5 @@
 // Package outbox は Transactional Outbox の発行口とリレーを共有実装する (ADR-[[202606300600]])。
-// 専用 outbox テーブルを持つサービスが、未送信行をポーリングして Redis Streams へ送出する
+// 専用 outbox テーブルを持つサービスが、未送信行をポーリングしてブローカへ送出する
 // ループをここに 1 つ置く。発行サービスが増えても各自のプロセス内でこれを回すだけでよい。
 package outbox
 
@@ -10,14 +10,14 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
 )
 
 // Message は 1 件の未送信イベント。Values がそのまま XAdd のペイロードで、trace 伝播フィールドは
 // Store が Values に載せて返す (リレーはイベントの中身を知らない)。
 type Message struct {
 	ID     int64
-	Stream string
+	Topic  string
 	Values map[string]any
 }
 
@@ -103,14 +103,14 @@ func DecodePayload(raw []byte, traceparent string) (map[string]any, error) {
 }
 
 type Relay struct {
-	rdb      *redis.Client
+	pub      messaging.Publisher
 	store    Store
 	interval time.Duration
 	batch    int
 }
 
-func NewRelay(rdb *redis.Client, store Store) *Relay {
-	return &Relay{rdb: rdb, store: store, interval: time.Second, batch: 64}
+func NewRelay(pub messaging.Publisher, store Store) *Relay {
+	return &Relay{pub: pub, store: store, interval: time.Second, batch: 64}
 }
 
 func (r *Relay) Run(ctx context.Context) error {
@@ -141,10 +141,10 @@ func (r *Relay) drain(ctx context.Context) error {
 			return err
 		}
 		for _, m := range msgs {
-			if err := r.rdb.XAdd(ctx, &redis.XAddArgs{Stream: m.Stream, Values: m.Values}).Err(); err != nil {
+			if err := r.pub.Publish(ctx, m.Topic, m.Values); err != nil {
 				return err
 			}
-			// XAdd 成功後に落ちると同じ行を次回また送るが、受信側の冪等性 (ADR-[[202606261214]]) で吸収する。
+			// 送出成功後に落ちると同じ行を次回また送るが、受信側の冪等性 (ADR-[[202606261214]]) で吸収する。
 			if err := r.store.MarkPublished(ctx, m.ID); err != nil {
 				return err
 			}

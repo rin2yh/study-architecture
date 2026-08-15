@@ -31,7 +31,7 @@ func (s *OutboxStore) FetchUnpublished(ctx context.Context, limit int) ([]outbox
 		if err != nil {
 			return nil, err
 		}
-		msgs = append(msgs, outbox.Message{ID: r.ID, Stream: paymentevent.Stream, Values: values})
+		msgs = append(msgs, outbox.Message{ID: r.ID, Topic: paymentevent.Topic, Values: values})
 	}
 	return msgs, nil
 }

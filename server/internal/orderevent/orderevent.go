@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Stream        = "order.events"
+	Topic         = "order-events"
 	TypeCancelled = "order.cancelled"
 )
 

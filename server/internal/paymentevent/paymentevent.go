@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Stream      = "payment.events"
+	Topic       = "payment-events"
 	TypeSettled = "payment.settled"
 )
 
