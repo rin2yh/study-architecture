@@ -15,7 +15,13 @@ fi
 agent_cmd="${DOCS_AGENT_CMD:-agy}"
 read -ra agent_args <<<"${DOCS_AGENT_ARGS:---output-format json}"
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
+# 追跡済みの差分だけを見ると、エージェントが新規ファイルを置いた場合に素通りする。開始時点を
+# 完全にクリーンだと確かめておくことで、後段の掃除が消してよいのはエージェントの産物だけになる。
+worktree_changes() {
+  git -c core.quotepath=false status --porcelain | cut -c4-
+}
+
+if [ -n "$(worktree_changes)" ]; then
   echo "作業ツリーに未コミットの変更があります。差分で判定できないため中断します。" >&2
   exit 2
 fi
@@ -49,7 +55,7 @@ trap 'rm -f "$log"' EXIT
 "$agent_cmd" -p "$prompt" "${agent_args[@]}" >"$log" 2>&1
 agent_status=$?
 
-changed="$(git diff --name-only)"
+changed="$(worktree_changes)"
 
 # 何も変わらなかったときこそ agy の出力が唯一の手がかりになる (soft-deny か、本当に変更不要か)。
 if [ -z "$changed" ]; then
@@ -62,6 +68,7 @@ if [ "$changed" != "$doc" ]; then
   echo "許可パス外が書き換えられたため破棄します: $changed" >&2
   cat "$log" >&2
   git checkout -- .
+  git clean -fdq
   exit 1
 fi
 

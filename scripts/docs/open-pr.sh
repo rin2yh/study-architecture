@@ -9,7 +9,8 @@ branch="${1:?usage: open-pr.sh <branch> <title> <body>}"
 title="${2:?usage: open-pr.sh <branch> <title> <body>}"
 body="${3:?usage: open-pr.sh <branch> <title> <body>}"
 
-if git diff --quiet; then
+# 後段が git add -A で拾う範囲と判定をそろえる (stage 済み・未追跡も差分として数える)。
+if [ -z "$(git status --porcelain)" ]; then
   echo "差分なし: PR は作りません"
   exit 0
 fi
