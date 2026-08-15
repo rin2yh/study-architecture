@@ -4,8 +4,7 @@
 #      その場で捨てる。CLI 差し替えに備えて呼び出しは DOCS_AGENT_CMD 越しにする。
 set -uo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$repo_root" || exit 1
+cd "$(dirname "$0")/../.." || exit 1
 
 doc="${1:-}"
 if [ -z "$doc" ] || [ ! -f "$doc" ]; then
@@ -44,18 +43,24 @@ $drift
 # 進め方
 上の changed_files のうち $doc の記述に関係するものを読み、記述と実装が食い違う箇所だけを直してください。"
 
-"$agent_cmd" -p "$prompt" "${agent_args[@]}" >/tmp/agent-fix.log 2>&1
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+
+"$agent_cmd" -p "$prompt" "${agent_args[@]}" >"$log" 2>&1
 agent_status=$?
 
 changed="$(git diff --name-only)"
 
+# 何も変わらなかったときこそ agy の出力が唯一の手がかりになる (soft-deny か、本当に変更不要か)。
 if [ -z "$changed" ]; then
   echo "変更なし: $doc (agent exit=$agent_status)"
+  cat "$log"
   exit 0
 fi
 
 if [ "$changed" != "$doc" ]; then
   echo "許可パス外が書き換えられたため破棄します: $changed" >&2
+  cat "$log" >&2
   git checkout -- .
   exit 1
 fi

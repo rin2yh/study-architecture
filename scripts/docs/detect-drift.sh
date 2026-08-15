@@ -1,52 +1,47 @@
 #!/usr/bin/env bash
 # why: 「全部見て直して」を AI に投げると差分が大きくなりレビュー不能になる。ドキュメント単位で
-#      「最終更新以降に何が変わったか」だけを構造化して渡し、1 実行 1 ドキュメントに閉じるための入力を作る。
+#      「最終更新以降に何が変わったか」だけを構造化して渡し、1 実行 1 ドキュメントに閉じる。
 set -uo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$repo_root" || exit 1
+cd "$(dirname "$0")/../.." || exit 1
 
-impl_paths=(server client compose.yaml infra scripts mise.toml)
+doc="${1:?usage: detect-drift.sh <doc-path>}"
+if [ ! -f "$doc" ]; then
+  echo "ドキュメントが見つかりません: $doc" >&2
+  exit 2
+fi
+
 max_commits=40
 max_files=60
 
-docs=(
-  "README.md"
-  "client/README.md"
-  "client/e2e/README.md"
-  "client/app/ui/README.md"
-  "doc/ops/runbook.md"
-  "doc/ops/dashboards.md"
-)
+since="$(git log -1 --format=%cI -- "$doc")"
+if [ -z "$since" ]; then
+  echo "$doc の履歴がありません" >&2
+  exit 2
+fi
 
-only="${1:-}"
+# 実装側を許可リストで数えると新しいトップレベルが増えたときに黙って漏れるため、ドキュメントを
+# 除外する形で表す。
+log="$(git log --since="$since" --format='%x01%H%x09%s' --name-only -- . ':(exclude)*.md')"
 
-emit_doc() {
-  local doc="$1" since commits files count
-  since="$(git log -1 --format=%cI -- "$doc")"
-  [ -n "$since" ] || return 1
-
-  commits="$(git log --since="$since" --format='%H%x09%s' -- "${impl_paths[@]}" |
-    head -n "$max_commits" |
-    jq -R -s 'split("\n") | map(select(length > 0)) | map(split("\t") | {sha: .[0][0:12], subject: .[1]})')"
-  count="$(git log --since="$since" --oneline -- "${impl_paths[@]}" | wc -l | tr -d ' ')"
-  files="$(git log --since="$since" --name-only --format= -- "${impl_paths[@]}" |
-    grep -v '^$' | sort -u | head -n "$max_files" |
-    jq -R -s 'split("\n") | map(select(length > 0))')"
-
-  jq -n \
-    --arg path "$doc" \
-    --arg last_updated "$since" \
-    --argjson commit_count "$count" \
-    --argjson commits "$commits" \
-    --argjson changed_files "$files" \
-    '{path: $path, last_updated: $last_updated, commit_count: $commit_count, commits: $commits, changed_files: $changed_files}'
-}
-
-{
-  for doc in "${docs[@]}"; do
-    [ -f "$doc" ] || continue
-    [ -n "$only" ] && [ "$doc" != "$only" ] && continue
-    emit_doc "$doc"
-  done
-} | jq -s '{docs: (. | sort_by(-.commit_count))}'
+jq -Rn \
+  --arg path "$doc" \
+  --arg last_updated "$since" \
+  --argjson max_commits "$max_commits" \
+  --argjson max_files "$max_files" '
+  [inputs] as $lines
+  | ($lines
+     | map(select(startswith("\u0001"))
+           | ltrimstr("\u0001") | split("\t")
+           | {sha: .[0][0:12], subject: .[1]})) as $commits
+  | ($lines
+     | map(select(startswith("\u0001") | not) | select(length > 0))
+     | unique) as $files
+  | {
+      path: $path,
+      last_updated: $last_updated,
+      commit_count: ($commits | length),
+      commits: $commits[0:$max_commits],
+      changed_files: $files[0:$max_files]
+    }
+' <<<"$log"

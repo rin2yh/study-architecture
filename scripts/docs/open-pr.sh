@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # why: 定期実行のたびに PR が増えると誰も見なくなる。固定ブランチへ force push し、open な PR が
 #      あれば作り直さず更新に寄せる。人の判断を挟むため必ず draft で出す。
-set -uo pipefail
+set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$repo_root" || exit 1
+cd "$(dirname "$0")/../.." || exit 1
 
-title="${1:?title required}"
-body="${2:?body required}"
-branch="${BRANCH:?BRANCH required}"
+branch="${1:?usage: open-pr.sh <branch> <title> <body>}"
+title="${2:?usage: open-pr.sh <branch> <title> <body>}"
+body="${3:?usage: open-pr.sh <branch> <title> <body>}"
 
 if git diff --quiet; then
   echo "差分なし: PR は作りません"

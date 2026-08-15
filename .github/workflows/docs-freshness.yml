@@ -10,6 +10,8 @@ on:
       - "client/README.md"
       - "compose.yaml"
       - "server/**"
+      - "infra/**"
+      - "mise.toml"
       - "scripts/docs/**"
       - ".github/workflows/docs-freshness.yml"
   pull_request:
@@ -22,8 +24,7 @@ on:
         description: "docs-agent が更新する対象ドキュメント"
         default: "README.md"
       agent_args:
-        description: "agy へ渡す追加引数 (フラグ実測用)"
-        default: "--output-format json"
+        description: "agy へ渡す追加引数 (フラグ実測用。既定は agent-fix.sh 側)"
 
 concurrency:
   group: docs-freshness-${{ github.ref }}
@@ -35,6 +36,8 @@ permissions:
 jobs:
   docs-lint:
     name: docs-lint
+    # schedule / dispatch では docs-sync と docs-agent が書き換え後に同じ検査を回すため重複させない。
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -66,8 +69,7 @@ jobs:
       - name: draft PR を作る / 更新する
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: docs/auto-refresh
-        run: bash scripts/docs/open-pr.sh "生成ドキュメントを実装に追従させる" "compose.yaml から生成しているサービス表が実装と乖離していたため更新します。"
+        run: bash scripts/docs/open-pr.sh docs/auto-refresh "生成ドキュメントを実装に追従させる" "compose.yaml から生成しているサービス表が実装と乖離していたため更新します。"
 
   docs-agent:
     name: docs-agent
@@ -108,5 +110,4 @@ jobs:
       - name: draft PR を作る / 更新する
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: docs/auto-refresh-agent
-        run: bash scripts/docs/open-pr.sh "${{ inputs.target }} を実装に追従させる" "agy による自動更新です。実装ファイルとの突合をレビューしてください。"
+        run: bash scripts/docs/open-pr.sh docs/auto-refresh-agent "${{ inputs.target }} を実装に追従させる" "agy による自動更新です。実装ファイルとの突合をレビューしてください。"
