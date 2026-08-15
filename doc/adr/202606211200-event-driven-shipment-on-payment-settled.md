@@ -1,6 +1,6 @@
 # ADR-202606211200: 決済確定イベントを起点に shipping が配送を手配する (Redis Streams)
 
-- Status: Accepted
+- Status: Accepted (broker の選定は ADR-[[202608150830]] で Superseded)
 - Date: 2026-06-21
 - Relates to: ADR-[[202606190900]] (配送を同期 checkout に含めない判断), ADR-[[202606170909]] (顧客系/運用系 DB・network 分離), ADR-[[202606170901]] (codegen-first), ADR-[[202606180903]] (PUT セマンティクス)
 

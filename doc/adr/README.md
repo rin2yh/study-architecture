@@ -49,7 +49,7 @@
 
 | ID | Status | タイトル |
 | --- | --- | --- |
-| [202606211200](202606211200-event-driven-shipment-on-payment-settled.md) | Accepted | 決済確定イベントを起点に shipping が配送を手配する (Redis Streams) |
+| [202606211200](202606211200-event-driven-shipment-on-payment-settled.md) | Accepted (broker の選定は ADR-[[202608150830]] で Superseded) | 決済確定イベントを起点に shipping が配送を手配する (Redis Streams) |
 | [202606261210](202606261210-sync-call-resilience-policy.md) | Accepted | order の同期呼び出しに timeout・リトライ・サーキットブレーカを入れる |
 | [202606261212](202606261212-transactional-outbox-payment-settled.md) | Superseded | 決済確定イベントを Transactional Outbox (集約列 + プロセス内リレー) で確実に発行する |
 | [202606261214](202606261214-idempotency-checkout-and-shipping.md) | Accepted | checkout と shipping を DB ユニーク制約で冪等にする |
@@ -59,6 +59,8 @@
 | [202606281000](202606281000-inventory-cancel-confirmed-reservation.md) | Accepted | 確定済み予約のキャンセル戻しを予約行の cancelled_at で表す |
 | [202606300600](202606300600-transactional-outbox-table-and-dispatcher.md) | Accepted | Outbox を専用テーブル + 共有ディスパッチャに作り替える (ADR-202606261212 を Supersede) |
 | [202608122000](202608122000-order-id-value-object-without-numeric-representation.md) | Accepted | 注文 ID を値オブジェクトにし、数値表現をデータ層に閉じる |
+| [202608150830](202608150830-managed-queue-with-broker-side-dlq.md) | Accepted | 非同期イベントの配送をマネージドキュー前提にする (DLQ はブローカ機能) |
+| [202608150835](202608150835-broker-behind-port.md) | Accepted | ブローカをポートで隔離し、アプリからベンダ API を見せない |
 
 ## 可観測性
 
