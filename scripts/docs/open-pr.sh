@@ -18,6 +18,12 @@ fi
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+# 認証情報を checkout 時点から残さず、push する直前に入れる。docs-agent は同じ job で
+# サードパーティの CLI を動かすため、残置した token を盗まれる窓を作らない (.claude/rules/ci.md)。
+if [ -n "${GH_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+fi
+
 git checkout -B "$branch"
 git add -A
 git commit -q -m "docs: $title"
