@@ -76,6 +76,10 @@ func (c *Client) Publish(ctx context.Context, topic string, values map[string]an
 // Subscribe は queue と その DLQ を用意し、topic からの配信を繋ぐ。いずれも作成 API が冪等なので
 // 起動のたびに呼んでよい。
 func (c *Client) Subscribe(ctx context.Context, topic, queue string) (messaging.Subscription, error) {
+	topicARN, err := c.ensureTopic(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
 	_, dlqARN, err := c.ensureQueue(ctx, queue+"-dlq", nil)
 	if err != nil {
 		return nil, err
@@ -95,8 +99,7 @@ func (c *Client) Subscribe(ctx context.Context, topic, queue string) (messaging.
 	if err != nil {
 		return nil, err
 	}
-	topicARN, err := c.ensureTopic(ctx, topic)
-	if err != nil {
+	if err := c.allowTopicToSend(ctx, url, queueARN, topicARN); err != nil {
 		return nil, err
 	}
 	// SNS の封筒を剥がす処理を購読側に持たせないため raw で受け取る。
@@ -109,6 +112,29 @@ func (c *Client) Subscribe(ctx context.Context, topic, queue string) (messaging.
 		return nil, err
 	}
 	return &subscription{sqs: c.sqs, url: url}, nil
+}
+
+// SNS からの SendMessage は SQS 側のリソースポリシーで明示的に許可しないと届かない。コンソール経由の
+// 購読作成と違い、API の Subscribe はポリシーを自動付与しないため購読は成功したまま無配信になる。
+func (c *Client) allowTopicToSend(ctx context.Context, queueURL, queueARN, topicARN string) error {
+	policy, err := json.Marshal(map[string]any{
+		"Version": "2012-10-17",
+		"Statement": []map[string]any{{
+			"Effect":    "Allow",
+			"Principal": map[string]string{"Service": "sns.amazonaws.com"},
+			"Action":    "sqs:SendMessage",
+			"Resource":  queueARN,
+			"Condition": map[string]any{"ArnEquals": map[string]string{"aws:SourceArn": topicARN}},
+		}},
+	})
+	if err != nil {
+		return err
+	}
+	_, err = c.sqs.SetQueueAttributes(ctx, &sqs.SetQueueAttributesInput{
+		QueueUrl:   aws.String(queueURL),
+		Attributes: map[string]string{string(sqstypes.QueueAttributeNamePolicy): string(policy)},
+	})
+	return err
 }
 
 func (c *Client) ensureTopic(ctx context.Context, topic string) (string, error) {

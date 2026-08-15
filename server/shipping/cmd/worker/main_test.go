@@ -19,8 +19,12 @@ func TestStart(t *testing.T) {
 		}
 	})
 
-	t.Run("異常系 DATABASE_URL 未指定で di.InitConsumer が失敗し exit 1", func(t *testing.T) {
+	// exit 1 の原因を DATABASE_URL に絞る。
+	t.Run("異常系 DATABASE_URL 未指定で di.InitWorker が失敗し exit 1", func(t *testing.T) {
 		t.Setenv("DATABASE_URL", "")
+		t.Setenv("AWS_REGION", "ap-northeast-1")
+		t.Setenv("AWS_ENDPOINT_URL", "http://127.0.0.1:1")
+		t.Setenv("ORDER_API_URL", "http://127.0.0.1:1")
 		if code := start(context.Background()); code != 1 {
 			t.Fatalf("start() = %d, want 1", code)
 		}
