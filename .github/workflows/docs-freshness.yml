@@ -87,6 +87,15 @@ jobs:
           curl -fsSL https://antigravity.google/cli/install.sh | bash
           echo "$HOME/.local/bin" >>"$GITHUB_PATH"
 
+      # GEMINI_API_KEY は Google AI Studio (https://aistudio.google.com/apikey) で発行し、
+      # リポジトリの Settings > Secrets and variables > Actions に同名で登録する。
+      # 環境変数だけでは効かず modelProvider の指定と併用しないと sign-in を要求される (CLI v1.1.13)。
+      # settings.json の置き場は未実測のため、初回の手動実行で確認する。
+      - name: Gemini API を直接使う設定を書く
+        run: |
+          mkdir -p "$HOME/.gemini/antigravity-cli"
+          echo '{"modelProvider":"gemini"}' >"$HOME/.gemini/antigravity-cli/settings.json"
+
       - name: 対象ドキュメントを更新する
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
