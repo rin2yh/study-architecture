@@ -28,7 +28,7 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 }
 func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 	var err0 error
-	client, err0 := kessoku.Provide(sqsx.NewClient).Fn()(ctx0)
+	client, err0 := kessoku.Bind[messaging.Subscriber](kessoku.Provide(sqsx.NewClient)).Fn()(ctx0)
 	if err0 != nil {
 		var zero *worker.Worker
 		return zero, err0
@@ -39,9 +39,6 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 		var zero *worker.Worker
 		return zero, err1
 	}
-	subscriber := kessoku.Provide(func(c *sqsx.Client) messaging.Subscriber {
-		return c
-	}).Fn()(client)
 	inventoryCommand0 := kessoku.Provide(rdb.NewInventoryCommand).Fn()(pool0)
 	reservationConfirmer := kessoku.Provide(func(c *rdb.InventoryCommand) consumer.ReservationConfirmer {
 		return c
@@ -52,8 +49,8 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 	reservationExpirer := kessoku.Provide(func(c *rdb.InventoryCommand) reaper.ReservationExpirer {
 		return c
 	}).Fn()(inventoryCommand0)
-	consumer0 := kessoku.Provide(consumer.New).Fn()(subscriber, reservationConfirmer)
-	cancelConsumer := kessoku.Provide(consumer.NewCancel).Fn()(subscriber, reservationCompensator)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(client, reservationConfirmer)
+	cancelConsumer := kessoku.Provide(consumer.NewCancel).Fn()(client, reservationCompensator)
 	reaper0 := kessoku.Provide(reaper.New).Fn()(reservationExpirer)
 	worker0 := kessoku.Provide(worker.New).Fn()(consumer0, cancelConsumer, reaper0)
 	return worker0, nil

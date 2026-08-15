@@ -34,7 +34,7 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 		return zero, err0
 	}
 	var err1 error
-	client, err1 := kessoku.Provide(sqsx.NewClient).Fn()(ctx0)
+	client, err1 := kessoku.Bind[messaging.Subscriber](kessoku.Provide(sqsx.NewClient)).Fn()(ctx0)
 	if err1 != nil {
 		var zero *worker.Worker
 		return zero, err1
@@ -45,9 +45,6 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 		var zero *worker.Worker
 		return zero, err2
 	}
-	subscriber := kessoku.Provide(func(c *sqsx.Client) messaging.Subscriber {
-		return c
-	}).Fn()(client)
 	shipmentCommand0 := kessoku.Provide(rdb.NewShipmentCommand).Fn()(pool0)
 	shipmentCreator := kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCreator {
 		return c
@@ -55,8 +52,8 @@ func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 	shipmentCanceller := kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCanceller {
 		return c
 	}).Fn()(shipmentCommand0)
-	consumer0 := kessoku.Provide(consumer.New).Fn()(subscriber, shipmentCreator, orderClient)
-	cancelConsumer := kessoku.Provide(consumer.NewCancel).Fn()(subscriber, shipmentCanceller)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(client, shipmentCreator, orderClient)
+	cancelConsumer := kessoku.Provide(consumer.NewCancel).Fn()(client, shipmentCanceller)
 	worker0 := kessoku.Provide(worker.New).Fn()(consumer0, cancelConsumer)
 	return worker0, nil
 }

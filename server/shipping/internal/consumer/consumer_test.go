@@ -82,6 +82,9 @@ func TestRun(t *testing.T) {
 				t.Fatalf("Run() = %v, want context.Canceled", err)
 			}
 
+			if sub.Topic != paymentevent.Topic || sub.Queue != queue {
+				t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, paymentevent.Topic, queue)
+			}
 			if len(creator.got) != len(tt.want.gotOrderIDs) {
 				t.Fatalf("creator called with %v, want %v", creator.got, tt.want.gotOrderIDs)
 			}
@@ -92,20 +95,5 @@ func TestRun(t *testing.T) {
 				t.Fatalf("acked = %d, want %d", len(sub.Acked), tt.want.acked)
 			}
 		})
-	}
-}
-
-func TestRunSubscribesToPaymentEvents(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	sub := msgtest.NewSubscriber(cancel)
-
-	c := New(sub, &creatorStub{}, &orderStub{dest: fullDest})
-	if err := c.Run(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() = %v, want context.Canceled", err)
-	}
-
-	if sub.Topic != paymentevent.Topic || sub.Queue != queue {
-		t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, paymentevent.Topic, queue)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/rin2yh/study-architecture/server/internal/messaging"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 )
 
 // Subscriber は配信済みメッセージを 1 度だけ返す購読。messaging.Consume は無限ループなので、
@@ -46,5 +47,5 @@ func (s *Subscriber) Ack(_ context.Context, handle string) error {
 }
 
 func handle(i int) string {
-	return string(rune('a' + i))
+	return strconvx.FormatInt64(int64(i))
 }

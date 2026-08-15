@@ -5,9 +5,10 @@ package sqsx
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -17,6 +18,7 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 
 	"github.com/rin2yh/study-architecture/server/internal/messaging"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 )
 
 const (
@@ -34,14 +36,15 @@ const (
 type Client struct {
 	sqs *sqs.Client
 	sns *sns.Client
+	// トピック ARN は起動後不変なので、Publish のたびに CreateTopic を往復しない。
+	topicARN sync.Map
 }
 
-// エンドポイントが指定されていれば kumo などの互換実装。実際の資格情報は要らないが、
-// SDK は署名のために何らかの資格情報を要求するのでダミーを入れる。
+// AWS_ENDPOINT_URL が指定されていれば kumo などの互換実装 (SDK が自前で解決する)。実際の
+// 資格情報は要らないが、SDK は署名のために何らかの資格情報を要求するのでダミーを入れる。
 func NewClient(ctx context.Context) (*Client, error) {
-	opts := []func(*config.LoadOptions) error{}
-	endpoint := os.Getenv("AWS_ENDPOINT_URL")
-	if endpoint != "" {
+	var opts []func(*config.LoadOptions) error
+	if os.Getenv("AWS_ENDPOINT_URL") != "" {
 		opts = append(opts, config.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider("kumo", "kumo", "")))
 	}
@@ -49,17 +52,7 @@ func NewClient(ctx context.Context) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	withEndpoint := func(o *sqs.Options) {
-		if endpoint != "" {
-			o.BaseEndpoint = aws.String(endpoint)
-		}
-	}
-	withSNSEndpoint := func(o *sns.Options) {
-		if endpoint != "" {
-			o.BaseEndpoint = aws.String(endpoint)
-		}
-	}
-	return &Client{sqs: sqs.NewFromConfig(cfg, withEndpoint), sns: sns.NewFromConfig(cfg, withSNSEndpoint)}, nil
+	return &Client{sqs: sqs.NewFromConfig(cfg), sns: sns.NewFromConfig(cfg)}, nil
 }
 
 var (
@@ -83,77 +76,68 @@ func (c *Client) Publish(ctx context.Context, topic string, values map[string]an
 // Subscribe は queue と その DLQ を用意し、topic からの配信を繋ぐ。いずれも作成 API が冪等なので
 // 起動のたびに呼んでよい。
 func (c *Client) Subscribe(ctx context.Context, topic, queue string) (messaging.Subscription, error) {
-	dlqArn, err := c.ensureQueue(ctx, queue+"-dlq", nil)
+	_, dlqARN, err := c.ensureQueue(ctx, queue+"-dlq", nil)
 	if err != nil {
 		return nil, err
 	}
 	redrive, err := json.Marshal(map[string]string{
-		"deadLetterTargetArn": dlqArn,
-		"maxReceiveCount":     fmt.Sprint(maxReceiveCount),
+		"deadLetterTargetArn": dlqARN,
+		"maxReceiveCount":     strconvx.FormatInt64(maxReceiveCount),
 	})
 	if err != nil {
 		return nil, err
 	}
-	queueArn, err := c.ensureQueue(ctx, queue, map[string]string{
+	url, queueARN, err := c.ensureQueue(ctx, queue, map[string]string{
 		string(sqstypes.QueueAttributeNameRedrivePolicy):                 string(redrive),
-		string(sqstypes.QueueAttributeNameVisibilityTimeout):             fmt.Sprint(visibilityTimeout),
-		string(sqstypes.QueueAttributeNameReceiveMessageWaitTimeSeconds): fmt.Sprint(waitTimeSeconds),
+		string(sqstypes.QueueAttributeNameVisibilityTimeout):             strconvx.FormatInt64(visibilityTimeout),
+		string(sqstypes.QueueAttributeNameReceiveMessageWaitTimeSeconds): strconvx.FormatInt64(waitTimeSeconds),
 	})
 	if err != nil {
 		return nil, err
 	}
-	topicArn, err := c.ensureTopic(ctx, topic)
+	topicARN, err := c.ensureTopic(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
 	// SNS の封筒を剥がす処理を購読側に持たせないため raw で受け取る。
 	if _, err := c.sns.Subscribe(ctx, &sns.SubscribeInput{
-		TopicArn:   aws.String(topicArn),
+		TopicArn:   aws.String(topicARN),
 		Protocol:   aws.String("sqs"),
-		Endpoint:   aws.String(queueArn),
+		Endpoint:   aws.String(queueARN),
 		Attributes: map[string]string{"RawMessageDelivery": "true"},
 	}); err != nil {
-		return nil, err
-	}
-	url, err := c.queueURL(ctx, queue)
-	if err != nil {
 		return nil, err
 	}
 	return &subscription{sqs: c.sqs, url: url}, nil
 }
 
 func (c *Client) ensureTopic(ctx context.Context, topic string) (string, error) {
+	if arn, ok := c.topicARN.Load(topic); ok {
+		return arn.(string), nil
+	}
 	out, err := c.sns.CreateTopic(ctx, &sns.CreateTopicInput{Name: aws.String(topic)})
 	if err != nil {
 		return "", err
 	}
-	return aws.ToString(out.TopicArn), nil
+	arn := aws.ToString(out.TopicArn)
+	c.topicARN.Store(topic, arn)
+	return arn, nil
 }
 
-func (c *Client) ensureQueue(ctx context.Context, queue string, attrs map[string]string) (string, error) {
-	if _, err := c.sqs.CreateQueue(ctx, &sqs.CreateQueueInput{QueueName: aws.String(queue), Attributes: attrs}); err != nil {
-		return "", err
-	}
-	url, err := c.queueURL(ctx, queue)
+func (c *Client) ensureQueue(ctx context.Context, queue string, attrs map[string]string) (url, arn string, err error) {
+	created, err := c.sqs.CreateQueue(ctx, &sqs.CreateQueueInput{QueueName: aws.String(queue), Attributes: attrs})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
+	url = aws.ToString(created.QueueUrl)
 	out, err := c.sqs.GetQueueAttributes(ctx, &sqs.GetQueueAttributesInput{
 		QueueUrl:       aws.String(url),
 		AttributeNames: []sqstypes.QueueAttributeName{sqstypes.QueueAttributeNameQueueArn},
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return out.Attributes[string(sqstypes.QueueAttributeNameQueueArn)], nil
-}
-
-func (c *Client) queueURL(ctx context.Context, queue string) (string, error) {
-	out, err := c.sqs.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{QueueName: aws.String(queue)})
-	if err != nil {
-		return "", err
-	}
-	return aws.ToString(out.QueueUrl), nil
+	return url, out.Attributes[string(sqstypes.QueueAttributeNameQueueArn)], nil
 }
 
 type subscription struct {
@@ -175,6 +159,7 @@ func (s *subscription) Receive(ctx context.Context) ([]messaging.Received, error
 		values, err := decode(aws.ToString(m.Body))
 		if err != nil {
 			// 壊れた payload は再配送しても直らないので、隔離をブローカに任せて ack しない。
+			slog.ErrorContext(ctx, "undecodable message body", "queue", s.url, "error", err)
 			continue
 		}
 		received = append(received, messaging.Received{Handle: aws.ToString(m.ReceiptHandle), Values: values})

@@ -16,8 +16,7 @@ import (
 var _ = kessoku.Inject[*App](
 	"InitApp",
 	kessoku.Async(kessoku.Provide(rdb.NewPool)),
-	kessoku.Provide(sqsx.NewClient),
-	kessoku.Provide(func(c *sqsx.Client) messaging.Publisher { return c }),
+	kessoku.Bind[messaging.Publisher](kessoku.Provide(sqsx.NewClient)),
 	kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewOrderQuery)),
 	kessoku.Bind[handler.Command](kessoku.Provide(rdb.NewOrderCommand)),
 	kessoku.Bind[gateway.ProductPort](kessoku.Provide(gateway.NewProductClient)),

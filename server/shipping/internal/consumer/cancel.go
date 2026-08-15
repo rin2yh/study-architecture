@@ -33,9 +33,7 @@ func (c *CancelConsumer) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return messaging.Consume(ctx, cancelQueue, sub, func(ctx context.Context, m messaging.Received) error {
-		return c.process(ctx, m.Values)
-	})
+	return messaging.Consume(ctx, cancelQueue, sub, c.process)
 }
 
 // producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。

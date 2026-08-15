@@ -1,6 +1,6 @@
 // Package paymentevent は payment→shipping の決済確定イベントの wire 契約を一元的に定める。
 // producer (payment) と consumer (shipping) が文字列を各自で持つと無言で配送経路が切れるため、
-// stream 名・イベント種別・フィールドキー・ペイロード・trace 伝播をここだけに置く。
+// トピック名・イベント種別・フィールドキー・ペイロード・trace 伝播をここだけに置く。
 package paymentevent
 
 import (

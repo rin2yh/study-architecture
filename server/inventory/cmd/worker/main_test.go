@@ -18,9 +18,8 @@ func TestStart(t *testing.T) {
 		}
 	})
 
-	t.Run("異常系 REDIS_URL 未指定で di.InitWorker が失敗し exit 1", func(t *testing.T) {
-		t.Setenv("DATABASE_URL", "postgres://u:p@127.0.0.1:1/db?sslmode=disable")
-		t.Setenv("REDIS_URL", "")
+	t.Run("異常系 DATABASE_URL 未指定で di.InitWorker が失敗し exit 1", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "")
 		if code := start(context.Background()); code != 1 {
 			t.Fatalf("start() = %d, want 1", code)
 		}

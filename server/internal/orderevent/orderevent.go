@@ -1,6 +1,6 @@
 // Package orderevent は注文キャンセルの補償イベント (order.cancelled) の wire 契約を一元的に定める。
 // producer (order) と consumer (payment / shipping / inventory) が文字列を各自で持つと無言で
-// 補償経路が切れるため、stream 名・イベント種別・フィールドキー・ペイロード・trace 伝播を
+// 補償経路が切れるため、トピック名・イベント種別・フィールドキー・ペイロード・trace 伝播を
 // ここだけに置く。フォワードの paymentevent と対称 (ADR-[[202606261702]])。
 package orderevent
 

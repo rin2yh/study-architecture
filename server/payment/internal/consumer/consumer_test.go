@@ -59,6 +59,9 @@ func TestRun(t *testing.T) {
 				t.Fatalf("Run() = %v, want context.Canceled", err)
 			}
 
+			if sub.Topic != orderevent.Topic || sub.Queue != queue {
+				t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, orderevent.Topic, queue)
+			}
 			if len(refunder.got) != len(tt.want.gotOrderIDs) {
 				t.Fatalf("refunder called with %v, want %v", refunder.got, tt.want.gotOrderIDs)
 			}
@@ -71,19 +74,5 @@ func TestRun(t *testing.T) {
 				t.Fatalf("acked = %d, want %d", len(sub.Acked), tt.want.acked)
 			}
 		})
-	}
-}
-
-func TestRunSubscribesToOrderEvents(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	sub := msgtest.NewSubscriber(cancel)
-
-	if err := New(sub, &refunderStub{}).Run(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() = %v, want context.Canceled", err)
-	}
-
-	if sub.Topic != orderevent.Topic || sub.Queue != queue {
-		t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, orderevent.Topic, queue)
 	}
 }

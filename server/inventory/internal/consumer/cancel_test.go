@@ -59,6 +59,9 @@ func TestCancelConsumerRun(t *testing.T) {
 				t.Fatalf("Run() = %v, want context.Canceled", err)
 			}
 
+			if sub.Topic != orderevent.Topic || sub.Queue != cancelQueue {
+				t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, orderevent.Topic, cancelQueue)
+			}
 			if len(stub.got) != len(tt.want.gotOrderIDs) {
 				t.Fatalf("CompensateByOrder called with %v, want %v", stub.got, tt.want.gotOrderIDs)
 			}
@@ -66,19 +69,5 @@ func TestCancelConsumerRun(t *testing.T) {
 				t.Fatalf("acked = %d, want %d", len(sub.Acked), tt.want.acked)
 			}
 		})
-	}
-}
-
-func TestCancelConsumerSubscribesToOrderEvents(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	sub := msgtest.NewSubscriber(cancel)
-
-	if err := NewCancel(sub, &compensatorStub{}).Run(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() = %v, want context.Canceled", err)
-	}
-
-	if sub.Topic != orderevent.Topic || sub.Queue != cancelQueue {
-		t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, orderevent.Topic, cancelQueue)
 	}
 }

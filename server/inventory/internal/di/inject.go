@@ -26,8 +26,7 @@ var _ = kessoku.Inject[*handler.Handler](
 var _ = kessoku.Inject[*worker.Worker](
 	"InitWorker",
 	kessoku.Async(kessoku.Provide(rdb.NewPool)),
-	kessoku.Provide(sqsx.NewClient),
-	kessoku.Provide(func(c *sqsx.Client) messaging.Subscriber { return c }),
+	kessoku.Bind[messaging.Subscriber](kessoku.Provide(sqsx.NewClient)),
 	kessoku.Provide(rdb.NewInventoryCommand),
 	kessoku.Provide(func(c *rdb.InventoryCommand) consumer.ReservationConfirmer { return c }),
 	kessoku.Provide(func(c *rdb.InventoryCommand) consumer.ReservationCompensator { return c }),

@@ -32,7 +32,7 @@ type Subscriber interface {
 
 // Consume は購読の受信ループ。process が nil を返した分だけ Ack する。
 // 失敗は Ack しないことで再配送に委ねるため、ここで再試行の間隔や回数は持たない。
-func Consume(ctx context.Context, name string, sub Subscription, process func(ctx context.Context, m Received) error) error {
+func Consume(ctx context.Context, name string, sub Subscription, process func(ctx context.Context, values map[string]any) error) error {
 	slog.Info("consumer started", "consumer", name)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -43,7 +43,7 @@ func Consume(ctx context.Context, name string, sub Subscription, process func(ct
 			return err
 		}
 		for _, m := range msgs {
-			if err := process(ctx, m); err != nil {
+			if err := process(ctx, m.Values); err != nil {
 				continue
 			}
 			if err := sub.Ack(ctx, m.Handle); err != nil {

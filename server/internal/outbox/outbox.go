@@ -13,7 +13,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/messaging"
 )
 
-// Message は 1 件の未送信イベント。Values がそのまま XAdd のペイロードで、trace 伝播フィールドは
+// Message は 1 件の未送信イベント。Values がそのまま送出のペイロードで、trace 伝播フィールドは
 // Store が Values に載せて返す (リレーはイベントの中身を知らない)。
 type Message struct {
 	ID     int64
@@ -74,7 +74,7 @@ func Dispatch(ctx context.Context, ins Inserter, traceparent string, events ...E
 	return nil
 }
 
-// DecodePayload は outbox 行の payload (jsonb) と traceparent を XAdd 用の Values へ復元する。
+// DecodePayload は outbox 行の payload (jsonb) と traceparent を送出用の Values へ復元する。
 // Dispatch が載せた Values をそのまま戻すだけでよく、リレーはイベントの中身を知らないままにできる。
 // bigint が JSON 経由で float64 化して桁落ちしないよう、整数は json.Number から int64 へ戻す。
 func DecodePayload(raw []byte, traceparent string) (map[string]any, error) {
