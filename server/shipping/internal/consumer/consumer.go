@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
@@ -32,7 +32,7 @@ const (
 var tracer = otel.Tracer("shipping-worker")
 
 type ShipmentCreator interface {
-	CreateShipmentForOrder(ctx context.Context, orderID int64, dest gateway.Destination) (db.ShippingShipment, error)
+	CreateShipmentForOrder(ctx context.Context, orderID order.ID, dest gateway.Destination) (db.ShippingShipment, error)
 }
 
 type Consumer struct {
@@ -138,11 +138,10 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	raw, _ := values[paymentevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
-		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "raw", raw, "error", err)
+		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "error", err)
 		return nil
 	}
 	// (ADR-[[202606301000]])

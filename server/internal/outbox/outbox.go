@@ -35,14 +35,14 @@ const FieldTraceparent = "traceparent"
 // producer は「起きた事実」をこの形で Dispatch に渡すだけでよい。
 type Event interface {
 	EventType() string
-	AggregateID() int64
+	AggregateID() string
 	Values() map[string]any
 }
 
 // Row は outbox 1 行ぶんの INSERT 値。各サービスの sqlc 実装をこの形へ薄く適合させる
 // (生成型がパッケージごとに違うため、共有層はこの中立な型で受ける)。
 type Row struct {
-	AggregateID int64
+	AggregateID string
 	EventType   string
 	Payload     []byte
 	Traceparent string

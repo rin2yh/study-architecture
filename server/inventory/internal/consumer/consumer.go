@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -27,7 +27,7 @@ const (
 var tracer = otel.Tracer("inventory-worker")
 
 type ReservationConfirmer interface {
-	ConfirmReservationsByOrder(ctx context.Context, orderID int64) error
+	ConfirmReservationsByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type Consumer struct {
@@ -129,11 +129,10 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
 		return nil
 	}
-	raw, _ := values[paymentevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
-		slog.ErrorContext(ctx, "inventory consumer: invalid orderId", "raw", raw, "error", err)
+		slog.ErrorContext(ctx, "inventory consumer: invalid orderId", "error", err)
 		return nil
 	}
 	// 確定は ON CONFLICT DO NOTHING で冪等。再配信は no-op で ack される (ADR-[[202606261214]])。

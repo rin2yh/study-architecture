@@ -10,6 +10,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/rin2yh/study-architecture/server/internal/order"
 )
 
 const (
@@ -19,24 +21,24 @@ const (
 
 const (
 	FieldEvent   = "event"
-	FieldOrderID = "orderId"
+	FieldOrderID = order.FieldID
 	// W3C propagator が使うキー。伝播フィールドは traceparent のみで秘匿情報は混ぜない
 	// (ADR-[[202606250159]] / ADR-[[202606250141]])。
 	FieldTraceparent = "traceparent"
 )
 
 type Cancelled struct {
-	OrderID int64
+	OrderID order.ID
 }
 
 func (c Cancelled) EventType() string { return TypeCancelled }
 
-func (c Cancelled) AggregateID() int64 { return c.OrderID }
+func (c Cancelled) AggregateID() string { return c.OrderID.String() }
 
 func (c Cancelled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:   TypeCancelled,
-		FieldOrderID: c.OrderID,
+		FieldOrderID: c.OrderID.String(),
 	}
 }
 

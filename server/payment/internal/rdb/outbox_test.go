@@ -27,8 +27,8 @@ func TestOutboxStoreFetchUnpublished(t *testing.T) {
 		if len(msgs) != 1 {
 			t.Fatalf("len(msgs) = %d, want 1", len(msgs))
 		}
-		if got, _ := msgs[0].Values["orderId"].(int64); got != 20 {
-			t.Fatalf("values[orderId] = %v, want 20", msgs[0].Values["orderId"])
+		if got, _ := msgs[0].Values["orderId"].(string); got != "20" {
+			t.Fatalf("values[orderId] = %v, want \"20\"", msgs[0].Values["orderId"])
 		}
 		if got, _ := msgs[0].Values["traceparent"].(string); got != "tp-1" {
 			t.Fatalf("values[traceparent] = %q, want tp-1", got)

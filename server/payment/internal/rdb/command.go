@@ -7,8 +7,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 	"github.com/rin2yh/study-architecture/server/payment/internal/db"
 )
 
@@ -17,7 +19,7 @@ type outboxInserter struct{ q db.Querier }
 
 func (o outboxInserter) InsertOutbox(ctx context.Context, row outbox.Row) error {
 	return o.q.InsertOutbox(ctx, db.InsertOutboxParams{
-		AggregateID: row.AggregateID,
+		AggregateID: strconvx.MustParseInt64(row.AggregateID),
 		EventType:   row.EventType,
 		Payload:     row.Payload,
 		Traceparent: row.Traceparent,
@@ -72,7 +74,11 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db
 	if err != nil {
 		return db.PaymentPayment{}, dberr.FromUpdate(err)
 	}
-	ev := paymentevent.Settled{PaymentID: row.ID, OrderID: row.OrderID, AmountCents: row.AmountCents}
+	orderID, err := order.Parse(strconvx.FormatInt64(row.OrderID))
+	if err != nil {
+		return db.PaymentPayment{}, err
+	}
+	ev := paymentevent.Settled{PaymentID: row.ID, OrderID: orderID, AmountCents: row.AmountCents}
 	if err := outbox.Dispatch(ctx, outboxInserter{qtx}, u.Traceparent, ev); err != nil {
 		return db.PaymentPayment{}, err
 	}
@@ -84,18 +90,19 @@ func (r *PaymentCommand) UpdatePayment(ctx context.Context, u PaymentUpdate) (db
 
 // RefundByOrder は order.cancelled の補償。確定済みは返金・未確定はキャンセルへ倒す。状態ガード付き
 // UPDATE で冪等にし、再配信での二重返金を防ぐ (ADR-[[202606261702]] / ADR-[[202606261214]])。
-func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID int64) error {
+func (r *PaymentCommand) RefundByOrder(ctx context.Context, orderID order.ID) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	id := strconvx.MustParseInt64(orderID.String())
 	qtx := db.New(tx)
-	if err := qtx.RefundPaymentByOrder(ctx, orderID); err != nil {
+	if err := qtx.RefundPaymentByOrder(ctx, id); err != nil {
 		return err
 	}
-	if err := qtx.VoidPendingPaymentByOrder(ctx, orderID); err != nil {
+	if err := qtx.VoidPendingPaymentByOrder(ctx, id); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

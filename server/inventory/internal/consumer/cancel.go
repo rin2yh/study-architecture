@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -21,7 +21,7 @@ import (
 const cancelConsumerGroup = "inventory-cancel"
 
 type ReservationCompensator interface {
-	CompensateByOrder(ctx context.Context, orderID int64) error
+	CompensateByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type CancelConsumer struct {
@@ -123,11 +123,10 @@ func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) erro
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	raw, _ := values[orderevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
-		slog.ErrorContext(ctx, "inventory cancel consumer: invalid orderId", "raw", raw, "error", err)
+		slog.ErrorContext(ctx, "inventory cancel consumer: invalid orderId", "error", err)
 		return nil
 	}
 	return c.compensator.CompensateByOrder(ctx, orderID)

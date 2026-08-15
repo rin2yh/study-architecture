@@ -6,6 +6,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/dberr"
 	testdb "github.com/rin2yh/study-architecture/server/internal/test/db"
+	"github.com/rin2yh/study-architecture/server/internal/test/orderid"
 	"github.com/rin2yh/study-architecture/server/internal/test/skip"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
@@ -34,7 +35,7 @@ func TestCreateShipmentForOrder(t *testing.T) {
 
 	dest := gateway.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
 	t.Run("正常系 carrier/tracking 未指定で宛先を持つ preparing 枠を作る", func(t *testing.T) {
-		got, err := r.CreateShipmentForOrder(t.Context(), 300, dest)
+		got, err := r.CreateShipmentForOrder(t.Context(), orderid.Must(t, "300"), dest)
 		if err != nil {
 			t.Fatalf("CreateShipmentForOrder: %v", err)
 		}
@@ -46,7 +47,7 @@ func TestCreateShipmentForOrder(t *testing.T) {
 		}
 	})
 	t.Run("準正常系 同一 order の再手配は ErrConflict (冪等)", func(t *testing.T) {
-		if _, err := r.CreateShipmentForOrder(t.Context(), 300, dest); !errors.Is(err, dberr.ErrConflict) {
+		if _, err := r.CreateShipmentForOrder(t.Context(), orderid.Must(t, "300"), dest); !errors.Is(err, dberr.ErrConflict) {
 			t.Fatalf("err = %v, want ErrConflict", err)
 		}
 	})
@@ -71,13 +72,13 @@ func TestCancelShipmentForOrder(t *testing.T) {
 	}
 
 	t.Run("正常系 未発送は中止され再実行でも 1 回に収束", func(t *testing.T) {
-		if err := r.CancelShipmentForOrder(t.Context(), 200); err != nil {
+		if err := r.CancelShipmentForOrder(t.Context(), orderid.Must(t, "200")); err != nil {
 			t.Fatalf("CancelShipmentForOrder: %v", err)
 		}
 		if got := statusOf(t, 1); got != "cancelled" {
 			t.Fatalf("status = %q, want cancelled", got)
 		}
-		if err := r.CancelShipmentForOrder(t.Context(), 200); err != nil {
+		if err := r.CancelShipmentForOrder(t.Context(), orderid.Must(t, "200")); err != nil {
 			t.Fatalf("CancelShipmentForOrder again: %v", err)
 		}
 		if got := statusOf(t, 1); got != "cancelled" {
@@ -86,7 +87,7 @@ func TestCancelShipmentForOrder(t *testing.T) {
 	})
 
 	t.Run("準正常系 発送済みは中止しない", func(t *testing.T) {
-		if err := r.CancelShipmentForOrder(t.Context(), 300); err != nil {
+		if err := r.CancelShipmentForOrder(t.Context(), orderid.Must(t, "300")); err != nil {
 			t.Fatalf("CancelShipmentForOrder: %v", err)
 		}
 		if got := statusOf(t, 2); got != "shipped" {
@@ -95,7 +96,7 @@ func TestCancelShipmentForOrder(t *testing.T) {
 	})
 
 	t.Run("準正常系 未作成は no-op", func(t *testing.T) {
-		if err := r.CancelShipmentForOrder(t.Context(), 999); err != nil {
+		if err := r.CancelShipmentForOrder(t.Context(), orderid.Must(t, "999")); err != nil {
 			t.Fatalf("CancelShipmentForOrder missing: %v", err)
 		}
 	})

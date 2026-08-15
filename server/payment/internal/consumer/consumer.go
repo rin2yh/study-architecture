@@ -7,7 +7,6 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
@@ -28,7 +28,7 @@ const (
 var tracer = otel.Tracer("payment")
 
 type PaymentRefunder interface {
-	RefundByOrder(ctx context.Context, orderID int64) error
+	RefundByOrder(ctx context.Context, orderID order.ID) error
 }
 
 type Consumer struct {
@@ -130,11 +130,10 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
 		return nil
 	}
-	raw, _ := values[orderevent.FieldOrderID].(string)
-	orderID, err := strconv.ParseInt(raw, 10, 64)
+	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
-		slog.ErrorContext(ctx, "payment consumer: invalid orderId", "raw", raw, "error", err)
+		slog.ErrorContext(ctx, "payment consumer: invalid orderId", "error", err)
 		return nil
 	}
 	return c.refunder.RefundByOrder(ctx, orderID)

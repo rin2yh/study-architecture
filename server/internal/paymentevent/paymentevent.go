@@ -9,6 +9,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/rin2yh/study-architecture/server/internal/order"
+	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 )
 
 const (
@@ -19,7 +22,7 @@ const (
 const (
 	FieldEvent       = "event"
 	FieldPaymentID   = "paymentId"
-	FieldOrderID     = "orderId"
+	FieldOrderID     = order.FieldID
 	FieldAmountCents = "amountCents"
 	// W3C propagator が使うキー。伝播フィールドは traceparent のみで秘匿情報は混ぜない
 	// (ADR-[[202606250159]] / ADR-[[202606250141]])。
@@ -28,19 +31,19 @@ const (
 
 type Settled struct {
 	PaymentID   int64
-	OrderID     int64
+	OrderID     order.ID
 	AmountCents int64
 }
 
 func (s Settled) EventType() string { return TypeSettled }
 
-func (s Settled) AggregateID() int64 { return s.PaymentID }
+func (s Settled) AggregateID() string { return strconvx.FormatInt64(s.PaymentID) }
 
 func (s Settled) Values() map[string]any {
 	return map[string]any{
 		FieldEvent:       TypeSettled,
 		FieldPaymentID:   s.PaymentID,
-		FieldOrderID:     s.OrderID,
+		FieldOrderID:     s.OrderID.String(),
 		FieldAmountCents: s.AmountCents,
 	}
 }

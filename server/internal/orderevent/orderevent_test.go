@@ -1,4 +1,4 @@
-package paymentevent_test
+package orderevent_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/rin2yh/study-architecture/server/internal/order"
-	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 )
 
 func sampledContext(t *testing.T) (context.Context, trace.TraceID) {
@@ -31,22 +31,19 @@ func sampledContext(t *testing.T) (context.Context, trace.TraceID) {
 	return trace.ContextWithSpanContext(context.Background(), sc), tid
 }
 
-func TestInjectLinkRoundTrip(t *testing.T) {
+// 発行側は outbox 行に traceparent を持たせるため Traceparent で取り出す (Inject は持たない)。
+func TestTraceparentLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
 
-	id, err := order.Parse("2")
+	id, err := order.Parse("20")
 	if err != nil {
 		t.Fatalf("order.New: %v", err)
 	}
-	values := paymentevent.Settled{PaymentID: 1, OrderID: id, AmountCents: 300}.Values()
-	paymentevent.Inject(ctx, values)
+	values := orderevent.Cancelled{OrderID: id}.Values()
+	values[orderevent.FieldTraceparent] = orderevent.Traceparent(ctx)
 
-	if _, ok := values[paymentevent.FieldTraceparent].(string); !ok {
-		t.Fatalf("traceparent was not injected into values: %#v", values)
-	}
-
-	link := paymentevent.LinkFrom(context.Background(), values)
+	link := orderevent.LinkFrom(context.Background(), values)
 	if got := link.SpanContext.TraceID(); got != want {
 		t.Fatalf("link trace id = %s, want %s", got, want)
 	}
@@ -56,7 +53,7 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 func TestLinkFromMissingTraceparent(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
-	link := paymentevent.LinkFrom(context.Background(), map[string]any{})
+	link := orderevent.LinkFrom(context.Background(), map[string]any{})
 	if link.SpanContext.IsValid() {
 		t.Fatalf("expected invalid span context for missing traceparent, got valid")
 	}

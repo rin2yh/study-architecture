@@ -196,12 +196,12 @@ func TestDecodePayload(t *testing.T) {
 
 type fakeEvent struct {
 	typ    string
-	aggID  int64
+	aggID  string
 	values map[string]any
 }
 
 func (e fakeEvent) EventType() string      { return e.typ }
-func (e fakeEvent) AggregateID() int64     { return e.aggID }
+func (e fakeEvent) AggregateID() string    { return e.aggID }
 func (e fakeEvent) Values() map[string]any { return e.values }
 
 type fakeInserter struct {
@@ -218,7 +218,7 @@ func (f *fakeInserter) InsertOutbox(_ context.Context, row Row) error {
 }
 
 func TestDispatch(t *testing.T) {
-	ev := func(typ string, id int64) fakeEvent {
+	ev := func(typ string, id string) fakeEvent {
 		return fakeEvent{typ: typ, aggID: id, values: map[string]any{"event": typ, "id": id}}
 	}
 	type args struct {
@@ -235,10 +235,10 @@ func TestDispatch(t *testing.T) {
 		args args
 		want want
 	}{
-		{"正常系 1 件を payload 化して積む", args{[]Event{ev("payment.settled", 7)}, "tp-1", nil}, want{1, false}},
-		{"正常系 複数件を順に積む", args{[]Event{ev("a", 1), ev("b", 2)}, "", nil}, want{2, false}},
+		{"正常系 1 件を payload 化して積む", args{[]Event{ev("payment.settled", "7")}, "tp-1", nil}, want{1, false}},
+		{"正常系 複数件を順に積む", args{[]Event{ev("a", "1"), ev("b", "2")}, "", nil}, want{2, false}},
 		{"準正常系 0 件なら何もしない", args{nil, "tp", nil}, want{0, false}},
-		{"異常系 Inserter 失敗で error を返す", args{[]Event{ev("a", 1)}, "", errors.New("insert down")}, want{0, true}},
+		{"異常系 Inserter 失敗で error を返す", args{[]Event{ev("a", "1")}, "", errors.New("insert down")}, want{0, true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestDispatch(t *testing.T) {
 			for i, r := range ins.rows {
 				e := tt.args.events[i]
 				if r.EventType != e.EventType() || r.AggregateID != e.AggregateID() {
-					t.Fatalf("row[%d] = {%s,%d}, want {%s,%d}", i, r.EventType, r.AggregateID, e.EventType(), e.AggregateID())
+					t.Fatalf("row[%d] = {%s,%s}, want {%s,%s}", i, r.EventType, r.AggregateID, e.EventType(), e.AggregateID())
 				}
 				if r.Traceparent != tt.args.traceparent {
 					t.Fatalf("row[%d] traceparent = %q, want %q", i, r.Traceparent, tt.args.traceparent)
