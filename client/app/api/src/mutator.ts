@@ -17,7 +17,7 @@ const makeFetch =
       throw new Error(`request to ${url} failed: ${res.status} ${res.statusText}`);
     }
     // 生成コードが型引数で渡す envelope 型 T を runtime 値から組むため、この境界だけ
-    // 型アサーションを許可する (ADR-[[202606221000]])。
+    // 型アサーションを許可する。
     // oxlint-disable-next-line typescript/consistent-type-assertions
     return { data: body, status: res.status, headers: res.headers } as T;
   };

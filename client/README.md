@@ -1,16 +1,16 @@
 # client — フロントエンド (pnpm workspace)
 
-TanStack Start による 2 つの UI と、共有 API パッケージのモノレポ。
+React Router v7 による 2 つの UI と、共有 API パッケージのモノレポ。
 
 ## 構成
 
 - `app/store` — 顧客向けストア（product / order / payment / member）。買い物に加えログイン・
   注文履歴（旧 mypage）も担う。
 - `app/backoffice` — 運営の管理画面（product / order / shipping）
-- `package/api`（`api`）— 共有パッケージ。orval で各サービスの OpenAPI から fetch クライアント
+- `app/api`（`@ec/api`）— 共有パッケージ。orval で各サービスの OpenAPI から fetch クライアント
   と zod を生成し、mutator がサーバ側 env から baseURL を注入する。
 
-各 app の `src/routes/index.tsx` のローダが SSR 時にサーバ側で `api` 経由でサービスを呼ぶ
+各 app のルートモジュールの loader が SSR 時にサーバ側で `@ec/api` 経由でサービスを呼ぶ
 （ブラウザは UI のみ叩くため CORS 不要）。
 
 ## コンポーネント構成 (FSD)
@@ -26,7 +26,7 @@ TanStack Start による 2 つの UI と、共有 API パッケージのモノ�
 
 ```sh
 pnpm install
-pnpm api:gen              # ../server/<svc>/api/openapi.yaml → package/api/src/**（client + zod）
+pnpm api:gen              # ../server/<svc>/api/openapi.yaml → app/api/src/**（client + zod）
 pnpm -r build            # 各 app を vite build → .output/server/index.mjs (Nitro node-server)
 pnpm -r typecheck        # tsc --noEmit
 pnpm lint                # oxlint
