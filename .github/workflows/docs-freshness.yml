@@ -1,0 +1,103 @@
+name: docs-freshness
+
+# 既存 3 ワークフローの paths に doc/** が無く、ドキュメントの検査だけ CI の外にあったため独立させる。
+on:
+  push:
+    branches: [main]
+    paths: &trigger-paths
+      - "README.md"
+      - "doc/**"
+      - "client/README.md"
+      - "compose.yaml"
+      - "server/**"
+      - "scripts/docs/**"
+      - ".github/workflows/docs-freshness.yml"
+  pull_request:
+    paths: *trigger-paths
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "docs-agent が更新する対象ドキュメント"
+        default: "README.md"
+      agent_args:
+        description: "agy へ渡す追加引数 (フラグ実測用)"
+        default: "--output-format json"
+
+concurrency:
+  group: docs-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs-lint:
+    name: docs-lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: 参照リンクの検査
+        run: bash scripts/docs/lint-refs.sh
+
+      - name: サービス表と compose.yaml の突合
+        run: bash scripts/docs/gen-service-table.sh --check
+
+  docs-sync:
+    name: docs-sync
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: 生成物を実装に追従させる
+        run: bash scripts/docs/gen-service-table.sh --write
+
+      - name: 追従後も参照が壊れていないことを確認
+        run: bash scripts/docs/lint-refs.sh
+
+      - name: draft PR を作る / 更新する
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: docs/auto-refresh
+        run: bash scripts/docs/open-pr.sh "生成ドキュメントを実装に追従させる" "compose.yaml から生成しているサービス表が実装と乖離していたため更新します。"
+
+  docs-agent:
+    name: docs-agent
+    # 認証経路が新しく挙動が未確認のため、当面は手動実行だけに限る (schedule へは実測後に昇格)。
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: antigravity CLI を入れる
+        run: |
+          curl -fsSL https://antigravity.google/cli/install.sh | bash
+          echo "$HOME/.local/bin" >>"$GITHUB_PATH"
+
+      - name: 対象ドキュメントを更新する
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DOCS_AGENT_ARGS: ${{ inputs.agent_args }}
+        run: bash scripts/docs/agent-fix.sh "${{ inputs.target }}"
+
+      - name: 参照が壊れていないことを確認
+        run: bash scripts/docs/lint-refs.sh
+
+      - name: draft PR を作る / 更新する
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: docs/auto-refresh-agent
+        run: bash scripts/docs/open-pr.sh "${{ inputs.target }} を実装に追従させる" "agy による自動更新です。実装ファイルとの突合をレビューしてください。"
