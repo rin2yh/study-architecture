@@ -45,26 +45,6 @@ mise trust          # 初回のみ。go が mise shim 経由のため未trustだ
 
 - Go 1.26 / Docker（compose v2）が必要。
 
-## Claude Code プラグイン
-
-汎用スキル・ルールは [rin2yh/claude-code-plugins](https://github.com/rin2yh/claude-code-plugins)
-に集約している。marketplace と有効化するプラグインは `.claude/settings.json`
-（`extraKnownMarketplaces` / `enabledPlugins`）に宣言済み。
-
-ただし宣言だけでは実体が取得されない（理由は `.claude/hooks/install-plugins.sh` のヘッダ参照）。
-取得は同スクリプトが行い、SessionStart フックから走る。
-
-**cc web で使うには環境ごとに一度だけ設定が要る。** プラグインのロードは SessionStart フックより
-先に走るため、セッションごとに新品コンテナの cc web ではフックが常に間に合わない。Cloud environment の
-[setup script](https://code.claude.com/docs/en/cloud-environments#setup-scripts)（コンテナ起動時＝Claude 起動前に走る）
-に次を登録する。
-
-```sh
-bash .claude/hooks/install-plugins.sh
-```
-
-`.claude/skills/` にはこのリポジトリ固有のスキルだけを置く（汎用スキルはプラグイン側）。
-
 ## クイックスタート
 
 ```sh
