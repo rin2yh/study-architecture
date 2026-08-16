@@ -50,4 +50,4 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
       run: |
-        grep -rn -A 20 'permissions' "$HOME/.gemini/antigravity-cli/builtin/skills" | head -80 || true
+        grep -rn 'command(' "$HOME/.gemini/antigravity-cli/builtin/skills" | head -40 || true
