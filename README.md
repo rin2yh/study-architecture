@@ -51,12 +51,13 @@ mise trust          # 初回のみ。go が mise shim 経由のため未trustだ
 に集約している。marketplace と有効化するプラグインは `.claude/settings.json`
 （`extraKnownMarketplaces` / `enabledPlugins`）に宣言済み。
 
-ただし GitHub ソースのプラグインは、宣言だけでは実体が取得されない。`.claude/hooks/install-plugins.sh`
-を SessionStart フックで走らせて取得する。
+ただし宣言だけでは実体が取得されない（理由は `.claude/hooks/install-plugins.sh` のヘッダ参照）。
+取得は同スクリプトが行い、SessionStart フックから走る。
 
-cc web はセッションごとに新品コンテナのため、プラグインのロードが SessionStart フックより先に走る。
-初回セッションからスキルを使うには、Cloud environment の
-[setup script](https://code.claude.com/docs/en/cloud-environments#setup-scripts) に同じスクリプトを登録する。
+**cc web で使うには環境ごとに一度だけ設定が要る。** プラグインのロードは SessionStart フックより
+先に走るため、セッションごとに新品コンテナの cc web ではフックが常に間に合わない。Cloud environment の
+[setup script](https://code.claude.com/docs/en/cloud-environments#setup-scripts)（コンテナ起動時＝Claude 起動前に走る）
+に次を登録する。
 
 ```sh
 bash .claude/hooks/install-plugins.sh
