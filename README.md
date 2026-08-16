@@ -5,13 +5,7 @@ EC サイトを段階的に育てる学習プロジェクト。バックエン�
 
 単一事業者の EC（storefront）を前提とし、複数出店者のマーケットプレイスではない。
 
-## ドキュメント
-
-- [設計判断 (ADR 一覧)](doc/adr/README.md) — 判断の根拠はすべてここが単一情報源
-- [アーキテクチャ](doc/architecture.md) — サービス構成・API・注文まわりの振る舞い
-- [コード生成とディレクトリ構成](doc/codegen.md)
-- [フロントエンド](doc/frontend.md) — `client/` の構成と方針
-- [運用ランブック](doc/ops/runbook.md) / [ダッシュボードの見方](doc/ops/dashboards.md)
+ドキュメントは [doc/](doc/README.md) に集約している。
 
 ## 前提ツール
 
