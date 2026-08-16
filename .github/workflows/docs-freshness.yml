@@ -1,4 +1,4 @@
-name: docs-freshness
+name: Docs (freshness)
 
 # 既存 3 ワークフローの paths に doc/** が無く、ドキュメントの検査だけ CI の外にあったため独立させる。
 on:
