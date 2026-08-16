@@ -1,0 +1,16 @@
+{
+  "modelProvider": "gemini",
+  "permissions": {
+    "allow": [
+      "command(ls)",
+      "command(cat)",
+      "command(head)",
+      "command(tail)",
+      "command(find)",
+      "command(grep)",
+      "command(rg)",
+      "command(wc)",
+      "command(git)"
+    ]
+  }
+}

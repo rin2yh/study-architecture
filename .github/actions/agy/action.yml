@@ -32,10 +32,10 @@ runs:
 
     - name: configure agy
       shell: bash
-      # 環境変数だけでは sign-in を要求される。modelProvider の指定と併用が要る (CLI v1.1.13)。
+      # agy は $HOME 直下しか設定を読まないため、リポジトリの設定をそこへ写す。
       run: |
         mkdir -p "$HOME/.gemini/antigravity-cli"
-        echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+        cp "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
     - name: run agy
       shell: bash
@@ -50,4 +50,4 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
       run: |
-        grep -rn 'command(' "$HOME/.gemini/antigravity-cli/builtin/skills" | head -40 || true
+        cat "$HOME/.gemini/antigravity-cli/settings.json" || true
