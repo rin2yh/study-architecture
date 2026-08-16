@@ -19,3 +19,7 @@ func NewInventoryQuery(pool *pgxpool.Pool) *InventoryQuery {
 func (r *InventoryQuery) Available(ctx context.Context, productID int64) (int64, error) {
 	return r.q.AvailableQty(ctx, productID)
 }
+
+func (r *InventoryQuery) ReservationsByOrder(ctx context.Context, orderID int64) ([]db.ListReservationsByOrderRow, error) {
+	return r.q.ListReservationsByOrder(ctx, orderID)
+}

@@ -6,6 +6,7 @@ export class CheckoutPage {
   readonly paymentMethodLabel: Locator;
   readonly submitButton: Locator;
   readonly confirmedHeading: Locator;
+  readonly orderNumber: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -13,9 +14,15 @@ export class CheckoutPage {
     this.paymentMethodLabel = page.getByText("支払い方法");
     this.submitButton = page.getByRole("button", { name: "注文を確定する" });
     this.confirmedHeading = page.getByRole("heading", { name: "注文が確定しました" });
+    this.orderNumber = page.getByText(/^#\d+$/);
   }
 
   async submit(): Promise<void> {
     await this.submitButton.click();
+  }
+
+  async confirmedOrderId(): Promise<number> {
+    const text = await this.orderNumber.innerText();
+    return Number(text.replace("#", ""));
   }
 }

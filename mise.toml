@@ -12,19 +12,20 @@ docker compose --profile external build store
 docker compose --profile internal build backoffice
 """
 
+# 起動前に要る DB / migration / ロール付与は grant への依存で手繰る。手順として覚えさせない。
 [tasks.up]
-description = "全サービスを起動 (build 済み image を使う)"
-depends = ["build"]
+description = "全サービスを起動 (DB・migration・ロール付与まで含む)"
+depends = ["build", "grant"]
 run = "docker compose --profile external --profile internal up -d --no-build"
 
 [tasks."up:external"]
 description = "社外側スタックだけ起動"
-depends = ["build"]
+depends = ["build", "grant"]
 run = "docker compose --profile external up -d --no-build"
 
 [tasks."up:internal"]
 description = "社内側スタックだけ起動"
-depends = ["build"]
+depends = ["build", "grant"]
 run = "docker compose --profile internal up -d --no-build"
 
 [tasks."up:db"]
@@ -38,19 +39,21 @@ run = "docker compose --profile observability up -d"
 
 [tasks.migrate]
 description = "6 サービス分の migration を流す (引数で 1 サービス指定可)"
+depends = ["up:db"]
 run = "./scripts/migrate.sh"
 
-# サービスを実ロールで起動する前に必要 (ADR-[[202606231000]])。
+# サービスを実ロールで起動する前に必要 (ADR-[[202606231000]])。migration 済みの schema にしか
+# 権限を張れないため、依存は migrate 1 本にして up:db をその先へ手繰らせる。
 [tasks.grant]
 description = "サービスごとの最小権限 DB ロールを作成・付与する"
-depends = ["up:db", "migrate"]
+depends = ["migrate"]
 run = "./scripts/grant.sh"
 
 # repository の実 DB 結合テストは DATABASE_URL_{ORDER,PRODUCT} が無いと skip される。
 # このタスクは DB 起動 → migrate → DSN を渡して全テストを実行する (CI server-integration 相当)。
 [tasks."test:integration"]
 description = "DB を立てて結合テストまで含めて実行"
-depends = ["up:db", "migrate"]
+depends = ["migrate"]
 env = { DATABASE_URL_ORDER = "postgres://ec:ec_pass@localhost:5432/ec_order?sslmode=disable", DATABASE_URL_PAYMENT = "postgres://ec:ec_pass@localhost:5434/ec_payment?sslmode=disable", DATABASE_URL_MEMBER = "postgres://ec:ec_pass@localhost:5436/ec_member?sslmode=disable", DATABASE_URL_SHIPPING = "postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable", DATABASE_URL_PRODUCT = "postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable", DATABASE_URL_INVENTORY = "postgres://ec:ec_pass@localhost:5437/ec_inventory?sslmode=disable" }
 run = "go test ./server/... -race -count=1"
 
@@ -76,6 +79,17 @@ depends = ["test:e2e:install"]
 run = """
 ./scripts/e2e-up.sh backoffice
 pnpm -C client -F e2e test --project=backoffice
+"""
+
+# outbox リレーと consumer を 2 レプリカにした構成で store の E2E を回す (ADR-[[202608160800]])。
+# 固定ポートを共有できず order / payment の公開ポートが振り替わるため、E2E 側の宛先も差し替える。
+[tasks."test:e2e:replicas"]
+description = "2 レプリカ構成で store の E2E を実行"
+depends = ["test:e2e:install"]
+env = { COMPOSE_FILE = "compose.yaml:compose.replicas.yaml", E2E_PAYMENT_API_URL = "http://localhost:18004" }
+run = """
+./scripts/e2e-up.sh store
+pnpm -C client -F e2e test --project=store
 """
 
 # store / backoffice はスタックが別なので 1 つずつ順に起動して実行する。

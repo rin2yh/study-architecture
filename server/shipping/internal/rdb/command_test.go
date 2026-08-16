@@ -95,9 +95,26 @@ func TestCancelShipmentForOrder(t *testing.T) {
 		}
 	})
 
-	t.Run("準正常系 未作成は no-op", func(t *testing.T) {
+	t.Run("準正常系 未手配なら cancelled 行を立てて後着の settled を弾く", func(t *testing.T) {
 		if err := r.CancelShipmentForOrder(t.Context(), orderid.Must(t, "999")); err != nil {
 			t.Fatalf("CancelShipmentForOrder missing: %v", err)
+		}
+		dest := gateway.Destination{Recipient: "山田太郎", PostalCode: "1500001", Prefecture: "東京都", City: "渋谷区", Line1: "神宮前1-2-3"}
+		if _, err := r.CreateShipmentForOrder(t.Context(), orderid.Must(t, "999"), dest); !errors.Is(err, dberr.ErrConflict) {
+			t.Fatalf("err = %v, want ErrConflict", err)
+		}
+		rows, err := r.q.ListShipments(t.Context())
+		if err != nil {
+			t.Fatalf("ListShipments: %v", err)
+		}
+		var got []string
+		for _, s := range rows {
+			if s.OrderID == 999 {
+				got = append(got, s.Status)
+			}
+		}
+		if len(got) != 1 || got[0] != "cancelled" {
+			t.Fatalf("rows for order 999 = %v, want [cancelled]", got)
 		}
 	})
 }

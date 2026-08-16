@@ -2,7 +2,7 @@
 
 - Status: Accepted (語彙は ADR-[[202607020305]] で payment_pending / failed を追加)
 - Date: 2026-07-01
-- Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR はその具体化タスク 1), ADR-[[202606261702]] (cancel 補償と現行のキャンセル可否判定), ADR-[[202606261700]] (inventory 台帳の append-only 思想。Superseded・原案として参照), ADR-[[202606261212]] (Outbox 列。履歴テーブルとは別物), ADR-[[202606211200]] (payment.settled / shipment イベント = 前進トリガ), ADR-[[202606250159]] (traceparent 伝播), ADR-[[202606180902]] (実 DB 結合テスト), ADR-[[202606190903]] (repository CQRS), GitHub #98 (親), #96
+- Relates to: ADR-[[202607011621]] (マイクロサービス移行。本 ADR はその具体化タスク 1), ADR-[[202606261702]] (cancel 補償と現行のキャンセル可否判定), ADR-[[202606261700]] (inventory 台帳の append-only 思想。Superseded・原案として参照), ADR-[[202606300600]] (Outbox。履歴テーブルとは別物), ADR-[[202606211200]] (payment.settled / shipment イベント = 前進トリガ), ADR-[[202606250159]] (traceparent 伝播), ADR-[[202606180902]] (実 DB 結合テスト), ADR-[[202606190903]] (repository CQRS), GitHub #98 (親), #96
 
 ## Context
 
@@ -27,7 +27,7 @@ order のライフサイクルを **明示的な状態機械**として定義し
 - FSM を Go に集約するため遷移規則をテストで被覆できる (ADR-[[202606180902]] の実 DB 結合テストで各辺を確認)。
 - 本 ADR 完了時点で実遷移するのは `placed` / `cancelled` のみ。`paid` / `shipped` は語彙・辺として定義済みで購読配線待ち = 移行の既知の途中状態 (ADR-[[202607011621]] の hybrid を許容する原則どおり)。
 - checkout 前失敗の巻き戻し (`abandonCheckout` / `DeleteOrder`) は当面現行のまま。サーガ化での見直しはタスク 2。
-- `order_status_transitions` は **監査履歴**であり、イベント発行の Outbox (ADR-[[202606261212]] / #96 で ADR-202606300600 へ移行中) とは別物。混同して発行を履歴テーブルに相乗りさせない。
+- `order_status_transitions` は **監査履歴**であり、イベント発行の Outbox (ADR-[[202606300600]]) とは別物。混同して発行を履歴テーブルに相乗りさせない。
 
 ## Alternatives considered
 

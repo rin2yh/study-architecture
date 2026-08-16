@@ -1,0 +1,26 @@
+# compose.yaml への上書き。消費・送出が複数レプリカでも壊れないことを確かめるための構成で、
+# 常用はしない (ADR-[[202608160800]])。
+#
+#   COMPOSE_FILE=compose.yaml:compose.replicas.yaml docker compose --profile external up -d
+#
+# 対象は「多重起動で挙動が変わりうる」4 つ。order / payment は outbox リレーを内包し、
+# worker 2 つは購読者。DB と HTTP だけのサービスは replicas を増やしても検証対象が増えない。
+services:
+  # 固定の公開ポートはレプリカ間で共有できないため、レンジへ振り替える (base + 10000 から 2 つ)。
+  order:
+    deploy:
+      replicas: 2
+    ports: !override ["18002-18003:80"]
+
+  payment:
+    deploy:
+      replicas: 2
+    ports: !override ["18004-18005:80"]
+
+  shipping-worker:
+    deploy:
+      replicas: 2
+
+  inventory-worker:
+    deploy:
+      replicas: 2
