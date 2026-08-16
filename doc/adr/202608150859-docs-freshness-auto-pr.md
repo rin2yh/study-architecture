@@ -19,7 +19,7 @@
 ドキュメントの鮮度維持を **2 レーンに分け、どちらも draft PR で人のレビューを必ず挟む**。
 
 - **決定的レーン**: 参照リンク検査 (`scripts/docs/lint-refs.sh`) と compose.yaml からのサービス表生成
-  (`scripts/docs/gen-service-table.sh`)。PR CI で hard fail し、定期実行では自動 PR を出す。
+  (`scripts/docs/gen-service-table.sh`)。乖離は hard fail させ、修正は自動 PR で出す。
   → 一意に直せるものを LLM に渡さない。差分が安定しレビューが要らなくなる。
 - **AI レーン**: 散文のズレを antigravity CLI (`agy`) に委譲する (`scripts/docs/agent-fix.sh`)。
   入力は「対象ドキュメントの最終更新以降に変わった実装」に絞り、1 実行 1 ドキュメントに閉じる。
@@ -37,7 +37,10 @@
 - 外部 AI サービスへの依存が CI の**書き込み**経路に入る。draft PR + 書き込みパス制限 + ADR 禁止で
   信頼境界を保つが、レビュー無しのマージは前提から外れる。
 - `agy` の headless 認証は 2026-08-14 に入ったばかりで、CI 用の API キー認証を求める upstream issue も
-  open のまま。AI レーンは当面 `workflow_dispatch` 限定とし、実測後に `schedule` へ昇格させる。
+  open のまま。
+- **当面はどのレーンも `workflow_dispatch` 限定**で入れる。実測前に `schedule` / `pull_request` を
+  足すと実行回数だけ増えるため。昇格は手動実行での実測後に別途行う (GitHub #144)。その間、
+  乗り遅れはマージ後の手動実行で見つかる形になる。
 - 生成物のマーカーを壊すと生成が失敗する。README の該当範囲は手編集できなくなる。
 
 ## Alternatives considered

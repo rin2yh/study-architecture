@@ -1,30 +1,12 @@
 name: Docs (freshness)
 
-# 既存 3 ワークフローの paths に doc/** が無く、ドキュメントの検査だけ CI の外にあったため独立させる。
+# 当面は手動実行だけに絞る。schedule / pull_request への昇格は手動実行での実測後に別途行う。
 on:
-  push:
-    branches: [main]
-    paths: &trigger-paths
-      - "README.md"
-      - "doc/**"
-      - "client/README.md"
-      - "compose.yaml"
-      - "server/**"
-      - "infra/**"
-      - "mise.toml"
-      - "scripts/docs/**"
-      - ".github/workflows/docs-freshness.yml"
-  pull_request:
-    paths: *trigger-paths
-  schedule:
-    - cron: "0 0 * * 1"
   workflow_dispatch:
     inputs:
       target:
-        description: "docs-agent が更新する対象ドキュメント"
-        default: "README.md"
-      agent_args:
-        description: "agy へ渡す追加引数 (フラグ実測用。既定は agent-fix.sh 側)"
+        description: "docs-agent が更新する対象ドキュメント (空なら決定的レーンだけ回す)"
+        default: ""
 
 concurrency:
   group: docs-freshness-${{ github.ref }}
@@ -36,8 +18,6 @@ permissions:
 jobs:
   docs-lint:
     name: docs-lint
-    # schedule / dispatch では docs-sync と docs-agent が書き換え後に同じ検査を回すため重複させない。
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -52,7 +32,6 @@ jobs:
 
   docs-sync:
     name: docs-sync
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -73,8 +52,8 @@ jobs:
 
   docs-agent:
     name: docs-agent
-    # 認証経路が新しく挙動が未確認のため、当面は手動実行だけに限る (schedule へは実測後に昇格)。
-    if: github.event_name == 'workflow_dispatch'
+    # GEMINI_API_KEY 未登録だと必ず落ちるため、対象を明示したときだけ動かす。
+    if: ${{ inputs.target != '' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -94,19 +73,14 @@ jobs:
           curl -fsSL https://antigravity.google/cli/install.sh | bash
           echo "$HOME/.local/bin" >>"$GITHUB_PATH"
 
-      # GEMINI_API_KEY は Google AI Studio (https://aistudio.google.com/apikey) で発行し、
-      # リポジトリの Settings > Secrets and variables > Actions に同名で登録する。
-      # 環境変数だけでは効かず modelProvider の指定と併用しないと sign-in を要求される (CLI v1.1.13)。
-      # settings.json の置き場は未実測のため、初回の手動実行で確認する。
-      - name: Gemini API を直接使う設定を書く
+      - name: Gemini API を直接使う設定を置く
         run: |
           mkdir -p "$HOME/.gemini/antigravity-cli"
-          echo '{"modelProvider":"gemini"}' >"$HOME/.gemini/antigravity-cli/settings.json"
+          cp .github/antigravity/settings.json "$HOME/.gemini/antigravity-cli/settings.json"
 
       - name: 対象ドキュメントを更新する
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          DOCS_AGENT_ARGS: ${{ inputs.agent_args }}
         run: bash scripts/docs/agent-fix.sh "${{ inputs.target }}"
 
       - name: 参照が壊れていないことを確認
