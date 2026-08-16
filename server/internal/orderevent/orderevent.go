@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/eventfield"
 	"github.com/rin2yh/study-architecture/server/internal/order"
 )
 
@@ -53,9 +54,9 @@ var ErrNotCancelled = errors.New("not an order.cancelled event")
 // 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
 func ParseCancelled(values map[string]any) (Cancelled, error) {
 	// 種別を名乗らない payload は「別種」ではなく壊れているため。
-	t, ok := values[FieldEvent].(string)
-	if !ok {
-		return Cancelled{}, fmt.Errorf("%s: got %#v, want string", FieldEvent, values[FieldEvent])
+	t, err := eventfield.Required[string](values, FieldEvent)
+	if err != nil {
+		return Cancelled{}, err
 	}
 	if t != TypeCancelled {
 		return Cancelled{}, fmt.Errorf("%w: %s = %q", ErrNotCancelled, FieldEvent, t)

@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/eventfield"
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/strconvx"
 )
@@ -59,24 +60,24 @@ var ErrNotSettled = errors.New("not a payment.settled event")
 // 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
 func ParseSettled(values map[string]any) (Settled, error) {
 	// 種別を名乗らない payload は「別種」ではなく壊れているため。
-	t, ok := values[FieldEvent].(string)
-	if !ok {
-		return Settled{}, fmt.Errorf("%s: got %#v, want string", FieldEvent, values[FieldEvent])
+	t, err := eventfield.Required[string](values, FieldEvent)
+	if err != nil {
+		return Settled{}, err
 	}
 	if t != TypeSettled {
 		return Settled{}, fmt.Errorf("%w: %s = %q", ErrNotSettled, FieldEvent, t)
 	}
-	paymentID, ok := values[FieldPaymentID].(int64)
-	if !ok {
-		return Settled{}, fmt.Errorf("%s: got %#v, want int64", FieldPaymentID, values[FieldPaymentID])
+	paymentID, err := eventfield.Required[int64](values, FieldPaymentID)
+	if err != nil {
+		return Settled{}, err
 	}
 	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
 		return Settled{}, fmt.Errorf("%s: %w", FieldOrderID, err)
 	}
-	amountCents, ok := values[FieldAmountCents].(int64)
-	if !ok {
-		return Settled{}, fmt.Errorf("%s: got %#v, want int64", FieldAmountCents, values[FieldAmountCents])
+	amountCents, err := eventfield.Required[int64](values, FieldAmountCents)
+	if err != nil {
+		return Settled{}, err
 	}
 	return Settled{PaymentID: paymentID, OrderID: orderID, AmountCents: amountCents}, nil
 }
