@@ -45,5 +45,5 @@ runs:
         PROMPT_FILE: ${{ inputs.prompt-file }}
       # モデル指定と承認方針は無料枠と headless 実行の制約による (ADR-[[202608150859]])。
       # 標準入力を開けたままにすると承認待ちで止まる。
-      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")" > "$RUNNER_TEMP/agy-out.txt" 2>&1 < /dev/null
+      run: agy --model gemini-3.5-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")" > "$RUNNER_TEMP/agy-out.txt" 2>&1 < /dev/null
 
