@@ -37,7 +37,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 OTEL_EXPORTER_OTLP_INSECURE=tr
 
 - `otelx.Setup` + 対象の計装関数を呼ぶだけでよい。Alloy 経由なのでアプリ本来の `otlpmetricgrpc` が使え、`go.mod` を触らずに済む
 - 手書きのダミー系列を送ると「式とラベルが噛み合っているか」が確かめられなくなる。名前や属性を自分で書かない
-- DB や Redis が要る計装は `miniredis` 等のインプロセス実装で足りることが多い
+- DB やブローカが要る計装は、compose の該当コンテナ (`db-*` / `broker`) を単体で上げれば足りることが多い
 - `resource` の `service.name` が `job` ラベルになる。複数サービスを写したいならプロセスを分ける
 - 使い捨てコードにも `.claude/rules/comments.md` のフックが効く
 

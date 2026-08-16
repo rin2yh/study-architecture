@@ -60,6 +60,24 @@ paths:
                 $ref: "#/components/schemas/ReservationResult"
         default:
           $ref: "#/components/responses/Error"
+  /reservations/{orderId}:
+    get:
+      operationId: listReservationsByOrder
+      summary: 注文の予約とその状態を取得する
+      tags: [inventory]
+      parameters:
+        - $ref: "#/components/parameters/OrderIdPath"
+      responses:
+        "200":
+          description: 予約の配列 (注文が無ければ空配列)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+        default:
+          $ref: "#/components/responses/Error"
   /reservations/{orderId}/release:
     post:
       operationId: releaseReservation
@@ -192,6 +210,24 @@ components:
         orderId:
           type: integer
           format: int64
+    Reservation:
+      type: object
+      required: [id, productId, quantity, state]
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+        state:
+          type: string
+          description: >-
+            予約の現在状態。終端 3 列 (confirmed_at / released_at / expired_at) は相互排他で、
+            cancelled は確定済み行の取り消しを表す (ADR-[[202606281000]])。
+          enum: [pending, confirmed, cancelled, released, expired]
     Availability:
       type: object
       required: [productId, available]

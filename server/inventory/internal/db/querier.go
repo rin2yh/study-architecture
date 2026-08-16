@@ -18,6 +18,8 @@ type Querier interface {
 	// (ADR-[[202606262000]])
 	ExpireReservations(ctx context.Context) error
 	InsertReservation(ctx context.Context, arg InsertReservationParams) (int64, error)
+	// cancelled は confirmed 済み行にのみ立つため先に見る (ADR-[[202606281000]])。
+	ListReservationsByOrder(ctx context.Context, orderID int64) ([]ListReservationsByOrderRow, error)
 	// 同一商品の同時予約を直列化する。tx 終了まで保持され売り越しを DB で防ぐ (ADR-[[202606262000]])。
 	LockProduct(ctx context.Context, dollar_1 int64) error
 	// 補償/キャンセル時の解放 (#88 のフック)。

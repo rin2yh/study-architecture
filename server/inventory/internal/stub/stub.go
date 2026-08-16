@@ -10,6 +10,7 @@ import (
 
 type InventoryStub struct {
 	AvailableQty int64
+	Reservations []db.ListReservationsByOrderRow
 	StockInRow   db.InventoryStockIn
 	ReserveErr   error
 	Err          error
@@ -17,6 +18,10 @@ type InventoryStub struct {
 
 func (s InventoryStub) Available(context.Context, int64) (int64, error) {
 	return s.AvailableQty, s.Err
+}
+
+func (s InventoryStub) ReservationsByOrder(context.Context, int64) ([]db.ListReservationsByOrderRow, error) {
+	return s.Reservations, s.Err
 }
 
 func (s InventoryStub) StockIn(context.Context, int64, int32) (db.InventoryStockIn, error) {

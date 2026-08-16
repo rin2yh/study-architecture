@@ -92,6 +92,56 @@ func (q *Queries) InsertReservation(ctx context.Context, arg InsertReservationPa
 	return id, err
 }
 
+const listReservationsByOrder = `-- name: ListReservationsByOrder :many
+SELECT
+    id,
+    product_id,
+    quantity,
+    CASE
+        WHEN cancelled_at IS NOT NULL THEN 'cancelled'
+        WHEN confirmed_at IS NOT NULL THEN 'confirmed'
+        WHEN released_at  IS NOT NULL THEN 'released'
+        WHEN expired_at   IS NOT NULL THEN 'expired'
+        ELSE 'pending'
+    END AS state
+FROM inventory.reservations
+WHERE order_id = $1
+ORDER BY id
+`
+
+type ListReservationsByOrderRow struct {
+	ID        int64  `json:"id"`
+	ProductID int64  `json:"productId"`
+	Quantity  int32  `json:"quantity"`
+	State     string `json:"state"`
+}
+
+// cancelled は confirmed 済み行にのみ立つため先に見る (ADR-[[202606281000]])。
+func (q *Queries) ListReservationsByOrder(ctx context.Context, orderID int64) ([]ListReservationsByOrderRow, error) {
+	rows, err := q.db.Query(ctx, listReservationsByOrder, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListReservationsByOrderRow{}
+	for rows.Next() {
+		var i ListReservationsByOrderRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.Quantity,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockProduct = `-- name: LockProduct :exec
 SELECT pg_advisory_xact_lock($1::bigint)
 `

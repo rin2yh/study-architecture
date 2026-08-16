@@ -10,12 +10,14 @@ import (
 )
 
 const cancelShipmentForOrder = `-- name: CancelShipmentForOrder :exec
-UPDATE shipping.shipments
+INSERT INTO shipping.shipments (order_id, status)
+VALUES ($1, 'cancelled')
+ON CONFLICT (order_id) DO UPDATE
 SET status = 'cancelled'
-WHERE order_id = $1 AND status = 'preparing'
+WHERE shipments.status = 'preparing'
 `
 
-// (ADR-[[202606261702]] / ADR-[[202606261214]])
+// (ADR-[[202606261702]] / ADR-[[202606261214]] / ADR-[[202608160810]])
 func (q *Queries) CancelShipmentForOrder(ctx context.Context, orderID int64) error {
 	_, err := q.db.Exec(ctx, cancelShipmentForOrder, orderID)
 	return err
@@ -75,6 +77,7 @@ type CreateShipmentForOrderParams struct {
 }
 
 // ADR-[[202606211200]] / ADR-[[202606261704]]
+// DO NOTHING は再配信の吸収に加え、先着した cancelled 行への手配も弾く (ADR-[[202608160810]])。
 func (q *Queries) CreateShipmentForOrder(ctx context.Context, arg CreateShipmentForOrderParams) (ShippingShipment, error) {
 	row := q.db.QueryRow(ctx, createShipmentForOrder,
 		arg.OrderID,

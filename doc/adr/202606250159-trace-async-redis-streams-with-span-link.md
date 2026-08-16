@@ -1,8 +1,8 @@
 # ADR-202606250159: Redis Streams の非同期イベントは traceparent + span link でトレースをつなぐ
 
-- Status: Accepted
+- Status: Accepted (媒体は ADR-[[202608150830]] で SNS + SQS へ。traceparent + span link の方式は不変)
 - Date: 2026-06-25
-- Relates to: ADR-[[202606241356]] (可観測性スタック), ADR-[[202606211200]] (Redis Streams イベント駆動), ADR-[[202606250141]] (マスキング)
+- Relates to: ADR-[[202606241356]] (可観測性スタック), ADR-[[202606211200]] (イベント駆動の配送手配), ADR-[[202606250141]] (マスキング), ADR-[[202608150830]] (現行のブローカ)
 
 ## Context
 
