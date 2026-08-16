@@ -12,7 +12,8 @@ EC サイトを段階的に育てる学習プロジェクト。バックエン�
 ドメインサービス 6 つ（各 1 コンテナ・個別デプロイ）と、非同期イベントを処理するワーカー 2 つ。
 DB はドメインごとのインスタンスに分割済み（[doc/adr/202606240522](doc/adr/202606240522-step3-split-db-per-domain-from-weak-edge.md)）。
 社外 / 社内の経路は edge-proxy で分け（[doc/adr/202606170909](doc/adr/202606170909-split-customer-and-ops-db.md)）、
-非同期イベントは broker (Redis Streams) を通す。
+非同期イベントは broker (SNS + SQS 互換のマネージドキュー。
+[doc/adr/202608150830](doc/adr/202608150830-managed-queue-with-broker-side-dlq.md)) を通す。
 UI は store（買い物 + ログイン / 注文履歴）と backoffice（社内運用）の 2 つ。
 
 下表は `compose.yaml` から生成する。手で編集せず `scripts/docs/gen-service-table.sh --write` を実行すること。
@@ -21,7 +22,7 @@ UI は store（買い物 + ログイン / 注文履歴）と backoffice（社内
 
 | 区分 | 名前 | ホストポート | コンテナ内 | profile | ネットワーク |
 | --- | --- | --- | --- | --- | --- |
-| 基盤 | `broker` | - | - | 既定 | external-private, internal-private |
+| 基盤 | `broker` | 4566 | 4566 | 既定 | external-private, internal-private |
 | 基盤 | `edge-proxy` | - | - | 既定 | external-private, external-public, internal-private |
 | データ | `db-inventory` | 5437 | 5432 | 既定 | internal-private |
 | データ | `db-member` | 5436 | 5432 | 既定 | external-private |
