@@ -1,0 +1,29 @@
+name: TMP agy auth probe
+
+# Antigravity バックエンドの認証を CI で渡せるか調べるための一時ワークフロー。調査後に消す。
+on:
+  push:
+    branches:
+      - claude/document-update-strategy-t1vqkf
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: install agy
+        run: |
+          curl -fsSL https://antigravity.google/cli/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 受け付ける環境変数を探す
+        run: |
+          strings "$HOME/.local/bin/agy" | grep -E '^[A-Z][A-Z0-9_]{4,}$' | grep -E 'ANTIGRAVITY|GEMINI|GOOGLE|API_KEY|TOKEN|CREDENTIAL|OAUTH' | sort -u | head -40 || true
+
+      - name: 認証まわりのサブコマンドを見る
+        run: |
+          agy help || true
+          agy help login || true
