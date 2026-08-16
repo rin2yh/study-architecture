@@ -18,6 +18,8 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-24.04
+    # agy が応答待ちで止まってもランナーを占有し続けないための上限。
+    timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
