@@ -37,9 +37,22 @@ runs:
         mkdir -p "$HOME/.gemini/antigravity-cli"
         echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
 
+    - name: debug agy
+      shell: bash
+      run: |
+        agy --version || true
+        agy --help || true
+
     - name: run agy
       shell: bash
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
         PROMPT_FILE: ${{ inputs.prompt-file }}
       run: agy -p "$(cat "$PROMPT_FILE")"
+
+    - name: debug agy logs
+      if: always()
+      shell: bash
+      run: |
+        find "$HOME/.gemini" "$HOME/.antigravity" "$HOME/.config" -maxdepth 4 2>/dev/null || true
+        find "$HOME" -maxdepth 4 -name '*.log' 2>/dev/null | head -20 || true
