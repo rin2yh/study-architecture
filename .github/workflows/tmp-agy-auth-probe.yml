@@ -21,7 +21,7 @@ jobs:
 
       - name: 受け付ける環境変数を探す
         run: |
-          strings "$HOME/.local/bin/agy" | grep -E '^(ANTIGRAVITY|GEMINI|GOOGLE|CLOUDCODE|JETSKI)_[A-Z0-9_]+$' | sort -u || true
+          strings "$HOME/.local/bin/agy" | grep -E '^(ANTIGRAVITY|GEMINI)_[A-Z0-9_]+$' | sort -u || true
 
       - name: 認証まわりのサブコマンドを見る
         run: |
