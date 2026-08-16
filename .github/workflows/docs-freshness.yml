@@ -33,8 +33,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # リポジトリのルールで force push が禁止されているため、前回の PR が残っていれば
-          # 作り直さずその上に積む。main を取り込んで、古い実装を読ませないようにする。
+          # force push はリポジトリのルールで禁止されている。古い実装を読ませないため main も要る。
           if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
             git fetch origin "$BRANCH"
             git checkout -B "$BRANCH" "origin/$BRANCH"
