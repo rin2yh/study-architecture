@@ -1,6 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/install-plugins.sh\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
@@ -8,12 +19,26 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/check-what-comments.sh\"",
+            "timeout": 120,
             "asyncRewake": true,
-            "rewakeSummary": "what コメント検査",
-            "timeout": 120
+            "rewakeSummary": "what コメント検査"
           }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "development-skills@rin2yh-plugins": true,
+    "meta-skills@rin2yh-plugins": true,
+    "general-skills@rin2yh-plugins": true,
+    "fav-rules@rin2yh-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "rin2yh-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "rin2yh/claude-code-plugins"
+      }
+    }
   }
 }
