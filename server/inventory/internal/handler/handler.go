@@ -13,6 +13,7 @@ import (
 
 type Query interface {
 	Available(ctx context.Context, productID int64) (int64, error)
+	ReservationsByOrder(ctx context.Context, orderID int64) ([]db.ListReservationsByOrderRow, error)
 }
 
 type Command interface {

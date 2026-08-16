@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { SEED_PRODUCTS } from "../setup/seed";
 import { MEMBER } from "../setup/auth";
+import { reservationStates, settlePayment, shipmentStatuses } from "../setup/fulfillment";
 import { CartPage } from "../pages/cart-page";
 import { CheckoutPage } from "../pages/checkout-page";
 import { HomePage } from "../pages/home-page";
@@ -41,5 +42,17 @@ test("ログインから商品購入までのフロー", async ({ page }) => {
 
     await checkout.submit();
     await expect(checkout.confirmedHeading).toBeVisible();
+  });
+
+  // 件数まで見るのは、複数レプリカでの二重送出・二重処理と欠落をここで落とすため
+  // (ADR-[[202608160800]])。
+  await test.step("決済確定が配送手配と在庫確定まで届く", async () => {
+    const checkout = new CheckoutPage(page);
+    const orderId = await checkout.confirmedOrderId();
+
+    await settlePayment(orderId);
+
+    await expect.poll(() => shipmentStatuses(orderId), { timeout: 30_000 }).toEqual(["preparing"]);
+    await expect.poll(() => reservationStates(orderId), { timeout: 30_000 }).toEqual(["confirmed"]);
   });
 });

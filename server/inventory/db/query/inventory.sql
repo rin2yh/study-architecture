@@ -26,6 +26,23 @@ FROM (
       AND r.created_at + inventory.reservation_ttl() > now()
 ) d;
 
+-- name: ListReservationsByOrder :many
+-- cancelled は confirmed 済み行にのみ立つため先に見る (ADR-[[202606281000]])。
+SELECT
+    id,
+    product_id,
+    quantity,
+    CASE
+        WHEN cancelled_at IS NOT NULL THEN 'cancelled'
+        WHEN confirmed_at IS NOT NULL THEN 'confirmed'
+        WHEN released_at  IS NOT NULL THEN 'released'
+        WHEN expired_at   IS NOT NULL THEN 'expired'
+        ELSE 'pending'
+    END AS state
+FROM inventory.reservations
+WHERE order_id = $1
+ORDER BY id;
+
 -- name: InsertReservation :one
 INSERT INTO inventory.reservations (product_id, order_id, quantity)
 VALUES ($1, $2, $3)

@@ -9,10 +9,11 @@ import (
 )
 
 type Querier interface {
-	// (ADR-[[202606261702]] / ADR-[[202606261214]])
+	// (ADR-[[202606261702]] / ADR-[[202606261214]] / ADR-[[202608160810]])
 	CancelShipmentForOrder(ctx context.Context, orderID int64) error
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (ShippingShipment, error)
 	// ADR-[[202606211200]] / ADR-[[202606261704]]
+	// DO NOTHING は再配信の吸収に加え、先着した cancelled 行への手配も弾く (ADR-[[202608160810]])。
 	CreateShipmentForOrder(ctx context.Context, arg CreateShipmentForOrderParams) (ShippingShipment, error)
 	GetShipment(ctx context.Context, id int64) (ShippingShipment, error)
 	ListShipments(ctx context.Context) ([]ShippingShipment, error)

@@ -11,6 +11,33 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for ReservationState.
+const (
+	Cancelled ReservationState = "cancelled"
+	Confirmed ReservationState = "confirmed"
+	Expired   ReservationState = "expired"
+	Pending   ReservationState = "pending"
+	Released  ReservationState = "released"
+)
+
+// Valid indicates whether the value is a known member of the ReservationState enum.
+func (e ReservationState) Valid() bool {
+	switch e {
+	case Cancelled:
+		return true
+	case Confirmed:
+		return true
+	case Expired:
+		return true
+	case Pending:
+		return true
+	case Released:
+		return true
+	default:
+		return false
+	}
+}
+
 // Availability defines model for Availability.
 type Availability struct {
 	Available int64 `json:"available"`
@@ -28,6 +55,19 @@ type Error struct {
 type Health struct {
 	Status string `json:"status"`
 }
+
+// Reservation defines model for Reservation.
+type Reservation struct {
+	Id        int64 `json:"id"`
+	ProductId int64 `json:"productId"`
+	Quantity  int   `json:"quantity"`
+
+	// State 予約の現在状態。終端 3 列 (confirmed_at / released_at / expired_at) は相互排他で、 cancelled は確定済み行の取り消しを表す (ADR-[[202606281000]])。
+	State ReservationState `json:"state"`
+}
+
+// ReservationState 予約の現在状態。終端 3 列 (confirmed_at / released_at / expired_at) は相互排他で、 cancelled は確定済み行の取り消しを表す (ADR-[[202606281000]])。
+type ReservationState string
 
 // ReservationResult defines model for ReservationResult.
 type ReservationResult struct {
@@ -82,6 +122,9 @@ type ServerInterface interface {
 	// 注文の在庫を予約する (在庫不足は 409)
 	// (POST /reservations)
 	Reserve(c *gin.Context)
+	// 注文の予約とその状態を取得する
+	// (GET /reservations/{orderId})
+	ListReservationsByOrder(c *gin.Context, orderId OrderIdPath)
 	// 注文の未確定予約を解放する (補償・キャンセル)
 	// (POST /reservations/{orderId}/release)
 	ReleaseReservation(c *gin.Context, orderId OrderIdPath)
@@ -148,6 +191,31 @@ func (siw *ServerInterfaceWrapper) Reserve(c *gin.Context) {
 	}
 
 	siw.Handler.Reserve(c)
+}
+
+// ListReservationsByOrder operation middleware
+func (siw *ServerInterfaceWrapper) ListReservationsByOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "orderId" -------------
+	var orderId OrderIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orderId", c.Param("orderId"), &orderId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter orderId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListReservationsByOrder(c, orderId)
 }
 
 // ReleaseReservation operation middleware
@@ -218,6 +286,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/availability/:productId", wrapper.GetAvailability)
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.POST(options.BaseURL+"/reservations", wrapper.Reserve)
+	router.GET(options.BaseURL+"/reservations/:orderId", wrapper.ListReservationsByOrder)
 	router.POST(options.BaseURL+"/reservations/:orderId/release", wrapper.ReleaseReservation)
 	router.POST(options.BaseURL+"/stock-ins", wrapper.StockIn)
 }
