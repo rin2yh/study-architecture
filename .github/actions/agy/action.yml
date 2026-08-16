@@ -42,12 +42,5 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
         PROMPT_FILE: ${{ inputs.prompt-file }}
-      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")"
+      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")" | tee "$RUNNER_TEMP/agy-out.txt"
 
-    - name: debug agy logs
-      if: always()
-      shell: bash
-      env:
-        GEMINI_API_KEY: ${{ inputs.api-key }}
-      run: |
-        cat "$HOME/.gemini/antigravity-cli/settings.json" || true

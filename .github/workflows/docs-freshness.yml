@@ -114,3 +114,7 @@ jobs:
 
           gh pr create --draft --base main --head "$BRANCH" --title "docs: $SUBJECT" \
             --body "antigravity CLI (Gemini) による自動更新です。実装との突合をレビューしてください。"
+
+      - name: agy の出力を出す
+        if: always()
+        run: cat "${{ runner.temp }}/agy-out.txt" || true
