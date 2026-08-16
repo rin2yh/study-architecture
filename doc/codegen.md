@@ -1,13 +1,10 @@
 # コード生成とディレクトリ構成
 
-バックエンドの生成物と、リポジトリの置き場所をまとめる。役割分担: 設計判断は
-[ADR](adr/README.md)、サービス構成とドメインの振る舞いは [architecture](architecture.md)、
-UI 側の生成（orval）は [frontend](frontend.md)。
-
 ## コード生成のしくみ
 
 契約（OpenAPI）とスキーマ（SQL）を単一情報源とし、実装コードを生成する
-（[ADR-202606170901](adr/202606170901-codegen-first-tech-stack.md)）。
+（[ADR-202606170901](adr/202606170901-codegen-first-tech-stack.md)。UI 側の生成は
+[frontend](frontend.md)）。
 
 ```
 server/<svc>/api/openapi.yaml ──oapi-codegen──▶ api/api.gen.go (型 + gin の ServerInterface)

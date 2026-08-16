@@ -1,16 +1,14 @@
 # フロントエンド
 
-`client/` の構成と方針をまとめる。役割分担: 設計判断は [ADR](adr/README.md)、インストールと
-コマンドは [client/README](../client/README.md)、サービス構成は [architecture](architecture.md)。
+`client/` の構成と方針。インストールとコマンドは [client/README](../client/README.md)。
 
 ## 構成
 
 `client/` は pnpm workspace（packages は `app/*` と `e2e`）。
 
-- `app/store` — 顧客向けストア。買い物に加えログイン・注文履歴も担う
-  （[ADR-202606221300](adr/202606221300-merge-mypage-into-store.md)）。到達先は edge-proxy 経由。
-- `app/backoffice` — 運営の管理画面。運用系・顧客系のサービスへ直接到達する
-  （[ADR-202606170909](adr/202606170909-split-customer-and-ops-db.md)）。
+- `app/store` — 顧客向けストア（product / order / payment / member）。買い物に加えログイン・
+  注文履歴も担う（[ADR-202606221300](adr/202606221300-merge-mypage-into-store.md)）。
+- `app/backoffice` — 運営の管理画面（product / order / shipping）。
 - `app/api`（パッケージ名 `api`）— 共有パッケージ。orval で各サービスの OpenAPI から fetch
   クライアントと zod を生成する。
 - `app/ui`（パッケージ名 `ui`）— 2 つの app が参照する shadcn ベースのデザインシステム。
@@ -23,8 +21,7 @@ UI は React Router v7（[ADR-202606170908](adr/202606170908-frontend-react-rout
 
 各 app のルートモジュールはサーバ側 loader で `api` の fetch クライアントを呼び、zod で検証してから
 描画する（ブラウザは UI だけを叩くため CORS は要らない）。サービス URL はサーバ側 env で注入する
-（[ADR-202606170905](adr/202606170905-ui-server-loader-data-fetching.md)）。認証コンテキストの解決も
-このサーバ側が担う（[ADR-202606230930](adr/202606230930-bff-auth-context-and-trust-boundary.md)）。
+（[ADR-202606170905](adr/202606170905-ui-server-loader-data-fetching.md)）。
 
 ## コンポーネント構成 (FSD)
 
