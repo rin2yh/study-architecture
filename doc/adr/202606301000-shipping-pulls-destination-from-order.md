@@ -20,7 +20,7 @@
 
 ## Consequences
 
-- payment は配送関心を持たず、`payment.events` ストリームに PII が乗らない。
+- payment は配送関心を持たず、`payment-events` トピックに PII が乗らない。
 - shipment 手配時に shipping→order の取得が 1 回増える。これは consumer 消費時 (バックグラウンド) で checkout 経路ではない。order 不調時は ack せず再配送に委ねる。
 - shipping に order 向け生成クライアントと gateway が増える。
 
