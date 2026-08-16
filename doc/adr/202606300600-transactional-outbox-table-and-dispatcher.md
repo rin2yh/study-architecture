@@ -8,11 +8,11 @@
 ## Context
 
 - ADR-[[202606261212]] は集約テーブルに送信状態列を足す方式で、「イベント 1 種なら集約列で足り、増えたら専用テーブルへ」と移行トリガを明記していた。#88 で 2 種目 (order.cancelled) が増え、集約に発行プラミング列が累積し、1 集約 = 1 イベント種に縛られ汎用 payload を持てない。移行トリガに達した。
-- 受信側は既に pub/sub（Redis Streams + consumer group）。論点はバスの選択ではなく、production 側で「確実にバスへ載せる」能力を発行種が増えても破綻させないこと。
+- 受信側は既に pub/sub（当時は Redis Streams + consumer group。現在は ADR-[[202608150830]]）。論点はバスの選択ではなく、production 側で「確実にバスへ載せる」能力を発行種が増えても破綻させないこと。
 
 ## Decision
 
-1. **専用テーブル**: サービスごとに専用 `<schema>.outbox`（汎用 `payload jsonb` を持つ）を切り、集約から `*_event_*` 列を落とす。業務更新と outbox INSERT を同一トランザクションで確定し、リレーが未送信 (`published_at IS NULL`) を polling して `XAdd` する点は不変。
+1. **専用テーブル**: サービスごとに専用 `<schema>.outbox`（汎用 `payload jsonb` を持つ）を切り、集約から `*_event_*` 列を落とす。業務更新と outbox INSERT を同一トランザクションで確定し、リレーが未送信 (`published_at IS NULL`) を polling してブローカへ publish する点は不変 (ブローカの選定は ADR-[[202608150830]])。
 2. **共有ディスパッチャ**: producer はドメインイベントを `outbox.Dispatch` に渡すだけにし、payload 符号化 (`Dispatch`) と復号 (`DecodePayload`) を `server/internal/outbox` の対で単一情報源にする（traceparent 付与も同所）。各サービスは sqlc 生成型を `outbox.Inserter` へ適合させる薄い adapter を 1 つ持つ。
 3. **適用範囲**: オンランプ (outbox) を通すのは欠落が損害になるイベントに限る。損失許容イベント（監査・分析等）は直 publish を許す。現状の `payment.settled` / `order.cancelled` は前者。
 

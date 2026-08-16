@@ -22,7 +22,7 @@ Issue #38 は CI を backend 5 + frontend 3 の **8 量子**ごとに gate す�
 ## Decision
 
 CI の単位として、ADR-[[202606170909]] の external (顧客) / internal (運用) 境界に寄せた **2 量子**を
-採る。境界は edge-proxy (同期中継) と Redis Streams (非同期)。
+採る。境界は edge-proxy (同期中継) とブローカ (非同期。ADR-[[202608150830]])。
 
 - **顧客系量子**: store / order / payment / member / db-customer
 - **backoffice 量子**: backoffice / product / shipping / db-ops
@@ -41,8 +41,8 @@ CI の単位として、ADR-[[202606170909]] の external (顧客) / internal (�
 - **共有 lib の fan-out は両ファイルの `paths:` 複製で表現**。YAML anchor はファイルを跨げないため、量子別
   ファイルでは複製が正攻法。共有 client パッケージ・lockfile の変更は各量子の app ビルドにも影響するので
   量子側トリガにも残す。
-- **integration job も量子別に分割**。計測上、顧客系と backoffice 側を相互 import するテストは 0 件、redis
-  依存は miniredis (in-process) なので、各量子は自量子の DB だけ起動すればよい。
+- **integration job も量子別に分割**。計測上、顧客系と backoffice 側を相互 import するテストは 0 件なので、
+  各量子は自量子の DB とブローカだけ起動すればよい。
 - **required check は当面運用しない** (学習用リポの費用対効果)。CI は情報提供として回す。
 
 ## Consequences
