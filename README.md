@@ -22,25 +22,16 @@ mise trust                      # 初回のみ。go が mise shim 経由のた�
 
 ## クイックスタート
 
-立ち上げは順序に意味がある。以降のタスク（テスト・E2E・可観測性スタックなど）は `mise tasks` で
-一覧できる（`mise.toml` のあるディレクトリごとに分かれている）。
-
 ```sh
-# 1. コード生成 → ビルド
-(cd server && mise run gen && mise run build)
-(cd client && mise run install && mise run gen && mise run build)
-
-# 2. DB 起動 → マイグレーション → ロール権限付与（この順序が必須。ADR-[[202606231000]]）
-mise run up:db
-mise run migrate
-mise run grant
-
-# 3. サービス起動（ドメインサービス 6 + ワーカー 2 + UI 2）
+# image build → DB 起動 → migration → ロール付与 → 全サービス起動（依存はタスク側が手繰る）
 mise run up
 
 # 動作確認（ホストポートは compose.yaml の ports: を参照）
 curl http://localhost:8001/healthz
 ```
+
+コード生成・テスト・E2E などその他のタスクは `mise tasks` で一覧できる（`mise.toml` のある
+ディレクトリごとに分かれている）。
 
 可観測性スタック（`mise run up:obs`。ADR-[[202606241356]]）は `observability` profile に隔離してあり、
 `mise run up` / e2e では起動しない。未起動でもアプリは graceful degradation で動く。
