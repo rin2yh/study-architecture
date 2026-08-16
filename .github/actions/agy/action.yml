@@ -50,5 +50,5 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
       run: |
-        agy --version || true
-        agy models || true
+        find "$HOME/.gemini/antigravity-cli/builtin/skills" -type f | head -30 || true
+        head -200 "$HOME/.gemini/antigravity-cli/builtin/skills/agy-customizations/SKILL.md" || true
