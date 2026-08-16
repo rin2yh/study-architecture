@@ -54,5 +54,7 @@ runs:
       if: always()
       shell: bash
       run: |
-        find "$HOME/.gemini" "$HOME/.antigravity" "$HOME/.config" -maxdepth 4 2>/dev/null || true
-        find "$HOME" -maxdepth 4 -name '*.log' 2>/dev/null | head -20 || true
+        for f in "$HOME"/.gemini/antigravity-cli/crashes/*.log "$HOME"/.gemini/antigravity-cli/log/*.log; do
+          echo "===== $f"
+          tail -100 "$f" || true
+        done
