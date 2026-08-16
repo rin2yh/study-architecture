@@ -78,6 +78,17 @@ run = """
 pnpm -C client -F e2e test --project=backoffice
 """
 
+# outbox リレーと consumer を 2 レプリカにした構成で store の E2E を回す (ADR-[[202608160800]])。
+# 固定ポートを共有できず order / payment の公開ポートが振り替わるため、E2E 側の宛先も差し替える。
+[tasks."test:e2e:replicas"]
+description = "2 レプリカ構成で store の E2E を実行"
+depends = ["test:e2e:install"]
+env = { COMPOSE_FILE = "compose.yaml:compose.replicas.yaml", E2E_PAYMENT_API_URL = "http://localhost:18004" }
+run = """
+./scripts/e2e-up.sh store
+pnpm -C client -F e2e test --project=store
+"""
+
 # store / backoffice はスタックが別なので 1 つずつ順に起動して実行する。
 [tasks."test:e2e"]
 description = "store / backoffice の E2E を順に実行"
