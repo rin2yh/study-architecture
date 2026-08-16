@@ -1,0 +1,41 @@
+name: agy
+description: antigravity CLI を導入し、プロンプトを 1 回実行する
+
+inputs:
+  api-key:
+    description: Gemini API キー (Google AI Studio で発行し Secrets に置く)
+    required: true
+  prompt-file:
+    description: agy へ渡すプロンプトのファイル
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: install agy
+      shell: bash
+      env:
+        API_KEY: ${{ inputs.api-key }}
+      # 配布物のバージョン固定とチェックサム検証は未対応 (GitHub #144)。
+      run: |
+        if [ -z "$API_KEY" ]; then
+          echo "GEMINI_API_KEY が未登録です"
+          exit 1
+        fi
+
+        curl -fsSL https://antigravity.google/cli/install.sh | bash
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: configure agy
+      shell: bash
+      # 環境変数だけでは sign-in を要求される。modelProvider の指定と併用が要る (CLI v1.1.13)。
+      run: |
+        mkdir -p "$HOME/.gemini/antigravity-cli"
+        echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+
+    - name: run agy
+      shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.api-key }}
+        PROMPT_FILE: ${{ inputs.prompt-file }}
+      run: agy -p "$(cat "$PROMPT_FILE")"

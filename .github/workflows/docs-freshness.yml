@@ -52,27 +52,7 @@ jobs:
           # サードパーティの CLI を同じランナーで動かすため、token を残置せず push 直前に入れる。
           persist-credentials: false
 
-      # 配布物のバージョン固定とチェックサム検証は未対応 (GitHub #144)。
-      - name: antigravity CLI を入れる
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "GEMINI_API_KEY が未登録です"
-            exit 1
-          fi
-
-          curl -fsSL https://antigravity.google/cli/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Gemini API を直接使う設定を置く
-        run: |
-          mkdir -p "$HOME/.gemini/antigravity-cli"
-          cp .github/antigravity/settings.json "$HOME/.gemini/antigravity-cli/settings.json"
-
-      - name: ドキュメントを実装に追従させる
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - name: プロンプトを組み立てる
         run: |
           if [ -n "$TARGET" ]; then
             since=$(git log -1 --format=%cI -- "$TARGET")
@@ -86,17 +66,24 @@ jobs:
           # 全件渡すとプロンプトが膨らむため頭打ちにする。足りなければ実行を分ける。
           changed=$(git log --since="$since" --name-only --format= | grep -v '\.md$' | sort -u | head -60)
 
-          agy -p "$instruction
+          # 作業ツリーに置くと書き込み範囲の検査に引っかかるため、ランナーの一時領域に置く。
+          {
+            echo "$instruction"
+            echo
+            cat .github/antigravity/prompt.md
+            echo
+            echo "変わった実装ファイル (最大 60 件):"
+            echo "$changed"
+          } > "$RUNNER_TEMP/prompt.txt"
 
-          - 書き換えてよいのは Markdown のドキュメントだけです。実装ファイルは触らないでください。
-          - doc/adr/ は読むだけで、新規作成も Status 変更も禁止です。設計判断は人が起こします。
-          - 実装を読んで裏が取れたことだけ書いてください。推測で書かないでください。
-          - 変更が不要なら何も書き換えないでください。
+      - uses: ./.github/actions/agy
+        with:
+          api-key: ${{ secrets.GEMINI_API_KEY }}
+          prompt-file: ${{ runner.temp }}/prompt.txt
 
-          変わった実装ファイル (最大 60 件):
-          $changed"
-
-          # 終了コードでは成否を判定できない (ADR-[[202608150859]])。
+      - name: 書き換えた範囲を確認する
+        # 終了コードでは成否を判定できない (ADR-[[202608150859]])。
+        run: |
           bad=""
           for file in $(git diff --name-only) $(git ls-files --others --exclude-standard); do
             case "$file" in
