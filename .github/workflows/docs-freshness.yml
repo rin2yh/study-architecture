@@ -15,6 +15,8 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-24.04
+    # agy が応答待ちで止まってもランナーを占有し続けないための上限。
+    timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
@@ -111,3 +113,10 @@ jobs:
 
           gh pr create --draft --base main --head "$BRANCH" --title "docs: $SUBJECT" \
             --body "antigravity CLI (Gemini) による自動更新です。実装との突合をレビューしてください。"
+
+      # agy は失敗理由を 1 行に丸めるため、原因は CLI のログから取り出す。
+      - name: agy が何を返したか出す
+        if: always()
+        run: |
+          cat "${{ runner.temp }}/agy-out.txt" || true
+          grep -hoE 'Error [0-9]{3}, Message: [^*]*' "$HOME"/.gemini/antigravity-cli/log/*.log | tail -2 || true

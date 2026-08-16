@@ -1,0 +1,6 @@
+{
+  "modelProvider": "gemini",
+  "permissions": {
+    "allow": ["command(*)"]
+  }
+}

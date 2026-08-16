@@ -32,14 +32,18 @@ runs:
 
     - name: configure agy
       shell: bash
-      # 環境変数だけでは sign-in を要求される。modelProvider の指定と併用が要る (CLI v1.1.13)。
+      # agy はこのパスを設定と実行時の状態 (ログ・DB) の置き場に兼用するため、
+      # ディレクトリごとリポジトリ側へ寄せると作業ツリーが汚れる。
       run: |
         mkdir -p "$HOME/.gemini/antigravity-cli"
-        echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
+        cp "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
     - name: run agy
       shell: bash
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
         PROMPT_FILE: ${{ inputs.prompt-file }}
-      run: agy -p "$(cat "$PROMPT_FILE")"
+      # モデル指定と承認方針は無料枠と headless 実行の制約による (ADR-[[202608150859]])。
+      # 標準入力を開けたままにすると承認待ちで止まる。
+      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")" > "$RUNNER_TEMP/agy-out.txt" 2>&1 < /dev/null
+
