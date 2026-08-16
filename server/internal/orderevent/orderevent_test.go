@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
+	"github.com/rin2yh/study-architecture/server/internal/test/orderid"
 )
 
 func sampledContext(t *testing.T) (context.Context, trace.TraceID) {
@@ -50,10 +51,7 @@ func TestTraceparentLinkRoundTrip(t *testing.T) {
 }
 
 func TestParseCancelled(t *testing.T) {
-	id, err := order.Parse("20")
-	if err != nil {
-		t.Fatalf("order.Parse: %v", err)
-	}
+	id := orderid.Must(t, "20")
 	cancelled := orderevent.Cancelled{OrderID: id}
 
 	tests := []struct {

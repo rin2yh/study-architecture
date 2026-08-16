@@ -65,10 +65,10 @@ func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 }
 
 func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
-	if !paymentevent.IsSettled(values) {
+	ev, err := paymentevent.ParseSettled(values)
+	if errors.Is(err, paymentevent.ErrNotSettled) {
 		return nil
 	}
-	ev, err := paymentevent.ParseSettled(values)
 	if err != nil {
 		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
 		slog.ErrorContext(ctx, "shipping consumer: invalid payload", "error", err)

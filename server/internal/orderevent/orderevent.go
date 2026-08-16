@@ -6,6 +6,7 @@ package orderevent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/otel"
@@ -43,18 +44,16 @@ func (c Cancelled) Values() map[string]any {
 	}
 }
 
-// IsCancelled は values が order.cancelled かを判定する。同じトピックに他種が流れても consumer が
-// 素通しできるよう、種別の判定を復元と分けている。
-func IsCancelled(values map[string]any) bool {
-	t, _ := values[FieldEvent].(string)
-	return t == TypeCancelled
-}
+// ErrNotCancelled は別種のイベントであることを表す。同じトピックに他種が流れるため、consumer は
+// これだけを「素通しして ack」に倒し、壊れた payload (DLQ 行き) と区別する。判定を別関数に分けると
+// 呼び忘れても気づけないので、復元の結果として返す。
+var ErrNotCancelled = errors.New("not an order.cancelled event")
 
 // ParseCancelled は wire の values を Cancelled へ復元する。consumer に map のキーと型アサーションを
 // 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
 func ParseCancelled(values map[string]any) (Cancelled, error) {
-	if !IsCancelled(values) {
-		return Cancelled{}, fmt.Errorf("%s: got %v, want %s", FieldEvent, values[FieldEvent], TypeCancelled)
+	if t, _ := values[FieldEvent].(string); t != TypeCancelled {
+		return Cancelled{}, fmt.Errorf("%w: %s = %v", ErrNotCancelled, FieldEvent, values[FieldEvent])
 	}
 	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {

@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"go.opentelemetry.io/otel/codes"
@@ -54,10 +55,10 @@ func (c *CancelConsumer) process(ctx context.Context, values map[string]any) err
 }
 
 func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) error {
-	if !orderevent.IsCancelled(values) {
+	ev, err := orderevent.ParseCancelled(values)
+	if errors.Is(err, orderevent.ErrNotCancelled) {
 		return nil
 	}
-	ev, err := orderevent.ParseCancelled(values)
 	if err != nil {
 		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
 		slog.ErrorContext(ctx, "shipping cancel consumer: invalid payload", "error", err)

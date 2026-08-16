@@ -5,6 +5,7 @@ package paymentevent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/otel"
@@ -49,18 +50,16 @@ func (s Settled) Values() map[string]any {
 	}
 }
 
-// IsSettled は values が payment.settled かを判定する。同じトピックに他種が流れても consumer が
-// 素通しできるよう、種別の判定を復元と分けている。
-func IsSettled(values map[string]any) bool {
-	t, _ := values[FieldEvent].(string)
-	return t == TypeSettled
-}
+// ErrNotSettled は別種のイベントであることを表す。同じトピックに他種が流れるため、consumer は
+// これだけを「素通しして ack」に倒し、壊れた payload (DLQ 行き) と区別する。判定を別関数に分けると
+// 呼び忘れても気づけないので、復元の結果として返す。
+var ErrNotSettled = errors.New("not a payment.settled event")
 
 // ParseSettled は wire の values を Settled へ復元する。consumer に map のキーと型アサーションを
 // 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
 func ParseSettled(values map[string]any) (Settled, error) {
-	if !IsSettled(values) {
-		return Settled{}, fmt.Errorf("%s: got %v, want %s", FieldEvent, values[FieldEvent], TypeSettled)
+	if t, _ := values[FieldEvent].(string); t != TypeSettled {
+		return Settled{}, fmt.Errorf("%w: %s = %v", ErrNotSettled, FieldEvent, values[FieldEvent])
 	}
 	paymentID, ok := values[FieldPaymentID].(int64)
 	if !ok {

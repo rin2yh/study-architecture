@@ -10,6 +10,7 @@ import (
 
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
+	"github.com/rin2yh/study-architecture/server/internal/test/orderid"
 )
 
 func sampledContext(t *testing.T) (context.Context, trace.TraceID) {
@@ -53,10 +54,7 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 }
 
 func TestParseSettled(t *testing.T) {
-	id, err := order.Parse("20")
-	if err != nil {
-		t.Fatalf("order.Parse: %v", err)
-	}
+	id := orderid.Must(t, "20")
 	settled := paymentevent.Settled{PaymentID: 7, OrderID: id, AmountCents: 300}
 
 	tests := []struct {

@@ -1,48 +1,60 @@
-// Command eventcompat は main に記録済みのイベントスキーマと PR のスキーマを突き合わせ、非互換な
-// 変更を落とす (ADR-[[202608160730]])。go test 側の検査はコードと記録の一致しか見られず、削除の前に
-// 「optional へ落とす PR」を挟んだかは過去の記録と比べないと判定できないため、CI からこれを呼ぶ。
+// Command eventcompat は base (通常は main) に記録済みのイベントスキーマと作業ツリーのスキーマを
+// 突き合わせ、非互換な変更を落とす (ADR-[[202608160730]])。go test 側の検査はコードと記録の一致しか
+// 見られず、削除の前に optional へ落とす PR を挟んだかは過去の記録と比べないと判定できない。
 package main
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/rin2yh/study-architecture/server/internal/eventcontract"
 )
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: eventcompat <recorded schema.json> <current schema.json>")
-		os.Exit(2)
-	}
-	recorded, err := load(os.Args[1])
-	if err != nil {
+	base := flag.String("base", "origin/main", "比較元のコミット")
+	flag.Parse()
+
+	if err := run(*base); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	current, err := load(os.Args[2])
+}
+
+func run(base string) error {
+	previous, err := recordedAt(base)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
-	errs := eventcontract.CheckSchemas(recorded, current)
+	current, err := eventcontract.LoadSchemas(eventcontract.SchemaPath)
+	if err != nil {
+		return err
+	}
+	errs := eventcontract.CheckSchemas(previous, current)
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	if len(errs) > 0 {
 		os.Exit(1)
 	}
+	return nil
 }
 
-func load(path string) (map[string]eventcontract.Schema, error) {
-	raw, err := os.ReadFile(path)
+// ref を解決できないときに空として扱うと検査が無言で無効化されるため、そこは error にし、記録
+// そのものがまだ無い導入直後だけ空で続ける。
+func recordedAt(base string) (map[string]eventcontract.Schema, error) {
+	if out, err := exec.Command("git", "rev-parse", "--verify", base+"^{commit}").CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("base %q を解決できない: %s", base, out)
+	}
+	blob := base + ":" + eventcontract.SchemaPath
+	if err := exec.Command("git", "cat-file", "-e", blob).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s が無いため空の記録として比較する\n", blob)
+		return map[string]eventcontract.Schema{}, nil
+	}
+	raw, err := exec.Command("git", "show", blob).Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("git show %s: %w", blob, err)
 	}
-	var schemas map[string]eventcontract.Schema
-	if err := json.Unmarshal(raw, &schemas); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return schemas, nil
+	return eventcontract.ParseSchemas(raw, blob)
 }
