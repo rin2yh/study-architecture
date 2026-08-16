@@ -22,31 +22,25 @@ mise trust                      # 初回のみ。go が mise shim 経由のた�
 
 ## クイックスタート
 
-タスクも `mise.toml` のあるディレクトリごとに分かれている。一覧は `mise tasks`。
+立ち上げは順序に意味がある。以降のタスク（テスト・E2E・可観測性スタックなど）は `mise tasks` で
+一覧できる（`mise.toml` のあるディレクトリごとに分かれている）。
 
 ```sh
-# 1. コード生成・ビルド・テスト
-(cd server && mise run gen && mise run build && mise run test)
+# 1. コード生成 → ビルド
+(cd server && mise run gen && mise run build)
 (cd client && mise run install && mise run gen && mise run build)
 
 # 2. DB 起動 → マイグレーション → ロール権限付与（この順序が必須。ADR-[[202606231000]]）
 mise run up:db
 mise run migrate
-mise run grant      # サービスごとの最小権限ロールを作成・付与（再実行可能・冪等）
+mise run grant
 
 # 3. サービス起動（ドメインサービス 6 + ワーカー 2 + UI 2）
 mise run up
 
 # 動作確認（ホストポートは compose.yaml の ports: を参照）
 curl http://localhost:8001/healthz
-curl http://localhost:8001/products
-
-# 4. E2E（スタックの起動から Playwright まで通しで実行する）
-mise run test:e2e
-
-# 5. （任意）可観測性スタックを足す（Alloy + Tempo + Loki + Prometheus + Grafana。ADR-[[202606241356]]）
-mise run up:obs     # Grafana: http://localhost:3000
 ```
 
-可観測性スタックは `observability` profile に隔離してあり、`mise run up` / e2e では起動しない。
-未起動でもアプリは graceful degradation で動く。
+可観測性スタック（`mise run up:obs`。ADR-[[202606241356]]）は `observability` profile に隔離してあり、
+`mise run up` / e2e では起動しない。未起動でもアプリは graceful degradation で動く。
