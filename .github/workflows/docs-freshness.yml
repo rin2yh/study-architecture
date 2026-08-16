@@ -119,4 +119,6 @@ jobs:
 
       - name: agy の出力を出す
         if: always()
-        run: cat "${{ runner.temp }}/agy-out.txt" || true
+        run: |
+          cat "${{ runner.temp }}/agy-out.txt" || true
+          grep -hoE 'Error [0-9]{3}, Message: [^*]*' "$HOME"/.gemini/antigravity-cli/log/*.log | tail -2 || true
