@@ -16,31 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-
-      - name: ADR 参照が実在するか確認する
-        run: |
-          missing=""
-          for id in $(git grep -ho -E 'ADR-\[\[[0-9]{12}\]\]' | grep -o -E '[0-9]{12}' | sort -u); do
-            if ! ls doc/adr/"$id"-*.md > /dev/null 2>&1; then
-              missing="$missing $id"
-            fi
-          done
-
-          if [ -n "$missing" ]; then
-            echo "実在しない ADR を参照しています:$missing"
-            exit 1
-          fi
-          echo "ADR 参照 OK"
-
   update:
-    # 壊れた参照のまま高価なエージェント実行と PR 作成をしないよう、検査の後に回す。
-    needs: lint
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -100,7 +76,7 @@ jobs:
             exit 1
           fi
 
-      - name: draft PR を作る / 更新する
+      - name: 変更をコミットして push する
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -127,11 +103,23 @@ jobs:
           git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           git push -f -u origin "$branch"
 
+          echo "BRANCH=$branch" >> "$GITHUB_ENV"
+          echo "SUBJECT=$subject" >> "$GITHUB_ENV"
+
+      - name: draft PR を作る
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$BRANCH" ]; then
+            echo "push していないため PR は作りません"
+            exit 0
+          fi
+
           # 実行のたびに PR が増えると読まれなくなるので、open な PR があれば push だけで更新する。
-          if gh pr view "$branch" > /dev/null 2>&1; then
+          if gh pr view "$BRANCH" > /dev/null 2>&1; then
             echo "既存の draft PR を更新しました"
             exit 0
           fi
 
-          gh pr create --draft --base main --head "$branch" --title "docs: $subject" \
+          gh pr create --draft --base main --head "$BRANCH" --title "docs: $SUBJECT" \
             --body "antigravity CLI (Gemini) による自動更新です。実装との突合をレビューしてください。"

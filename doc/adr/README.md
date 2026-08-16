@@ -124,4 +124,4 @@
 | [202606211000](202606211000-adr-timestamp-naming.md) | Accepted | ADR の識別子を連番からタイムスタンプ (YYYYMMDDHHmm) に変える |
 | [202606211520](202606211520-test-case-class-4xx-quasi-normal.md) | Accepted | テストのケース分類で 4xx を準正常系・5xx を異常系に分ける |
 | [202607020343](202607020343-fitness-functions-in-ci.md) | Accepted | アーキテクチャ特性を CI のフィットネス関数で守る (第一号は量子越え同期呼び出しの許可リスト) |
-| [202608150859](202608150859-docs-freshness-auto-pr.md) | Accepted | ドキュメント鮮度を決定的レーンと AI レーンの自動 draft PR で維持する |
+| [202608150859](202608150859-docs-freshness-auto-pr.md) | Accepted | ドキュメント鮮度を AI の自動 draft PR で維持する |
