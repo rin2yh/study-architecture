@@ -16,38 +16,6 @@ DB はドメインごとのインスタンスに分割済み（[doc/adr/20260624
 [doc/adr/202608150830](doc/adr/202608150830-managed-queue-with-broker-side-dlq.md)) を通す。
 UI は store（買い物 + ログイン / 注文履歴）と backoffice（社内運用）の 2 つ。
 
-下表は `compose.yaml` から生成する。手で編集せず `scripts/docs/gen-service-table.sh --write` を実行すること。
-
-<!-- BEGIN generated: services (scripts/docs/gen-service-table.sh) -->
-
-| 区分 | 名前 | ホストポート | コンテナ内 | profile | ネットワーク |
-| --- | --- | --- | --- | --- | --- |
-| 基盤 | `broker` | 4566 | 4566 | 既定 | external-private, internal-private |
-| 基盤 | `edge-proxy` | - | - | 既定 | external-private, external-public, internal-private |
-| データ | `db-inventory` | 5437 | 5432 | 既定 | internal-private |
-| データ | `db-member` | 5436 | 5432 | 既定 | external-private |
-| データ | `db-order` | 5432 | 5432 | 既定 | external-private |
-| データ | `db-payment` | 5434 | 5432 | 既定 | external-private |
-| データ | `db-product` | 5433 | 5432 | 既定 | internal-private |
-| データ | `db-shipping` | 5435 | 5432 | 既定 | internal-private |
-| サービス | `inventory` | 8006 | 80 | 既定 | internal-private |
-| サービス | `member` | 8004 | 80 | 既定 | external-private |
-| サービス | `order` | 8002 | 80 | 既定 | external-private |
-| サービス | `payment` | 8003 | 80 | 既定 | external-private |
-| サービス | `product` | 8001 | 80 | 既定 | internal-private |
-| サービス | `shipping` | 8005 | 80 | 既定 | internal-private |
-| ワーカー | `inventory-worker` | - | - | 既定 | internal-private |
-| ワーカー | `shipping-worker` | - | - | 既定 | internal-private |
-| UI | `backoffice` | 5175 | 5175 | internal | external-private, internal-private, internal-public |
-| UI | `store` | 5173 | 5173 | external | external-public, observability |
-| 可観測性 | `alloy` | - | - | observability | external-private, internal-private, observability |
-| 可観測性 | `grafana` | 3000 | 3000 | observability | observability |
-| 可観測性 | `loki` | - | - | observability | observability |
-| 可観測性 | `prometheus` | - | - | observability | observability |
-| 可観測性 | `tempo` | - | - | observability | observability |
-
-<!-- END generated: services -->
-
 各サービスは `GET /healthz`（liveness）に加え、一覧 / 取得 / 作成 / 更新を持つ
 （例: `GET`/`POST /products`、`GET`/`PUT /products/{id}`）。エラー整形と 404/409/422 の扱いは
 [doc/adr/202606180901](doc/adr/202606180901-api-error-model.md)、更新 (PUT) の項目方針（業務項目のみ置換・FK 不変）は
@@ -143,7 +111,6 @@ client/                   # フロントエンド (pnpm workspace)
 compose.yaml  mise.toml  Dockerfile.migrate
 doc/adr/                  # 設計判断
 doc/ops/                  # 運用ランブック・ダッシュボードの見方
-scripts/docs/             # ドキュメント鮮度の検査・生成
 ```
 
 ## UI（React Router v7 / pnpm workspace）
