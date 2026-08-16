@@ -39,6 +39,8 @@ jobs:
           echo "ADR 参照 OK"
 
   update:
+    # 壊れた参照のまま高価なエージェント実行と PR 作成をしないよう、検査の後に回す。
+    needs: lint
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -63,7 +65,7 @@ jobs:
             instruction="下の変更に関係するドキュメントだけを更新してください。関係しないものは触らないでください。"
           fi
 
-          # 全件渡すとプロンプトが膨らむため頭打ちにする。足りなければ実行を分ける。
+          # --format= はコミット行を出さないため。全件渡すとプロンプトが膨らむので頭打ちにする。
           changed=$(git log --since="$since" --name-only --format= | grep -v '\.md$' | sort -u | head -60)
 
           # 作業ツリーに置くと書き込み範囲の検査に引っかかるため、ランナーの一時領域に置く。
@@ -72,9 +74,9 @@ jobs:
             echo
             cat .github/antigravity/prompt.md
             echo
-            echo "変わった実装ファイル (最大 60 件):"
+            echo "変わった実装ファイル:"
             echo "$changed"
-          } > "$RUNNER_TEMP/prompt.txt"
+          } > "${{ runner.temp }}/prompt.txt"
 
       - uses: ./.github/actions/agy
         with:
@@ -82,7 +84,6 @@ jobs:
           prompt-file: ${{ runner.temp }}/prompt.txt
 
       - name: 書き換えた範囲を確認する
-        # 終了コードでは成否を判定できない (ADR-[[202608150859]])。
         run: |
           bad=""
           for file in $(git diff --name-only) $(git ls-files --others --exclude-standard); do
@@ -102,12 +103,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # 終了コードでは成否を判定できない (ADR-[[202608150859]])。
           if [ -z "$(git status --porcelain)" ]; then
             echo "変更なし"
             exit 0
           fi
 
-          # 対象ごとにブランチを分ける。共有すると別対象の PR を force push で潰す。
           if [ -n "$TARGET" ]; then
             branch="docs/refresh-$TARGET"
             subject="$TARGET を実装に追従させる"

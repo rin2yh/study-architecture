@@ -12,17 +12,21 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: install agy
+    - name: check api key
       shell: bash
       env:
-        API_KEY: ${{ inputs.api-key }}
-      # 配布物のバージョン固定とチェックサム検証は未対応 (GitHub #144)。
+        GEMINI_API_KEY: ${{ inputs.api-key }}
+      # inputs の required は実行時に効かないため、install の前にここで落とす。
       run: |
-        if [ -z "$API_KEY" ]; then
+        if [ -z "$GEMINI_API_KEY" ]; then
           echo "GEMINI_API_KEY が未登録です"
           exit 1
         fi
 
+    - name: install agy
+      shell: bash
+      # 配布物のバージョン固定とチェックサム検証は未対応 (GitHub #144)。
+      run: |
         curl -fsSL https://antigravity.google/cli/install.sh | bash
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 

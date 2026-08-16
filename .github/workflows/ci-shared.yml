@@ -15,6 +15,8 @@ on:
       - "client/.oxlintrc.json"
       - "client/.oxfmtrc.json"
       - ".github/actions/**"
+      # docs 用の action はこの CI が使わないため、変更で走らせない。
+      - "!.github/actions/agy/**"
       - ".github/workflows/ci-shared.yml"
   pull_request:
     paths: *trigger-paths
