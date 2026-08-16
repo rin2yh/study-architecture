@@ -42,5 +42,5 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
         PROMPT_FILE: ${{ inputs.prompt-file }}
-      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")" | tee "$RUNNER_TEMP/agy-out.txt"
+      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")" 2>&1 | tee "$RUNNER_TEMP/agy-out.txt"
 
