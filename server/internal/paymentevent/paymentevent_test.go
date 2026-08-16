@@ -2,6 +2,7 @@ package paymentevent_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"go.opentelemetry.io/otel"
@@ -57,17 +58,27 @@ func TestParseSettled(t *testing.T) {
 	id := orderid.Must(t, "20")
 	settled := paymentevent.Settled{PaymentID: 7, OrderID: id, AmountCents: 300}
 
+	// consumer は notSettled だけを「素通しして ack」に倒すため、どちらの error になるかまで固定する。
+	type want struct {
+		settled    paymentevent.Settled
+		err        bool
+		notSettled bool
+	}
 	tests := []struct {
-		name    string
-		values  map[string]any
-		want    paymentevent.Settled
-		wantErr bool
+		name   string
+		values map[string]any
+		want   want
 	}{
-		{"正常系 発行した payload をそのまま復元する", settled.Values(), settled, false},
+		{"正常系 発行した payload をそのまま復元する", settled.Values(), want{settled, false, false}},
 		{
-			"準正常系 別のイベント種別は復元しない",
+			"準正常系 別のイベント種別は素通しできる error になる",
 			map[string]any{paymentevent.FieldEvent: "payment.failed"},
-			paymentevent.Settled{}, true,
+			want{paymentevent.Settled{}, true, true},
+		},
+		{
+			"準正常系 種別を名乗らない payload は別種扱いにせず隔離へ倒す",
+			map[string]any{paymentevent.FieldOrderID: "20"},
+			want{paymentevent.Settled{}, true, false},
 		},
 		{
 			"準正常系 フィールドの欠落はゼロ値へ化けず error になる",
@@ -76,7 +87,7 @@ func TestParseSettled(t *testing.T) {
 				paymentevent.FieldPaymentID: int64(7),
 				paymentevent.FieldOrderID:   "20",
 			},
-			paymentevent.Settled{}, true,
+			want{paymentevent.Settled{}, true, false},
 		},
 		{
 			"準正常系 型違いはゼロ値へ化けず error になる",
@@ -86,17 +97,20 @@ func TestParseSettled(t *testing.T) {
 				paymentevent.FieldOrderID:     "20",
 				paymentevent.FieldAmountCents: int64(300),
 			},
-			paymentevent.Settled{}, true,
+			want{paymentevent.Settled{}, true, false},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := paymentevent.ParseSettled(tt.values)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ParseSettled() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tt.want.err {
+				t.Fatalf("ParseSettled() error = %v, want error %v", err, tt.want.err)
 			}
-			if got != tt.want {
-				t.Fatalf("ParseSettled() = %+v, want %+v", got, tt.want)
+			if gotNotSettled := errors.Is(err, paymentevent.ErrNotSettled); gotNotSettled != tt.want.notSettled {
+				t.Fatalf("errors.Is(%v, ErrNotSettled) = %v, want %v", err, gotNotSettled, tt.want.notSettled)
+			}
+			if got != tt.want.settled {
+				t.Fatalf("ParseSettled() = %+v, want %+v", got, tt.want.settled)
 			}
 		})
 	}

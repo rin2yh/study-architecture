@@ -58,8 +58,13 @@ var ErrNotSettled = errors.New("not a payment.settled event")
 // ParseSettled は wire の values を Settled へ復元する。consumer に map のキーと型アサーションを
 // 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
 func ParseSettled(values map[string]any) (Settled, error) {
-	if t, _ := values[FieldEvent].(string); t != TypeSettled {
-		return Settled{}, fmt.Errorf("%w: %s = %v", ErrNotSettled, FieldEvent, values[FieldEvent])
+	// 種別を名乗らない payload は「別種」ではなく壊れているため。
+	t, ok := values[FieldEvent].(string)
+	if !ok {
+		return Settled{}, fmt.Errorf("%s: got %#v, want string", FieldEvent, values[FieldEvent])
+	}
+	if t != TypeSettled {
+		return Settled{}, fmt.Errorf("%w: %s = %q", ErrNotSettled, FieldEvent, t)
 	}
 	paymentID, ok := values[FieldPaymentID].(int64)
 	if !ok {

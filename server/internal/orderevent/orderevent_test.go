@@ -2,6 +2,7 @@ package orderevent_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"go.opentelemetry.io/otel"
@@ -54,32 +55,45 @@ func TestParseCancelled(t *testing.T) {
 	id := orderid.Must(t, "20")
 	cancelled := orderevent.Cancelled{OrderID: id}
 
+	// consumer は notCancelled だけを「素通しして ack」に倒すため、どちらの error になるかまで固定する。
+	type want struct {
+		cancelled    orderevent.Cancelled
+		err          bool
+		notCancelled bool
+	}
 	tests := []struct {
-		name    string
-		values  map[string]any
-		want    orderevent.Cancelled
-		wantErr bool
+		name   string
+		values map[string]any
+		want   want
 	}{
-		{"正常系 発行した payload をそのまま復元する", cancelled.Values(), cancelled, false},
+		{"正常系 発行した payload をそのまま復元する", cancelled.Values(), want{cancelled, false, false}},
 		{
-			"準正常系 別のイベント種別は復元しない",
+			"準正常系 別のイベント種別は素通しできる error になる",
 			map[string]any{orderevent.FieldEvent: "order.created", orderevent.FieldOrderID: "20"},
-			orderevent.Cancelled{}, true,
+			want{orderevent.Cancelled{}, true, true},
+		},
+		{
+			"準正常系 種別を名乗らない payload は別種扱いにせず隔離へ倒す",
+			map[string]any{orderevent.FieldOrderID: "20"},
+			want{orderevent.Cancelled{}, true, false},
 		},
 		{
 			"準正常系 フィールドの欠落はゼロ値へ化けず error になる",
 			map[string]any{orderevent.FieldEvent: orderevent.TypeCancelled},
-			orderevent.Cancelled{}, true,
+			want{orderevent.Cancelled{}, true, false},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := orderevent.ParseCancelled(tt.values)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ParseCancelled() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tt.want.err {
+				t.Fatalf("ParseCancelled() error = %v, want error %v", err, tt.want.err)
 			}
-			if got != tt.want {
-				t.Fatalf("ParseCancelled() = %+v, want %+v", got, tt.want)
+			if gotNotCancelled := errors.Is(err, orderevent.ErrNotCancelled); gotNotCancelled != tt.want.notCancelled {
+				t.Fatalf("errors.Is(%v, ErrNotCancelled) = %v, want %v", err, gotNotCancelled, tt.want.notCancelled)
+			}
+			if got != tt.want.cancelled {
+				t.Fatalf("ParseCancelled() = %+v, want %+v", got, tt.want.cancelled)
 			}
 		})
 	}

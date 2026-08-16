@@ -47,6 +47,11 @@ func TestRun(t *testing.T) {
 			args{map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "abc"}, nil},
 			want{nil, 0},
 		},
+		{
+			"準正常系 種別を名乗らない payload は素通しせず隔離に委ねる",
+			args{map[string]any{order.FieldID: "20"}, nil},
+			want{nil, 0},
+		},
 		{"異常系 確定が失敗した分は ack しない", args{settled, errors.New("db down")}, want{[]string{"20"}, 0}},
 	}
 	for _, tt := range tests {

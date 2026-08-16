@@ -52,8 +52,13 @@ var ErrNotCancelled = errors.New("not an order.cancelled event")
 // ParseCancelled は wire の values を Cancelled へ復元する。consumer に map のキーと型アサーションを
 // 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
 func ParseCancelled(values map[string]any) (Cancelled, error) {
-	if t, _ := values[FieldEvent].(string); t != TypeCancelled {
-		return Cancelled{}, fmt.Errorf("%w: %s = %v", ErrNotCancelled, FieldEvent, values[FieldEvent])
+	// 種別を名乗らない payload は「別種」ではなく壊れているため。
+	t, ok := values[FieldEvent].(string)
+	if !ok {
+		return Cancelled{}, fmt.Errorf("%s: got %#v, want string", FieldEvent, values[FieldEvent])
+	}
+	if t != TypeCancelled {
+		return Cancelled{}, fmt.Errorf("%w: %s = %q", ErrNotCancelled, FieldEvent, t)
 	}
 	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {

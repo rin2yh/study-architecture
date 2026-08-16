@@ -65,6 +65,11 @@ func TestRun(t *testing.T) {
 			want{nil, 0},
 		},
 		{
+			"準正常系 種別を名乗らない payload は素通しせず隔離に委ねる",
+			args{map[string]any{order.FieldID: "20"}, nil, nil},
+			want{nil, 0},
+		},
+		{
 			"準正常系 再配送による二重手配は冪等に ack する (ADR-[[202606261214]])",
 			args{settled, dberr.ErrConflict, nil},
 			want{[]string{"20"}, 1},
