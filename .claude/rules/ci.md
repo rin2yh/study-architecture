@@ -25,5 +25,6 @@ paths:
 - **`actions/checkout` は git push しない job で `persist-credentials: false`**
   - 後段で `git push` や認証付き `gh` を使わないジョブは default の credential 残置をやめる
   - 理由: 残置された `extraheader` の token が後続 step の事故 (誤 push、third-party action による盗用) の経路になる。push する job だけ default (true) のままにする
+  - **例外**: push する job でも、同じランナーでサードパーティの CLI を動かすなら `false` にして push 直前に token を入れる。CLI が動く区間に token を置かないため (例: `docs-freshness.yml` の `update`)
 
 関連: [naming-and-pnpm-conventions の pnpm ポリシー](../../client/pnpm-workspace.yaml)、本ファイル変更は `[ADR 0011]` も参照すると意図が掴みやすい。
