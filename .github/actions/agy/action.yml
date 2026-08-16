@@ -36,7 +36,7 @@ runs:
       # ディレクトリごとリポジトリ側へ寄せると作業ツリーが汚れる。
       run: |
         mkdir -p "$HOME/.gemini/antigravity-cli"
-        ln -sf "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
+        cp "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
     - name: run agy
       shell: bash
