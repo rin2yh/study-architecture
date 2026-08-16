@@ -33,7 +33,7 @@ runs:
     - name: configure agy
       shell: bash
       # agy はこのパスを設定と実行時の状態 (ログ・DB) の置き場に兼用するため、
-      # ディレクトリごとリポジトリ側へ寄せると作業ツリーが汚れる。設定だけ張る。
+      # ディレクトリごとリポジトリ側へ寄せると作業ツリーが汚れる。
       run: |
         mkdir -p "$HOME/.gemini/antigravity-cli"
         ln -sf "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
