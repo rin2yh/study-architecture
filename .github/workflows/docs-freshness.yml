@@ -66,7 +66,8 @@ jobs:
           fi
 
           # --format= はコミット行を出さないため。全件渡すとプロンプトが膨らむので頭打ちにする。
-          changed=$(git log --since="$since" --name-only --format= | grep -v '\.md$' | sort -u | head -60)
+          # 変更が .md だけだと grep が 1 を返し、-e で step ごと落ちるため || true で受ける。
+          changed=$(git log --since="$since" --name-only --format= | grep -v '\.md$' | sort -u | head -60 || true)
 
           # 作業ツリーに置くと書き込み範囲の検査に引っかかるため、ランナーの一時領域に置く。
           {
@@ -110,7 +111,8 @@ jobs:
           fi
 
           if [ -n "$TARGET" ]; then
-            branch="docs/refresh-$TARGET"
+            # パス区切りをそのまま使うと refs/heads が入れ子になり、既存ブランチと衝突して作れない。
+            branch="docs/refresh-$(echo "$TARGET" | tr '/' '-')"
             subject="$TARGET を実装に追従させる"
           else
             branch="docs/refresh-weekly"
