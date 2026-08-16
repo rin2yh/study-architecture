@@ -71,7 +71,7 @@
 | [202606241356](202606241356-observability-otel-collector-grafana.md) | Accepted | 可観測性を OpenTelemetry + Grafana Alloy + Grafana スタックで構築する |
 | [202606241420](202606241420-metrics-push-to-collector-pull-by-prometheus.md) | Accepted (一部 Superseded) | メトリクスはアプリから Alloy へ push し Prometheus は Alloy を scrape する |
 | [202606250141](202606250141-telemetry-sensitive-data-masking.md) | Accepted | テレメトリの秘匿情報は計装段と Alloy 段の二重でマスキングする |
-| [202606250159](202606250159-trace-async-redis-streams-with-span-link.md) | Accepted | Redis Streams の非同期イベントは traceparent + span link でトレースをつなぐ |
+| [202606250159](202606250159-trace-async-redis-streams-with-span-link.md) | Accepted (媒体は ADR-[[202608150830]] で SNS + SQS へ) | Redis Streams の非同期イベントは traceparent + span link でトレースをつなぐ |
 | [202606251000](202606251000-metrics-alloy-push-to-prometheus-otlp.md) | Accepted | メトリクスは Alloy から Prometheus へ OTLP で push する |
 | [202606261100](202606261100-alerts-grafana-managed-provisioned.md) | Accepted | アラートは Grafana-managed alerting で provisioning する |
 | [202606261600](202606261600-resource-metrics-cadvisor-via-alloy.md) | Accepted | リソースメトリクスは cAdvisor を Alloy で収集し既存 OTLP 経路へ相乗りさせる |
