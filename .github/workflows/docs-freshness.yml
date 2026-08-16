@@ -28,6 +28,21 @@ jobs:
           # サードパーティの CLI を同じランナーで動かすため、token を残置せず push 直前に入れる。
           persist-credentials: false
 
+      - name: 作業ブランチを用意する
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # リポジトリのルールで force push が禁止されているため、前回の PR が残っていれば
+          # 作り直さずその上に積む。main を取り込んで、古い実装を読ませないようにする。
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            git merge --no-edit origin/main
+          else
+            git checkout -b "$BRANCH"
+          fi
+
       - name: プロンプトを組み立てる
         run: |
           # 全件渡すとプロンプトが膨らむので頭打ちにする。
@@ -73,13 +88,10 @@ jobs:
             exit 0
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "$BRANCH"
           git add -A
           git commit -m "docs: $SUBJECT"
           git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
-          git push -f -u origin "$BRANCH"
+          git push -u origin "$BRANCH"
 
           echo "PUSHED=1" >> "$GITHUB_ENV"
 
