@@ -41,7 +41,7 @@ runs:
       shell: bash
       run: |
         agy --version || true
-        agy --help || true
+        agy models || true
 
     - name: run agy
       shell: bash
