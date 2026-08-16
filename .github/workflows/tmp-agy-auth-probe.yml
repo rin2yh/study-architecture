@@ -21,7 +21,7 @@ jobs:
 
       - name: 受け付ける環境変数を探す
         run: |
-          strings "$HOME/.local/bin/agy" | grep -E '^[A-Z][A-Z0-9_]{4,}$' | grep -E 'ANTIGRAVITY|GEMINI|GOOGLE|API_KEY|TOKEN|CREDENTIAL|OAUTH' | sort -u | head -40 || true
+          strings "$HOME/.local/bin/agy" | grep -E '^(ANTIGRAVITY|GEMINI|GOOGLE|CLOUDCODE|JETSKI)_[A-Z0-9_]+$' | sort -u || true
 
       - name: 認証まわりのサブコマンドを見る
         run: |
