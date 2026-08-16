@@ -25,10 +25,18 @@ jobs:
 
       - name: ADR 参照が実在するか確認する
         run: |
-          referenced=$(git grep -hoI -E 'ADR-\[\[[0-9]{12}\]\]' | tr -dc '0-9\n' | sort -u)
-          existing=$(ls doc/adr | cut -c1-12 | sort -u)
-          missing=$(comm -23 <(echo "$referenced") <(echo "$existing"))
-          [ -z "$missing" ] || { echo "実在しない ADR を参照しています: $missing" >&2; exit 1; }
+          missing=""
+          for id in $(git grep -ho -E 'ADR-\[\[[0-9]{12}\]\]' | grep -o -E '[0-9]{12}' | sort -u); do
+            if ! ls doc/adr/"$id"-*.md > /dev/null 2>&1; then
+              missing="$missing $id"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "実在しない ADR を参照しています:$missing"
+            exit 1
+          fi
+          echo "ADR 参照 OK"
 
   update:
     runs-on: ubuntu-24.04
@@ -49,9 +57,13 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          [ -n "$GEMINI_API_KEY" ] || { echo "GEMINI_API_KEY が未登録です" >&2; exit 1; }
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY が未登録です"
+            exit 1
+          fi
+
           curl -fsSL https://antigravity.google/cli/install.sh | bash
-          echo "$HOME/.local/bin" >>"$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Gemini API を直接使う設定を置く
         run: |
@@ -66,13 +78,14 @@ jobs:
             since=$(git log -1 --format=%cI -- "$TARGET")
             instruction="$TARGET を実装の現状に合わせて更新してください。"
           else
-            # 対象を選ばず「溜まったズレを均す」のが常用。1 週間ぶんなら差分がレビューできる量に収まる。
+            # 対象を選ばず「溜まったズレを均す」のが常用。1 週間ぶんならレビューできる量に収まる。
             since="1 week ago"
             instruction="下の変更に関係するドキュメントだけを更新してください。関係しないものは触らないでください。"
           fi
 
           # 全件渡すとプロンプトが膨らむため頭打ちにする。足りなければ実行を分ける。
-          changed=$(git log --since="$since" --name-only --format= -- . ':(exclude)*.md' | sort -u | head -60)
+          changed=$(git log --since="$since" --name-only --format= | grep -v '\.md$' | sort -u | head -60)
+
           agy -p "$instruction
 
           - 書き換えてよいのは Markdown のドキュメントだけです。実装ファイルは触らないでください。
@@ -84,27 +97,51 @@ jobs:
           $changed"
 
           # 終了コードでは成否を判定できない (ADR-[[202608150859]])。
-          touched=$(git status --porcelain | cut -c4-)
-          if [ -n "$touched" ]; then
-            bad=$(printf '%s\n' "$touched" | awk '!/\.md$/ || /^doc\/adr\//')
-            [ -z "$bad" ] || { echo "許可パス外を書き換えました: $bad" >&2; exit 1; }
+          bad=""
+          for file in $(git diff --name-only) $(git ls-files --others --exclude-standard); do
+            case "$file" in
+              doc/adr/*) bad="$bad $file" ;;
+              *.md) ;;
+              *) bad="$bad $file" ;;
+            esac
+          done
+
+          if [ -n "$bad" ]; then
+            echo "許可パス外を書き換えました:$bad"
+            exit 1
           fi
 
       - name: draft PR を作る / 更新する
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git diff --quiet && { echo "変更なし"; exit 0; }
-          subject="${TARGET:-直近 1 週間の変更}を実装に追従させる"
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "変更なし"
+            exit 0
+          fi
+
           # 対象ごとにブランチを分ける。共有すると別対象の PR を force push で潰す。
-          branch="docs/refresh-$(printf '%s' "${TARGET:-weekly}" | tr '/.' '--')"
+          if [ -n "$TARGET" ]; then
+            branch="docs/refresh-$TARGET"
+            subject="$TARGET を実装に追従させる"
+          else
+            branch="docs/refresh-weekly"
+            subject="直近 1 週間の変更を実装に追従させる"
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$branch"
-          git commit -qam "docs: $subject"
+          git add -A
+          git commit -m "docs: $subject"
           git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           git push -f -u origin "$branch"
+
           # 実行のたびに PR が増えると読まれなくなるので、open な PR があれば push だけで更新する。
-          gh pr view "$branch" >/dev/null 2>&1 && exit 0
+          if gh pr view "$branch" > /dev/null 2>&1; then
+            echo "既存の draft PR を更新しました"
+            exit 0
+          fi
+
           gh pr create --draft --base main --head "$branch" --title "docs: $subject" \
             --body "antigravity CLI (Gemini) による自動更新です。実装との突合をレビューしてください。"
