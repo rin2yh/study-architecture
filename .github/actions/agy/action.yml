@@ -42,7 +42,7 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.api-key }}
         PROMPT_FILE: ${{ inputs.prompt-file }}
-      run: agy --model gemini-3.6-flash -p "$(cat "$PROMPT_FILE")"
+      run: agy --model gemini-3.6-flash --mode accept-edits -p "$(cat "$PROMPT_FILE")"
 
     - name: debug agy logs
       if: always()
