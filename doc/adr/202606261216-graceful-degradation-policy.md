@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-06-26
-- Relates to: ADR-[[202606261210]] (同期呼び出しの耐性), ADR-[[202606261212]] (outbox), ADR-[[202606241356]] (Alloy 不在で起動)
+- Relates to: ADR-[[202606261210]] (同期呼び出しの耐性), ADR-[[202606261212]] (outbox), ADR-[[202606241356]] (Alloy 不在で起動), ADR-[[202608150830]] (ブローカ選定)
 
 ## Context
 
@@ -20,8 +20,8 @@
 | 自DB (Postgres) | 致命 | 正しく応答不能 → 即エラー |
 | order→payment (決済作成) | 致命 | checkout 失敗 (CB オープン時も即エラー)。未入金で注文を通さない |
 | order→product (価格スナップショット) | 致命 | 単価を確定できず checkout 失敗 |
-| Redis Streams (payment 発行) | 縮退可 | outbox が後追い送出 (ADR-[[202606261212]])。payment 確定自体は成功 |
-| Redis Streams (shipping 受信) | 縮退可 | 後で再受信 (at-least-once) |
+| ブローカ (payment 発行) | 縮退可 | outbox が後追い送出 (ADR-[[202606261212]])。payment 確定自体は成功 |
+| ブローカ (shipping 受信) | 縮退可 | 後で再受信 (at-least-once) |
 | テレメトリ (Alloy) | 縮退可 | ログを残し続行 (ADR-[[202606241356]]) |
 
 「order→payment は致命」は業務判断。決済不可なら注文を確定させず、ユーザーにリトライを促す (後追い手配に倒さない)。

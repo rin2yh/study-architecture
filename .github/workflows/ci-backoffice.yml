@@ -133,8 +133,8 @@ jobs:
 
       - uses: ./.github/actions/setup-goose
 
-      - name: start db
-        run: docker compose up -d --wait db-product db-shipping db-inventory
+      - name: start db and broker
+        run: docker compose up -d --wait db-product db-shipping db-inventory broker
 
       - name: migrate
         run: |
@@ -144,8 +144,12 @@ jobs:
 
       - name: test
         id: cov
-        # 結合テストは実 DB 必須 (env が無いと testdb.Open が Fatal する)。CI では必ず DSN を渡す。
+        # 結合テストは実 DB / ブローカ必須 (env が無いと skip されて検証が空洞化する)。CI では必ず渡す。
         env:
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_REGION: ap-northeast-1
+          AWS_ACCESS_KEY_ID: kumo
+          AWS_SECRET_ACCESS_KEY: kumo
           DATABASE_URL_PRODUCT: postgres://ec:ec_pass@localhost:5433/ec_product?sslmode=disable
           DATABASE_URL_SHIPPING: postgres://ec:ec_pass@localhost:5435/ec_shipping?sslmode=disable
           DATABASE_URL_INVENTORY: postgres://ec:ec_pass@localhost:5437/ec_inventory?sslmode=disable

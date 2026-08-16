@@ -5,7 +5,8 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
+	"github.com/rin2yh/study-architecture/server/internal/sqsx"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/consumer"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/handler"
 	"github.com/rin2yh/study-architecture/server/inventory/internal/rdb"
@@ -27,7 +28,7 @@ func InitHandler(ctx context.Context) (*handler.Handler, error) {
 }
 func InitWorker(ctx0 context.Context) (*worker.Worker, error) {
 	var err0 error
-	client, err0 := kessoku.Provide(redisx.NewClient).Fn()()
+	client, err0 := kessoku.Bind[messaging.Subscriber](kessoku.Provide(sqsx.NewClient)).Fn()(ctx0)
 	if err0 != nil {
 		var zero *worker.Worker
 		return zero, err0

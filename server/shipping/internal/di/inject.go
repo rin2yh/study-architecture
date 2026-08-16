@@ -5,7 +5,8 @@ package di
 import (
 	"github.com/mazrean/kessoku"
 
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
+	"github.com/rin2yh/study-architecture/server/internal/sqsx"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/consumer"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/handler"
@@ -25,7 +26,7 @@ var _ = kessoku.Inject[*handler.Handler](
 var _ = kessoku.Inject[*worker.Worker](
 	"InitWorker",
 	kessoku.Async(kessoku.Provide(rdb.NewPool)),
-	kessoku.Provide(redisx.NewClient),
+	kessoku.Bind[messaging.Subscriber](kessoku.Provide(sqsx.NewClient)),
 	kessoku.Provide(rdb.NewShipmentCommand),
 	kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCreator { return c }),
 	kessoku.Provide(func(c *rdb.ShipmentCommand) consumer.ShipmentCanceller { return c }),

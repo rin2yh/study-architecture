@@ -5,8 +5,9 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/internal/sqsx"
 	"github.com/rin2yh/study-architecture/server/order/internal/gateway"
 	"github.com/rin2yh/study-architecture/server/order/internal/handler"
 	"github.com/rin2yh/study-architecture/server/order/internal/rdb"
@@ -32,7 +33,7 @@ func InitApp(ctx context.Context) (*App, error) {
 		return zero, err1
 	}
 	var err2 error
-	client, err2 := kessoku.Provide(redisx.NewClient).Fn()()
+	client, err2 := kessoku.Bind[messaging.Publisher](kessoku.Provide(sqsx.NewClient)).Fn()(ctx)
 	if err2 != nil {
 		var zero *App
 		return zero, err2
