@@ -29,8 +29,8 @@ func TestOutboxStore(t *testing.T) {
 			t.Fatalf("len = %d, want 1", len(msgs))
 		}
 		m := msgs[0]
-		if m.Stream != orderevent.Stream {
-			t.Fatalf("stream = %q, want %q", m.Stream, orderevent.Stream)
+		if m.Topic != orderevent.Topic {
+			t.Fatalf("topic = %q, want %q", m.Topic, orderevent.Topic)
 		}
 		if m.Values[orderevent.FieldEvent] != orderevent.TypeCancelled {
 			t.Fatalf("event = %v, want %q", m.Values[orderevent.FieldEvent], orderevent.TypeCancelled)

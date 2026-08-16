@@ -4,26 +4,18 @@ package consumer
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"os"
-	"strings"
-	"time"
 
-	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
-const (
-	consumerGroup = "payment"
-	backoff       = time.Second
-)
+const queue = "order-events-payment"
 
 var tracer = otel.Tracer("payment")
 
@@ -32,85 +24,24 @@ type PaymentRefunder interface {
 }
 
 type Consumer struct {
-	rdb      *redis.Client
-	refunder PaymentRefunder
-	name     string
-	block    time.Duration
+	subscriber messaging.Subscriber
+	refunder   PaymentRefunder
 }
 
-func New(rc *redis.Client, refunder PaymentRefunder) *Consumer {
-	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の consumer が
-	// 増え続ける (残った PEL 自体は ClaimPending が引き取る)。
-	name, _ := os.Hostname()
-	if name == "" {
-		name = consumerGroup
-	}
-	return &Consumer{rdb: rc, refunder: refunder, name: name, block: 5 * time.Second}
+func New(subscriber messaging.Subscriber, refunder PaymentRefunder) *Consumer {
+	return &Consumer{subscriber: subscriber, refunder: refunder}
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
-	if err := c.ensureGroup(ctx); err != nil {
-		return err
-	}
-	slog.Info("payment consumer started", "stream", orderevent.Stream, "group", consumerGroup, "consumer", c.name)
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := c.readAndProcess(ctx); err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			slog.Warn("payment consumer: read failed, backing off", "error", err)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
-	}
-}
-
-func (c *Consumer) ensureGroup(ctx context.Context) error {
-	err := c.rdb.XGroupCreateMkStream(ctx, orderevent.Stream, consumerGroup, "$").Err()
-	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		return err
-	}
-	return nil
-}
-
-func (c *Consumer) readAndProcess(ctx context.Context) error {
-	if err := redisx.ClaimPending(ctx, c.rdb, orderevent.Stream, consumerGroup, c.name, c.process); err != nil {
-		return err
-	}
-	res, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
-		Group:    consumerGroup,
-		Consumer: c.name,
-		Streams:  []string{orderevent.Stream, ">"},
-		Count:    16,
-		Block:    c.block,
-	}).Result()
-	if errors.Is(err, redis.Nil) {
-		return nil
-	}
+	sub, err := c.subscriber.Subscribe(ctx, orderevent.Topic, queue)
 	if err != nil {
 		return err
 	}
-	for _, st := range res {
-		for _, m := range st.Messages {
-			if err := c.process(ctx, m.ID, m.Values); err != nil {
-				continue
-			}
-			if err := c.rdb.XAck(ctx, orderevent.Stream, consumerGroup, m.ID).Err(); err != nil {
-				slog.Warn("payment consumer: xack failed", "id", m.ID, "error", err)
-			}
-		}
-	}
-	return nil
+	return messaging.Consume(ctx, queue, sub, c.process)
 }
 
 // producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
-func (c *Consumer) process(ctx context.Context, id string, values map[string]any) error {
+func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "order.cancelled refund",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithLinks(orderevent.LinkFrom(ctx, values)),
@@ -121,7 +52,7 @@ func (c *Consumer) process(ctx context.Context, id string, values map[string]any
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		slog.ErrorContext(ctx, "payment consumer: handle failed", "id", id, "error", err)
+		slog.ErrorContext(ctx, "payment consumer: handle failed", "error", err)
 	}
 	return err
 }
@@ -132,9 +63,9 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	}
 	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
-		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
+		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
 		slog.ErrorContext(ctx, "payment consumer: invalid orderId", "error", err)
-		return nil
+		return err
 	}
 	return c.refunder.RefundByOrder(ctx, orderID)
 }

@@ -5,8 +5,9 @@ package di
 import (
 	"context"
 	"github.com/mazrean/kessoku"
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
 	"github.com/rin2yh/study-architecture/server/internal/outbox"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/internal/sqsx"
 	"github.com/rin2yh/study-architecture/server/payment/internal/consumer"
 	"github.com/rin2yh/study-architecture/server/payment/internal/handler"
 	"github.com/rin2yh/study-architecture/server/payment/internal/rdb"
@@ -14,13 +15,13 @@ import (
 
 func InitApp(ctx context.Context) (*App, error) {
 	var err error
-	client, err := kessoku.Provide(redisx.NewClient).Fn()()
+	pool, err := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
 	if err != nil {
 		var zero *App
 		return zero, err
 	}
 	var err0 error
-	pool, err0 := kessoku.Async(kessoku.Provide(rdb.NewPool)).Fn()(ctx)
+	client, err0 := kessoku.Provide(sqsx.NewClient).Fn()(ctx)
 	if err0 != nil {
 		var zero *App
 		return zero, err0
@@ -28,15 +29,21 @@ func InitApp(ctx context.Context) (*App, error) {
 	paymentQuery := kessoku.Bind[handler.Query](kessoku.Provide(rdb.NewPaymentQuery)).Fn()(pool)
 	outboxStore := kessoku.Bind[outbox.Store](kessoku.Provide(rdb.NewOutboxStore)).Fn()(pool)
 	paymentCommand := kessoku.Provide(rdb.NewPaymentCommand).Fn()(pool)
-	relay := kessoku.Provide(outbox.NewRelay).Fn()(client, outboxStore)
+	publisher := kessoku.Provide(func(c *sqsx.Client) messaging.Publisher {
+		return c
+	}).Fn()(client)
+	subscriber := kessoku.Provide(func(c *sqsx.Client) messaging.Subscriber {
+		return c
+	}).Fn()(client)
 	command := kessoku.Provide(func(c *rdb.PaymentCommand) handler.Command {
 		return c
 	}).Fn()(paymentCommand)
 	paymentRefunder := kessoku.Provide(func(c *rdb.PaymentCommand) consumer.PaymentRefunder {
 		return c
 	}).Fn()(paymentCommand)
+	relay := kessoku.Provide(outbox.NewRelay).Fn()(publisher, outboxStore)
 	handler0 := kessoku.Provide(handler.New).Fn()(paymentQuery, command)
-	consumer0 := kessoku.Provide(consumer.New).Fn()(client, paymentRefunder)
+	consumer0 := kessoku.Provide(consumer.New).Fn()(subscriber, paymentRefunder)
 	app := kessoku.Provide(NewApp).Fn()(handler0, relay, consumer0)
 	return app, nil
 }

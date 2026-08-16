@@ -4,14 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
-
-	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
 
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
+	"github.com/rin2yh/study-architecture/server/internal/test/msgtest"
 )
 
 type compensatorStub struct {
@@ -24,131 +20,54 @@ func (s *compensatorStub) CompensateByOrder(_ context.Context, orderID order.ID)
 	return s.err
 }
 
-func newTestCancelConsumer(t *testing.T, compensator ReservationCompensator) (*CancelConsumer, *miniredis.Miniredis) {
-	t.Helper()
-	mr := miniredis.RunT(t)
-	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rc.Close() })
-	c := NewCancel(rc, compensator)
-	c.block = 10 * time.Millisecond
-	return c, mr
-}
-
-func TestCancelEnsureGroup(t *testing.T) {
-	c, _ := newTestCancelConsumer(t, &compensatorStub{})
-	ctx := t.Context()
-
-	if err := c.ensureGroup(ctx); err != nil {
-		t.Fatalf("ensureGroup (1st): %v", err)
-	}
-	if err := c.ensureGroup(ctx); err != nil {
-		t.Fatalf("ensureGroup (2nd): %v", err)
-	}
-}
-
-func TestCancelReadAndProcess(t *testing.T) {
+func TestCancelConsumerRun(t *testing.T) {
+	cancelled := map[string]any{orderevent.FieldEvent: orderevent.TypeCancelled, order.FieldID: "20"}
 	type args struct {
-		values        map[string]any
-		compensateErr error
+		values map[string]any
+		err    error
 	}
 	type want struct {
 		gotOrderIDs []string
-		pending     int64
+		acked       int
 	}
 	tests := []struct {
 		name string
 		args args
 		want want
 	}{
+		{"正常系 order.cancelled を補償して ack する", args{cancelled, nil}, want{[]string{"20"}, 1}},
 		{
-			"正常系 order.cancelled で在庫を戻し ack する",
-			args{map[string]any{"event": "order.cancelled", "orderId": "20"}, nil},
-			want{[]string{"20"}, 0},
+			"準正常系 別のイベント種別は処理せず ack する",
+			args{map[string]any{orderevent.FieldEvent: "order.created", order.FieldID: "20"}, nil},
+			want{nil, 1},
 		},
 		{
-			"準正常系 関心外イベントは戻さず ack する",
-			args{map[string]any{"event": "order.created", "orderId": "20"}, nil},
+			"準正常系 壊れた payload は ack せずブローカの隔離に委ねる",
+			args{map[string]any{orderevent.FieldEvent: orderevent.TypeCancelled, order.FieldID: "abc"}, nil},
 			want{nil, 0},
 		},
-		{
-			"準正常系 不正な orderId は戻さず ack する",
-			args{map[string]any{"event": "order.cancelled", "orderId": "abc"}, nil},
-			want{nil, 0},
-		},
-		{
-			"異常系 戻しが他のエラーなら ack せず pending に残す",
-			args{map[string]any{"event": "order.cancelled", "orderId": "20"}, errors.New("db down")},
-			want{[]string{"20"}, 1},
-		},
+		{"異常系 補償が失敗した分は ack しない", args{cancelled, errors.New("db down")}, want{[]string{"20"}, 0}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			compensator := &compensatorStub{err: tt.args.compensateErr}
-			c, _ := newTestCancelConsumer(t, compensator)
-			ctx := t.Context()
-			if err := c.ensureGroup(ctx); err != nil {
-				t.Fatalf("ensureGroup: %v", err)
-			}
-			if err := c.rdb.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: tt.args.values}).Err(); err != nil {
-				t.Fatalf("XAdd: %v", err)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			stub := &compensatorStub{err: tt.args.err}
+			sub := msgtest.NewSubscriber(cancel, tt.args.values)
+
+			if err := NewCancel(sub, stub).Run(ctx); !errors.Is(err, context.Canceled) {
+				t.Fatalf("Run() = %v, want context.Canceled", err)
 			}
 
-			if err := c.readAndProcess(ctx); err != nil {
-				t.Fatalf("readAndProcess: %v", err)
+			if sub.Topic != orderevent.Topic || sub.Queue != cancelQueue {
+				t.Fatalf("subscribed to (%q, %q), want (%q, %q)", sub.Topic, sub.Queue, orderevent.Topic, cancelQueue)
 			}
-
-			if len(compensator.got) != len(tt.want.gotOrderIDs) {
-				t.Fatalf("compensator called with %v, want %v", compensator.got, tt.want.gotOrderIDs)
+			if len(stub.got) != len(tt.want.gotOrderIDs) {
+				t.Fatalf("CompensateByOrder called with %v, want %v", stub.got, tt.want.gotOrderIDs)
 			}
-			p, err := c.rdb.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
-			if err != nil {
-				t.Fatalf("XPending: %v", err)
-			}
-			if p.Count != tt.want.pending {
-				t.Fatalf("pending = %d, want %d", p.Count, tt.want.pending)
+			if len(sub.Acked) != tt.want.acked {
+				t.Fatalf("acked = %d, want %d", len(sub.Acked), tt.want.acked)
 			}
 		})
-	}
-}
-
-func TestCancelRunStopsOnCanceledContext(t *testing.T) {
-	c, _ := newTestCancelConsumer(t, &compensatorStub{})
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if err := c.Run(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() = %v, want context.Canceled", err)
-	}
-}
-
-// 処理失敗で PEL に残った分が、min-idle 経過後の周回で引き取られ再処理されること。
-func TestCancelReadAndProcessClaimsStalePending(t *testing.T) {
-	compensator := &compensatorStub{err: errors.New("db down")}
-	c, mr := newTestCancelConsumer(t, compensator)
-	mr.SetTime(claimBase)
-	ctx := t.Context()
-	if err := c.ensureGroup(ctx); err != nil {
-		t.Fatalf("ensureGroup: %v", err)
-	}
-	if err := c.rdb.XAdd(ctx, &redis.XAddArgs{Stream: orderevent.Stream, Values: map[string]any{"event": "order.cancelled", "orderId": "20"}}).Err(); err != nil {
-		t.Fatalf("XAdd: %v", err)
-	}
-	if err := c.readAndProcess(ctx); err != nil {
-		t.Fatalf("readAndProcess (1 周目): %v", err)
-	}
-	compensator.err = nil
-	mr.SetTime(claimBase.Add(redisx.ClaimMinIdle + time.Second))
-	if err := c.readAndProcess(ctx); err != nil {
-		t.Fatalf("readAndProcess (2 周目): %v", err)
-	}
-
-	if len(compensator.got) != 2 {
-		t.Fatalf("compensator calls = %d, want 2 (1 周目の失敗 + 引き取り後の再処理)", len(compensator.got))
-	}
-	p, err := c.rdb.XPending(ctx, orderevent.Stream, cancelConsumerGroup).Result()
-	if err != nil {
-		t.Fatalf("XPending: %v", err)
-	}
-	if p.Count != 0 {
-		t.Fatalf("pending (2 周目) = %d, want 0", p.Count)
 	}
 }

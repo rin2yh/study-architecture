@@ -20,6 +20,13 @@ volumes:
 x-otel-env: &otel-env
   OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
 
+# kumo は認証を見ないが、SDK が署名のために資格情報を要求する (ADR-[[202608150830]])。
+x-broker-env: &broker-env
+  AWS_ENDPOINT_URL: http://broker:4566
+  AWS_REGION: ap-northeast-1
+  AWS_ACCESS_KEY_ID: kumo
+  AWS_SECRET_ACCESS_KEY: kumo
+
 x-postgres: &postgres
   image: postgres:17-alpine
   environment: &postgres-env
@@ -43,13 +50,18 @@ services:
     networks: [external-public, external-private, internal-private]
     depends_on: [product, order, payment, member, shipping, inventory]
 
+  # SNS + SQS の互換実装。本番のマネージドキューと同じ API で話す (ADR-[[202608150830]])。
   broker:
-    image: redis:7-alpine
+    image: ghcr.io/sivchari/kumo:latest
+    environment:
+      KUMO_HOST: 0.0.0.0
+      KUMO_PORT: "4566"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4566/health"]
       interval: 5s
       timeout: 3s
       retries: 10
+    ports: ["4566:4566"]
     networks: [external-private, internal-private]
 
   db-order:
@@ -156,13 +168,12 @@ services:
       context: .
       dockerfile: server/order/Dockerfile
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *broker-env] # ADR-[[202606261702]]
       OTEL_SERVICE_NAME: order
       DATABASE_URL: postgres://order_svc:order_pass@db-order:5432/ec_order?sslmode=disable # ADR-[[202606231000]]
       PAYMENT_API_URL: http://payment
       PRODUCT_API_URL: http://edge-proxy/product
       INVENTORY_API_URL: http://edge-proxy/inventory # ADR-[[202606262000]]
-      REDIS_URL: redis://broker:6379 # ADR-[[202606261702]]
     ports: ["8002:80"]
     depends_on:
       db-order:
@@ -176,10 +187,9 @@ services:
       context: .
       dockerfile: server/payment/Dockerfile
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *broker-env] # ADR-[[202606211200]]
       OTEL_SERVICE_NAME: payment
       DATABASE_URL: postgres://payment_svc:payment_pass@db-payment:5432/ec_payment?sslmode=disable # ADR-[[202606231000]]
-      REDIS_URL: redis://broker:6379 # ADR-[[202606211200]]
     ports: ["8003:80"]
     depends_on:
       db-payment:
@@ -222,10 +232,9 @@ services:
       context: .
       dockerfile: server/shipping/docker/worker.Dockerfile
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *broker-env]
       OTEL_SERVICE_NAME: shipping-worker
       DATABASE_URL: postgres://shipping_svc:shipping_pass@db-shipping:5432/ec_shipping?sslmode=disable # ADR-[[202606231000]]
-      REDIS_URL: redis://broker:6379
       # 運用系→顧客系の越境は edge-proxy 経由 (ADR-[[202606301000]])。
       ORDER_API_URL: http://edge-proxy/order
     depends_on:
@@ -256,10 +265,9 @@ services:
       context: .
       dockerfile: server/inventory/docker/worker.Dockerfile
     environment:
-      <<: *otel-env
+      <<: [*otel-env, *broker-env]
       OTEL_SERVICE_NAME: inventory-worker
       DATABASE_URL: postgres://inventory_svc:inventory_pass@db-inventory:5432/ec_inventory?sslmode=disable # ADR-[[202606231000]]
-      REDIS_URL: redis://broker:6379
     depends_on:
       db-inventory:
         condition: service_healthy

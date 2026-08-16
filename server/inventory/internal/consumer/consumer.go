@@ -1,28 +1,20 @@
-// Package consumer は決済確定イベントを購読して予約を確定へ昇格する。
+// Package consumer は決済確定イベントを購読して在庫予約を確定する。
 package consumer
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"os"
-	"strings"
-	"time"
 
-	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/rin2yh/study-architecture/server/internal/messaging"
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
-	"github.com/rin2yh/study-architecture/server/internal/redisx"
 )
 
-const (
-	consumerGroup = "inventory"
-	backoff       = time.Second
-)
+const queue = "payment-events-inventory"
 
 var tracer = otel.Tracer("inventory-worker")
 
@@ -31,85 +23,24 @@ type ReservationConfirmer interface {
 }
 
 type Consumer struct {
-	rdb       *redis.Client
-	confirmer ReservationConfirmer
-	name      string
-	block     time.Duration
+	subscriber messaging.Subscriber
+	confirmer  ReservationConfirmer
 }
 
-func New(rc *redis.Client, confirmer ReservationConfirmer) *Consumer {
-	// 識別名はランダムでなく安定値 (hostname) にする。ランダムだと再起動ごとに別名の consumer が
-	// 増え続ける (残った PEL 自体は ClaimPending が引き取る)。
-	name, _ := os.Hostname()
-	if name == "" {
-		name = consumerGroup
-	}
-	return &Consumer{rdb: rc, confirmer: confirmer, name: name, block: 5 * time.Second}
+func New(subscriber messaging.Subscriber, confirmer ReservationConfirmer) *Consumer {
+	return &Consumer{subscriber: subscriber, confirmer: confirmer}
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
-	if err := c.ensureGroup(ctx); err != nil {
-		return err
-	}
-	slog.Info("inventory consumer started", "stream", paymentevent.Stream, "group", consumerGroup, "consumer", c.name)
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := c.readAndProcess(ctx); err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			slog.Warn("inventory consumer: read failed, backing off", "error", err)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
-	}
-}
-
-func (c *Consumer) ensureGroup(ctx context.Context) error {
-	err := c.rdb.XGroupCreateMkStream(ctx, paymentevent.Stream, consumerGroup, "$").Err()
-	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
-		return err
-	}
-	return nil
-}
-
-func (c *Consumer) readAndProcess(ctx context.Context) error {
-	if err := redisx.ClaimPending(ctx, c.rdb, paymentevent.Stream, consumerGroup, c.name, c.process); err != nil {
-		return err
-	}
-	res, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
-		Group:    consumerGroup,
-		Consumer: c.name,
-		Streams:  []string{paymentevent.Stream, ">"},
-		Count:    16,
-		Block:    c.block,
-	}).Result()
-	if errors.Is(err, redis.Nil) {
-		return nil
-	}
+	sub, err := c.subscriber.Subscribe(ctx, paymentevent.Topic, queue)
 	if err != nil {
 		return err
 	}
-	for _, st := range res {
-		for _, m := range st.Messages {
-			if err := c.process(ctx, m.ID, m.Values); err != nil {
-				continue
-			}
-			if err := c.rdb.XAck(ctx, paymentevent.Stream, consumerGroup, m.ID).Err(); err != nil {
-				slog.Warn("inventory consumer: xack failed", "id", m.ID, "error", err)
-			}
-		}
-	}
-	return nil
+	return messaging.Consume(ctx, queue, sub, c.process)
 }
 
 // producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
-func (c *Consumer) process(ctx context.Context, id string, values map[string]any) error {
+func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "payment.settled confirm",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithLinks(paymentevent.LinkFrom(ctx, values)),
@@ -120,7 +51,7 @@ func (c *Consumer) process(ctx context.Context, id string, values map[string]any
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		slog.ErrorContext(ctx, "inventory consumer: handle failed", "id", id, "error", err)
+		slog.ErrorContext(ctx, "inventory consumer: handle failed", "error", err)
 	}
 	return err
 }
@@ -131,9 +62,9 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 	}
 	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
-		// 壊れた payload は再配送しても直らない。pending を膨らませないため握って可視化のみ。
+		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
 		slog.ErrorContext(ctx, "inventory consumer: invalid orderId", "error", err)
-		return nil
+		return err
 	}
 	// 確定は ON CONFLICT DO NOTHING で冪等。再配信は no-op で ack される (ADR-[[202606261214]])。
 	return c.confirmer.ConfirmReservationsByOrder(ctx, orderID)
