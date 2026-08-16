@@ -37,12 +37,6 @@ runs:
         mkdir -p "$HOME/.gemini/antigravity-cli"
         echo '{"modelProvider": "gemini"}' > "$HOME/.gemini/antigravity-cli/settings.json"
 
-    - name: debug agy
-      shell: bash
-      run: |
-        agy --version || true
-        agy models || true
-
     - name: run agy
       shell: bash
       env:
@@ -54,7 +48,5 @@ runs:
       if: always()
       shell: bash
       run: |
-        for f in "$HOME"/.gemini/antigravity-cli/crashes/*.log "$HOME"/.gemini/antigravity-cli/log/*.log; do
-          echo "===== $f"
-          tail -100 "$f" || true
-        done
+        agy --version || true
+        agy models || true
