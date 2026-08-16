@@ -30,7 +30,7 @@ jobs:
 
       - name: プロンプトを組み立てる
         run: |
-          # --format= はコミット行を出さないため。全件渡すとプロンプトが膨らむので頭打ちにする。
+          # 全件渡すとプロンプトが膨らむので頭打ちにする。
           # 変更が .md だけだと grep が 1 を返し、-e で step ごと落ちるため || true で受ける。
           changed=$(git log --since="1 week ago" --name-only --format= | grep -v '\.md$' | sort -u | head -60 || true)
 
