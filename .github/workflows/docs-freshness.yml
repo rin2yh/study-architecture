@@ -3,6 +3,9 @@ name: Docs (freshness)
 # 当面は手動実行のみ (ADR-[[202608150859]])。トリガの昇格は GitHub #144。
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - claude/document-update-strategy-t1vqkf
 
 concurrency:
   # 同じブランチへ出すため、走っている実行があれば打ち切る。
