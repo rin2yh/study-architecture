@@ -32,10 +32,11 @@ runs:
 
     - name: configure agy
       shell: bash
-      # agy は $HOME 直下しか設定を読まないため、リポジトリの設定をそこへ写す。
+      # agy はこのパスを設定と実行時の状態 (ログ・DB) の置き場に兼用するため、
+      # ディレクトリごとリポジトリ側へ寄せると作業ツリーが汚れる。設定だけ張る。
       run: |
         mkdir -p "$HOME/.gemini/antigravity-cli"
-        cp "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
+        ln -sf "$GITHUB_WORKSPACE/.github/antigravity/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
     - name: run agy
       shell: bash
