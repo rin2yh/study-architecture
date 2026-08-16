@@ -52,6 +52,58 @@ func TestInjectLinkRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParseSettled(t *testing.T) {
+	id, err := order.Parse("20")
+	if err != nil {
+		t.Fatalf("order.Parse: %v", err)
+	}
+	settled := paymentevent.Settled{PaymentID: 7, OrderID: id, AmountCents: 300}
+
+	tests := []struct {
+		name    string
+		values  map[string]any
+		want    paymentevent.Settled
+		wantErr bool
+	}{
+		{"正常系 発行した payload をそのまま復元する", settled.Values(), settled, false},
+		{
+			"準正常系 別のイベント種別は復元しない",
+			map[string]any{paymentevent.FieldEvent: "payment.failed"},
+			paymentevent.Settled{}, true,
+		},
+		{
+			"準正常系 フィールドの欠落はゼロ値へ化けず error になる",
+			map[string]any{
+				paymentevent.FieldEvent:     paymentevent.TypeSettled,
+				paymentevent.FieldPaymentID: int64(7),
+				paymentevent.FieldOrderID:   "20",
+			},
+			paymentevent.Settled{}, true,
+		},
+		{
+			"準正常系 型違いはゼロ値へ化けず error になる",
+			map[string]any{
+				paymentevent.FieldEvent:       paymentevent.TypeSettled,
+				paymentevent.FieldPaymentID:   "7",
+				paymentevent.FieldOrderID:     "20",
+				paymentevent.FieldAmountCents: int64(300),
+			},
+			paymentevent.Settled{}, true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := paymentevent.ParseSettled(tt.values)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseSettled() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Fatalf("ParseSettled() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 // 旧 producer や計装オフでは traceparent が載らないが、その場合も consumer は動き続ける。
 func TestLinkFromMissingTraceparent(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})

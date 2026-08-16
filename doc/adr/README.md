@@ -61,6 +61,7 @@
 | [202608122000](202608122000-order-id-value-object-without-numeric-representation.md) | Accepted | 注文 ID を値オブジェクトにし、数値表現をデータ層に閉じる |
 | [202608150830](202608150830-managed-queue-with-broker-side-dlq.md) | Accepted | 非同期イベントの配送をマネージドキュー前提にする (DLQ はブローカ機能) |
 | [202608150835](202608150835-broker-behind-port.md) | Accepted | ブローカをポートで隔離し、アプリからベンダ API を見せない |
+| [202608160730](202608160730-event-contract-typed-and-additive-only.md) | Accepted | イベント payload は型付き契約 + 追加のみで守る (version 番号は持たない) |
 
 ## 可観測性
 

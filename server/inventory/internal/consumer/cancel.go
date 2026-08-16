@@ -54,14 +54,14 @@ func (c *CancelConsumer) process(ctx context.Context, values map[string]any) err
 }
 
 func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) error {
-	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
+	if !orderevent.IsCancelled(values) {
 		return nil
 	}
-	orderID, err := order.ParseIDFromEvent(values)
+	ev, err := orderevent.ParseCancelled(values)
 	if err != nil {
 		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
-		slog.ErrorContext(ctx, "inventory cancel consumer: invalid orderId", "error", err)
+		slog.ErrorContext(ctx, "inventory cancel consumer: invalid payload", "error", err)
 		return err
 	}
-	return c.compensator.CompensateByOrder(ctx, orderID)
+	return c.compensator.CompensateByOrder(ctx, ev.OrderID)
 }

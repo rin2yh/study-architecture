@@ -5,6 +5,7 @@ package paymentevent
 
 import (
 	"context"
+	"fmt"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -46,6 +47,34 @@ func (s Settled) Values() map[string]any {
 		FieldOrderID:     s.OrderID.String(),
 		FieldAmountCents: s.AmountCents,
 	}
+}
+
+// IsSettled は values が payment.settled かを判定する。同じトピックに他種が流れても consumer が
+// 素通しできるよう、種別の判定を復元と分けている。
+func IsSettled(values map[string]any) bool {
+	t, _ := values[FieldEvent].(string)
+	return t == TypeSettled
+}
+
+// ParseSettled は wire の values を Settled へ復元する。consumer に map のキーと型アサーションを
+// 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
+func ParseSettled(values map[string]any) (Settled, error) {
+	if !IsSettled(values) {
+		return Settled{}, fmt.Errorf("%s: got %v, want %s", FieldEvent, values[FieldEvent], TypeSettled)
+	}
+	paymentID, ok := values[FieldPaymentID].(int64)
+	if !ok {
+		return Settled{}, fmt.Errorf("%s: got %#v, want int64", FieldPaymentID, values[FieldPaymentID])
+	}
+	orderID, err := order.ParseIDFromEvent(values)
+	if err != nil {
+		return Settled{}, fmt.Errorf("%s: %w", FieldOrderID, err)
+	}
+	amountCents, ok := values[FieldAmountCents].(int64)
+	if !ok {
+		return Settled{}, fmt.Errorf("%s: got %#v, want int64", FieldAmountCents, values[FieldAmountCents])
+	}
+	return Settled{PaymentID: paymentID, OrderID: orderID, AmountCents: amountCents}, nil
 }
 
 // Traceparent は現在の trace の W3C traceparent を返す。計装オフ等で trace が無ければ空文字。

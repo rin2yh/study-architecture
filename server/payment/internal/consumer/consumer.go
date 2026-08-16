@@ -58,14 +58,14 @@ func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 }
 
 func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
-	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
+	if !orderevent.IsCancelled(values) {
 		return nil
 	}
-	orderID, err := order.ParseIDFromEvent(values)
+	ev, err := orderevent.ParseCancelled(values)
 	if err != nil {
 		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
-		slog.ErrorContext(ctx, "payment consumer: invalid orderId", "error", err)
+		slog.ErrorContext(ctx, "payment consumer: invalid payload", "error", err)
 		return err
 	}
-	return c.refunder.RefundByOrder(ctx, orderID)
+	return c.refunder.RefundByOrder(ctx, ev.OrderID)
 }

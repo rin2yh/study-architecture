@@ -21,7 +21,12 @@ func (s *confirmerStub) ConfirmReservationsByOrder(_ context.Context, orderID or
 }
 
 func TestRun(t *testing.T) {
-	settled := map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "20"}
+	settled := map[string]any{
+		paymentevent.FieldEvent:       paymentevent.TypeSettled,
+		paymentevent.FieldPaymentID:   int64(1),
+		order.FieldID:                 "20",
+		paymentevent.FieldAmountCents: int64(300),
+	}
 	type args struct {
 		values map[string]any
 		err    error
@@ -44,6 +49,11 @@ func TestRun(t *testing.T) {
 		{
 			"準正常系 壊れた payload は ack せずブローカの隔離に委ねる",
 			args{map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "abc"}, nil},
+			want{nil, 0},
+		},
+		{
+			"準正常系 契約のフィールドを欠く payload は ack せず隔離に委ねる (ADR-[[202608160730]])",
+			args{map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "20"}, nil},
 			want{nil, 0},
 		},
 		{"異常系 確定が失敗した分は ack しない", args{settled, errors.New("db down")}, want{[]string{"20"}, 0}},

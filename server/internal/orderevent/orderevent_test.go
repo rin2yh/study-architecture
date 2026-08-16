@@ -49,6 +49,44 @@ func TestTraceparentLinkRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParseCancelled(t *testing.T) {
+	id, err := order.Parse("20")
+	if err != nil {
+		t.Fatalf("order.Parse: %v", err)
+	}
+	cancelled := orderevent.Cancelled{OrderID: id}
+
+	tests := []struct {
+		name    string
+		values  map[string]any
+		want    orderevent.Cancelled
+		wantErr bool
+	}{
+		{"正常系 発行した payload をそのまま復元する", cancelled.Values(), cancelled, false},
+		{
+			"準正常系 別のイベント種別は復元しない",
+			map[string]any{orderevent.FieldEvent: "order.created", orderevent.FieldOrderID: "20"},
+			orderevent.Cancelled{}, true,
+		},
+		{
+			"準正常系 フィールドの欠落はゼロ値へ化けず error になる",
+			map[string]any{orderevent.FieldEvent: orderevent.TypeCancelled},
+			orderevent.Cancelled{}, true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := orderevent.ParseCancelled(tt.values)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseCancelled() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Fatalf("ParseCancelled() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 // 旧 producer や計装オフでは traceparent が載らないが、その場合も consumer は動き続ける。
 func TestLinkFromMissingTraceparent(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})

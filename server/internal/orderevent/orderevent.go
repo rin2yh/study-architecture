@@ -6,6 +6,7 @@ package orderevent
 
 import (
 	"context"
+	"fmt"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -40,6 +41,26 @@ func (c Cancelled) Values() map[string]any {
 		FieldEvent:   TypeCancelled,
 		FieldOrderID: c.OrderID.String(),
 	}
+}
+
+// IsCancelled は values が order.cancelled かを判定する。同じトピックに他種が流れても consumer が
+// 素通しできるよう、種別の判定を復元と分けている。
+func IsCancelled(values map[string]any) bool {
+	t, _ := values[FieldEvent].(string)
+	return t == TypeCancelled
+}
+
+// ParseCancelled は wire の values を Cancelled へ復元する。consumer に map のキーと型アサーションを
+// 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
+func ParseCancelled(values map[string]any) (Cancelled, error) {
+	if !IsCancelled(values) {
+		return Cancelled{}, fmt.Errorf("%s: got %v, want %s", FieldEvent, values[FieldEvent], TypeCancelled)
+	}
+	orderID, err := order.ParseIDFromEvent(values)
+	if err != nil {
+		return Cancelled{}, fmt.Errorf("%s: %w", FieldOrderID, err)
+	}
+	return Cancelled{OrderID: orderID}, nil
 }
 
 // Traceparent は現在の trace の W3C traceparent を返す。計装オフ等で trace が無ければ空文字。
