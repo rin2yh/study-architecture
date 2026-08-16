@@ -1,43 +1,18 @@
 # client — フロントエンド (pnpm workspace)
 
-TanStack Start による 2 つの UI と、共有 API パッケージのモノレポ。
+2 つの UI（`app/store` / `app/backoffice`）と、共有パッケージ（`app/api` / `app/ui`）、E2E
+（`e2e`）のモノレポ。構成・データ取得・層分け・依存管理の方針は
+[doc/frontend.md](../doc/frontend.md)。
 
-## 構成
+## セットアップ
 
-- `app/store` — 顧客向けストア（product / order / payment / member）。買い物に加えログイン・
-  注文履歴（旧 mypage）も担う。
-- `app/backoffice` — 運営の管理画面（product / order / shipping）
-- `package/api`（`api`）— 共有パッケージ。orval で各サービスの OpenAPI から fetch クライアント
-  と zod を生成し、mutator がサーバ側 env から baseURL を注入する。
-
-各 app の `src/routes/index.tsx` のローダが SSR 時にサーバ側で `api` 経由でサービスを呼ぶ
-（ブラウザは UI のみ叩くため CORS 不要）。
-
-## コンポーネント構成 (FSD)
-
-各 app の `src/` は Feature-Sliced Design で層分けする（`app → pages → features → entities → shared`
-の一方向依存、`widgets` は必要時のみ）。`app` 層は `root.tsx` + `routes.ts`、`pages` 層は `routes/`
-そのもの（route モジュール = ページ。`loader`/`action` を持ち、ページ専用の表示コンポーネントは
-`routes/<page>/components/` にコロケート）。操作は `features/`、ビジネス実体は `entities/`、ドメイン
-非依存の再利用部品は `shared/` に置き、各スライスの公開境界は `index.ts` に集約する。詳細は
-[../doc/adr/202606220300](../doc/adr/202606220300-frontend-fsd-component-layering.md)。
-
-## コマンド（pnpm）
+このディレクトリで実行する（`node` は `mise.toml` が固定する）。
 
 ```sh
-pnpm install
-pnpm api:gen              # ../server/<svc>/api/openapi.yaml → package/api/src/**（client + zod）
-pnpm -r build            # 各 app を vite build → .output/server/index.mjs (Nitro node-server)
-pnpm -r typecheck        # tsc --noEmit
-pnpm lint                # oxlint
-pnpm format              # oxfmt
-pnpm --filter store dev  # 個別 app の dev サーバ（backoffice も同様）
+mise install        # node
+mise run install    # pnpm install
 ```
 
-## 依存管理
-
-- 共通依存は `pnpm-workspace.yaml` の **catalog** で一元管理（各 package は `catalog:` 参照）。
-- **`minimumReleaseAge`**（1 週間）で公開直後の版は使わない。ビルドスクリプトは原則 deny。
-
-詳細は [../doc/adr/202606170906](../doc/adr/202606170906-frontend-pnpm-monorepo-tooling.md) /
-[../doc/adr/202606170905](../doc/adr/202606170905-ui-server-loader-data-fetching.md)。
+以降のタスク（生成・ビルド・lint・テスト）は `mise tasks` で一覧できる。app ごとのスクリプトは
+各 `package.json` を参照。E2E はスタックの起動が要るためリポジトリルートのタスクから実行する
+（[e2e/README.md](e2e/README.md)）。
