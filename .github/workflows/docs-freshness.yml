@@ -3,13 +3,10 @@ name: Docs (freshness)
 # 当面は手動実行のみ (ADR-[[202608150859]])。トリガの昇格は GitHub #144。
 on:
   workflow_dispatch:
-    inputs:
-      target:
-        description: "更新する対象ドキュメント (空なら直近 1 週間の実装変更を関係するドキュメントへ反映する)"
 
 concurrency:
-  # 対象ごとに別ブランチへ出すため、別対象の実行は打ち切らない。
-  group: docs-freshness-${{ inputs.target }}
+  # 同じブランチへ出すため、走っている実行があれば打ち切る。
+  group: docs-freshness
   cancel-in-progress: true
 
 permissions:
@@ -22,7 +19,8 @@ jobs:
       contents: write
       pull-requests: write
     env:
-      TARGET: ${{ inputs.target }}
+      BRANCH: docs/refresh
+      SUBJECT: 直近 1 週間の変更を実装に追従させる
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -32,23 +30,12 @@ jobs:
 
       - name: プロンプトを組み立てる
         run: |
-          if [ -n "$TARGET" ]; then
-            since=$(git log -1 --format=%cI -- "$TARGET")
-            instruction="$TARGET を実装の現状に合わせて更新してください。"
-          else
-            # 対象を選ばず「溜まったズレを均す」のが常用。1 週間ぶんならレビューできる量に収まる。
-            since="1 week ago"
-            instruction="下の変更に関係するドキュメントだけを更新してください。関係しないものは触らないでください。"
-          fi
-
           # --format= はコミット行を出さないため。全件渡すとプロンプトが膨らむので頭打ちにする。
           # 変更が .md だけだと grep が 1 を返し、-e で step ごと落ちるため || true で受ける。
-          changed=$(git log --since="$since" --name-only --format= | grep -v '\.md$' | sort -u | head -60 || true)
+          changed=$(git log --since="1 week ago" --name-only --format= | grep -v '\.md$' | sort -u | head -60 || true)
 
           # 作業ツリーに置くと書き込み範囲の検査に引っかかるため、ランナーの一時領域に置く。
           {
-            echo "$instruction"
-            echo
             cat .github/antigravity/prompt.md
             echo
             echo "変わった実装ファイル:"
@@ -86,31 +73,21 @@ jobs:
             exit 0
           fi
 
-          if [ -n "$TARGET" ]; then
-            # パス区切りをそのまま使うと refs/heads が入れ子になり、既存ブランチと衝突して作れない。
-            branch="docs/refresh-$(echo "$TARGET" | tr '/' '-')"
-            subject="$TARGET を実装に追従させる"
-          else
-            branch="docs/refresh-weekly"
-            subject="直近 1 週間の変更を実装に追従させる"
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "$branch"
+          git checkout -B "$BRANCH"
           git add -A
-          git commit -m "docs: $subject"
+          git commit -m "docs: $SUBJECT"
           git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
-          git push -f -u origin "$branch"
+          git push -f -u origin "$BRANCH"
 
-          echo "BRANCH=$branch" >> "$GITHUB_ENV"
-          echo "SUBJECT=$subject" >> "$GITHUB_ENV"
+          echo "PUSHED=1" >> "$GITHUB_ENV"
 
       - name: draft PR を作る
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$BRANCH" ]; then
+          if [ -z "$PUSHED" ]; then
             echo "push していないため PR は作りません"
             exit 0
           fi
