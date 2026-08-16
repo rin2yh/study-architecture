@@ -47,6 +47,8 @@ runs:
     - name: debug agy logs
       if: always()
       shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.api-key }}
       run: |
         agy --version || true
         agy models || true
