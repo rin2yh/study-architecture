@@ -41,8 +41,8 @@ func run(base string) error {
 	return nil
 }
 
-// ref を解決できないときに空として扱うと検査が無言で無効化されるため、そこは error にし、記録
-// そのものがまだ無い導入直後だけ空で続ける。
+// ref を解決できないときに空として扱うと検査が無言で無効化される。記録そのものがまだ無い導入直後
+// だけ空で続ける。
 func recordedAt(base string) (map[string]eventcontract.Schema, error) {
 	if out, err := exec.Command("git", "rev-parse", "--verify", base+"^{commit}").CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("base %q を解決できない: %s", base, out)

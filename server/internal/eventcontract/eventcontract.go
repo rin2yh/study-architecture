@@ -14,29 +14,26 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 )
 
-// SchemaPath はリポジトリ root からの記録の位置。go test と CI のツールがこれ 1 つを見るので、
-// 置き場所を動かしても検査が無言で空を比べ始めることがない。
+// go test と CI のツールがこれ 1 つを見るので、置き場所を動かしても検査が無言で空を比べ始めない。
 const SchemaPath = "server/internal/eventcontract/testdata/schema.json"
 
-// Field は payload 1 フィールドの記録。Optional は Parse が欠落を許容する状態で、追加直後
-// (全 producer が発行し始める前) と廃止予定の両方がここに入る。
+// Optional は Parse が欠落を許容する状態で、追加直後 (全 producer が発行し始める前) と廃止予定の
+// 両方がここに入る。
 type Field struct {
 	Type     string `json:"type"`
 	Optional bool   `json:"optional,omitempty"`
 }
 
-// Schema はフィールド名から記録への対応。Optional は記録側だけが持つ情報で、発行される payload
-// からは必須か任意かを読み取れない。
+// Optional は記録側だけが持つ情報で、発行される payload からは必須か任意かを読み取れない。
 type Schema map[string]Field
 
-// Contract は 1 イベント種の発行 (Values) と復元 (Parse) の対。Event は全フィールドが埋まった
-// 有効なサンプルで、検査はここから 1 フィールドずつ欠いた payload を作って Parse に通す。
+// Event は 1 フィールドずつ欠いた payload を作る元なので、全フィールドが埋まった有効な値を渡す。
 type Contract struct {
 	Event outbox.Event
 	Parse func(values map[string]any) error
 }
 
-// Contracts は発行するイベント種の一覧。ここに足さないイベント種は互換検査を素通りする。
+// ここに足さないイベント種は互換検査を素通りする。
 func Contracts() ([]Contract, error) {
 	orderID, err := order.Parse("1")
 	if err != nil {
@@ -71,9 +68,8 @@ func ParseSchemas(raw []byte, source string) (map[string]Schema, error) {
 	return schemas, nil
 }
 
-// Check は記録 recorded とコードが一致しているかを検査する。記録とコードのフィールド集合は常に
-// 一致させる (廃止するなら両方から消す)。ずれを許すと、記録だけ残したまま発行をやめる 1 PR が通り、
-// 旧 consumer が必須として待っているフィールドが無言で消える。
+// 記録とコードのフィールド集合は常に一致させる (廃止するなら両方から消す)。ずれを許すと、記録だけ
+// 残したまま発行をやめる 1 PR が通り、旧 consumer が必須として待っているフィールドが無言で消える。
 func Check(c Contract, recorded Schema) []error {
 	values, err := wireValues(c.Event)
 	if err != nil {
@@ -100,8 +96,7 @@ func Check(c Contract, recorded Schema) []error {
 	return append(errs, checkParse(c, recorded, values)...)
 }
 
-// CheckSchemas は main の記録 previous に対する PR の記録 current が後方互換かを検査する。Check だけ
-// では、削除の前に optional へ落とす PR を挟んだかを判定できない。
+// Check だけでは、削除の前に optional へ落とす PR を挟んだかを判定できない (previous は main の記録)。
 func CheckSchemas(previous, current map[string]Schema) []error {
 	var errs []error
 	for eventType, was := range previous {
@@ -160,7 +155,7 @@ func checkParse(c Contract, recorded Schema, full map[string]any) []error {
 }
 
 // プロセス内の Go 型のまま記録すると、送出経路の往復で化ける型 (float64 の整数値は int64、非整数は
-// string になる) を記録が見逃すため、実際に JSON 化して復元し直す。
+// string になる) を記録が見逃す。
 func wireValues(ev outbox.Event) (map[string]any, error) {
 	payload, err := json.Marshal(ev.Values())
 	if err != nil {

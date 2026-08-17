@@ -45,13 +45,12 @@ func (c Cancelled) Values() map[string]any {
 	}
 }
 
-// ErrNotCancelled は別種のイベントであることを表す。同じトピックに他種が流れるため、consumer は
-// これだけを「素通しして ack」に倒し、壊れた payload (DLQ 行き) と区別する。判定を別関数に分けると
-// 呼び忘れても気づけないので、復元の結果として返す。
+// 同じトピックに他種が流れるため、consumer はこれだけを「素通しして ack」に倒し、壊れた payload
+// (DLQ 行き) と区別する。判定を別関数に分けると呼び忘れても気づけないので、復元の結果として返す。
 var ErrNotCancelled = errors.New("not an order.cancelled event")
 
-// ParseCancelled は wire の values を Cancelled へ復元する。consumer に map のキーと型アサーションを
-// 手書きさせないための唯一の復元口で、欠落・型違いはゼロ値へ化けず error になる (ADR-[[202608160730]])。
+// consumer に map のキーと型アサーションを手書きさせないための唯一の復元口。欠落・型違いはゼロ値へ
+// 化けず error になる (ADR-[[202608160730]])。
 func ParseCancelled(values map[string]any) (Cancelled, error) {
 	// 種別を名乗らない payload は「別種」ではなく壊れているため。
 	t, err := eventfield.Required[string](values, FieldEvent)

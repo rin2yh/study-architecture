@@ -11,8 +11,7 @@ import (
 // SchemaPath はリポジトリ root 起点なので、パッケージ配下で回るテストからは root へ戻して開く。
 var schemaPath = filepath.Join("..", "..", "..", eventcontract.SchemaPath)
 
-// 発行中のイベントが記録済みスキーマと一致していることを CI で守るフィットネス関数
-// (ADR-[[202608160730]] / ADR-[[202607020343]])。
+// (ADR-[[202608160730]] / ADR-[[202607020343]])
 func TestContractsMatchRecordedSchema(t *testing.T) {
 	recorded, err := eventcontract.LoadSchemas(schemaPath)
 	if err != nil {

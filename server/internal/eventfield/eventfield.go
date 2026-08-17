@@ -5,7 +5,7 @@ package eventfield
 
 import "fmt"
 
-// Required は欠落・型違いのどちらも error にする。ゼロ値へ化けたまま処理が進むのを防ぐ。
+// ゼロ値へ化けたまま処理が進むのを防ぐ。
 func Required[T any](values map[string]any, name string) (T, error) {
 	var zero T
 	v, ok := values[name].(T)
@@ -15,8 +15,8 @@ func Required[T any](values map[string]any, name string) (T, error) {
 	return v, nil
 }
 
-// Optional は欠落だけを許す。旧 producer がまだ発行していない追加直後と、これから消す廃止予定が
-// この状態にあたる。型違いは契約違反なので Required と同じく弾く。
+// 旧 producer がまだ発行していない追加直後と、これから消す廃止予定がこの状態にあたる。型違いは
+// 契約違反なので Required と同じく弾く。
 func Optional[T any](values map[string]any, name string) (T, error) {
 	var zero T
 	raw, present := values[name]
