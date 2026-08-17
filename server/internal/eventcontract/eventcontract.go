@@ -1,5 +1,5 @@
 // Package eventcontract は発行するイベントの wire スキーマを一箇所に集め、非互換な変更を CI で
-// 弾く (ADR-[[202608160730]])。ADR-[[202607020343]] のフィットネス関数の枠に乗る 2 本目。
+// 弾く (ADR-[[202608160730]] / ADR-[[202607020343]])。
 package eventcontract
 
 import (
@@ -14,26 +14,24 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 )
 
-// go test と CI のツールがこれ 1 つを見るので、置き場所を動かしても検査が無言で空を比べ始めない。
+// 参照を分散させると、検査が無言で空を比べ始める。
 const SchemaPath = "server/internal/eventcontract/testdata/schema.json"
 
-// Optional は Parse が欠落を許容する状態で、追加直後 (全 producer が発行し始める前) と廃止予定の
-// 両方がここに入る。
+// Optional は「追加直後」と「廃止予定」を兼ねる (ADR-[[202608160730]])。
 type Field struct {
 	Type     string `json:"type"`
 	Optional bool   `json:"optional,omitempty"`
 }
 
-// Optional は記録側だけが持つ情報で、発行される payload からは必須か任意かを読み取れない。
 type Schema map[string]Field
 
-// Event は 1 フィールドずつ欠いた payload を作る元なので、全フィールドが埋まった有効な値を渡す。
+// Event には全フィールドが埋まった有効な値を渡す。
 type Contract struct {
 	Event outbox.Event
 	Parse func(values map[string]any) error
 }
 
-// ここに足さないイベント種は互換検査を素通りする。
+// 登録漏れは検査を素通りする (ADR-[[202608160730]])。
 func Contracts() ([]Contract, error) {
 	orderID, err := order.Parse("1")
 	if err != nil {
@@ -68,8 +66,7 @@ func ParseSchemas(raw []byte, source string) (map[string]Schema, error) {
 	return schemas, nil
 }
 
-// 記録とコードのフィールド集合は常に一致させる (廃止するなら両方から消す)。ずれを許すと、記録だけ
-// 残したまま発行をやめる 1 PR が通り、旧 consumer が必須として待っているフィールドが無言で消える。
+// 記録とコードのフィールド集合は常に一致させる (ADR-[[202608160730]])。
 func Check(c Contract, recorded Schema) []error {
 	values, err := wireValues(c.Event)
 	if err != nil {
@@ -96,7 +93,7 @@ func Check(c Contract, recorded Schema) []error {
 	return append(errs, checkParse(c, recorded, values)...)
 }
 
-// Check だけでは、削除の前に optional へ落とす PR を挟んだかを判定できない (previous は main の記録)。
+// previous は main の記録 (ADR-[[202608160730]])。
 func CheckSchemas(previous, current map[string]Schema) []error {
 	var errs []error
 	for eventType, was := range previous {
@@ -132,7 +129,7 @@ func compatible(previous, current Schema) []error {
 // 記録だけ optional にして Parse が追随していないと、廃止の 1 段階目を踏んだつもりで旧 payload を
 // 拒み続ける。
 func checkParse(c Contract, recorded Schema, full map[string]any) []error {
-	// サンプルが Parse を通らないと、以降の「欠かすと失敗するか」がすべて真になり検査が空回りする。
+	// 続けると以降の欠落検査がすべて真になり空回りする。
 	if err := c.Parse(full); err != nil {
 		return []error{fmt.Errorf("サンプルが Parse を通らない: %w", err)}
 	}
@@ -154,8 +151,7 @@ func checkParse(c Contract, recorded Schema, full map[string]any) []error {
 	return errs
 }
 
-// プロセス内の Go 型のまま記録すると、送出経路の往復で化ける型 (float64 の整数値は int64、非整数は
-// string になる) を記録が見逃す。
+// (ADR-[[202608160730]])
 func wireValues(ev outbox.Event) (map[string]any, error) {
 	payload, err := json.Marshal(ev.Values())
 	if err != nil {

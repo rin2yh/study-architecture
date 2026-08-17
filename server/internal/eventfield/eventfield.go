@@ -1,11 +1,9 @@
-// Package eventfield は wire の payload から 1 フィールドを取り出す口を、必須と任意の 2 つだけに
-// 絞る (ADR-[[202608160730]])。廃止の 1 段階目を Required から Optional への 1 語の変更で済ませ、
-// 「欠落は許すが型違いは弾く」という間違えやすい条件を各 wire 契約に手書きさせない。
+// Package eventfield は wire の payload から 1 フィールドを取り出す口を必須と任意の 2 つに絞る
+// (ADR-[[202608160730]])。
 package eventfield
 
 import "fmt"
 
-// ゼロ値へ化けたまま処理が進むのを防ぐ。
 func Required[T any](values map[string]any, name string) (T, error) {
 	var zero T
 	v, ok := values[name].(T)
@@ -15,8 +13,6 @@ func Required[T any](values map[string]any, name string) (T, error) {
 	return v, nil
 }
 
-// 旧 producer がまだ発行していない追加直後と、これから消す廃止予定がこの状態にあたる。型違いは
-// 契約違反なので Required と同じく弾く。
 func Optional[T any](values map[string]any, name string) (T, error) {
 	var zero T
 	raw, present := values[name]

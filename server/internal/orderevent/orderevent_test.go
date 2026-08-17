@@ -33,7 +33,7 @@ func sampledContext(t *testing.T) (context.Context, trace.TraceID) {
 	return trace.ContextWithSpanContext(context.Background(), sc), tid
 }
 
-// 発行側は outbox 行に traceparent を持たせるため Traceparent で取り出す (Inject は持たない)。
+// orderevent は Inject を持たないため Traceparent で取り出す。
 func TestTraceparentLinkRoundTrip(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	ctx, want := sampledContext(t)
@@ -55,7 +55,6 @@ func TestParseCancelled(t *testing.T) {
 	id := orderid.Must(t, "20")
 	cancelled := orderevent.Cancelled{OrderID: id}
 
-	// consumer は notCancelled だけを「素通しして ack」に倒すため、どちらの error になるかまで固定する。
 	type want struct {
 		cancelled    orderevent.Cancelled
 		err          bool
@@ -99,7 +98,7 @@ func TestParseCancelled(t *testing.T) {
 	}
 }
 
-// 旧 producer や計装オフでは traceparent が載らないが、その場合も consumer は動き続ける。
+// 旧 producer や計装オフでは traceparent が載らない。
 func TestLinkFromMissingTraceparent(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 

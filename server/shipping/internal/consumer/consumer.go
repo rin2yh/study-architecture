@@ -46,7 +46,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	return messaging.Consume(ctx, queue, sub, c.process)
 }
 
-// producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
+// (ADR-[[202606250159]])
 func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "payment.settled process",
 		trace.WithSpanKind(trace.SpanKindConsumer),
@@ -70,7 +70,7 @@ func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
 		return nil
 	}
 	if err != nil {
-		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
+		// (ADR-[[202608150830]])
 		slog.ErrorContext(ctx, "shipping consumer: invalid payload", "error", err)
 		return err
 	}

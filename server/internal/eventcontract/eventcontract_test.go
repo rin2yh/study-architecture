@@ -8,7 +8,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/eventcontract"
 )
 
-// SchemaPath はリポジトリ root 起点なので、パッケージ配下で回るテストからは root へ戻して開く。
+// SchemaPath はリポジトリ root 起点。
 var schemaPath = filepath.Join("..", "..", "..", eventcontract.SchemaPath)
 
 // (ADR-[[202608160730]] / ADR-[[202607020343]])

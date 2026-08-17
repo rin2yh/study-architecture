@@ -1,6 +1,5 @@
-// Command eventcompat は base (通常は main) に記録済みのイベントスキーマと作業ツリーのスキーマを
-// 突き合わせ、非互換な変更を落とす (ADR-[[202608160730]])。go test 側の検査はコードと記録の一致しか
-// 見られず、削除の前に optional へ落とす PR を挟んだかは過去の記録と比べないと判定できない。
+// Command eventcompat は base の記録と作業ツリーの記録を突き合わせ、非互換な変更を落とす
+// (ADR-[[202608160730]])。
 package main
 
 import (

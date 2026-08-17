@@ -58,7 +58,6 @@ func TestParseSettled(t *testing.T) {
 	id := orderid.Must(t, "20")
 	settled := paymentevent.Settled{PaymentID: 7, OrderID: id, AmountCents: 300}
 
-	// consumer は notSettled だけを「素通しして ack」に倒すため、どちらの error になるかまで固定する。
 	type want struct {
 		settled    paymentevent.Settled
 		err        bool
@@ -116,7 +115,7 @@ func TestParseSettled(t *testing.T) {
 	}
 }
 
-// 旧 producer や計装オフでは traceparent が載らないが、その場合も consumer は動き続ける。
+// 旧 producer や計装オフでは traceparent が載らない。
 func TestLinkFromMissingTraceparent(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
