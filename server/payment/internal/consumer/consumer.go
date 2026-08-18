@@ -1,9 +1,9 @@
-// Package consumer は注文キャンセルイベントを購読して返金 (補償) を行う。
-// フォワードの payment.settled 発行 (outbox) と対称な逆流側の入口 (ADR-[[202606261702]])。
+// Package consumer は注文キャンセルイベントを購読して返金 (補償) を行う (ADR-[[202606261702]])。
 package consumer
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"go.opentelemetry.io/otel"
@@ -40,7 +40,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	return messaging.Consume(ctx, queue, sub, c.process)
 }
 
-// producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
+// (ADR-[[202606250159]])
 func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "order.cancelled refund",
 		trace.WithSpanKind(trace.SpanKindConsumer),
@@ -58,14 +58,14 @@ func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 }
 
 func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
-	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
+	ev, err := orderevent.ParseCancelled(values)
+	if errors.Is(err, orderevent.ErrNotCancelled) {
 		return nil
 	}
-	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
-		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
-		slog.ErrorContext(ctx, "payment consumer: invalid orderId", "error", err)
+		// (ADR-[[202608150830]])
+		slog.ErrorContext(ctx, "payment consumer: invalid payload", "error", err)
 		return err
 	}
-	return c.refunder.RefundByOrder(ctx, orderID)
+	return c.refunder.RefundByOrder(ctx, ev.OrderID)
 }

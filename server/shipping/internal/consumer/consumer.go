@@ -46,7 +46,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	return messaging.Consume(ctx, queue, sub, c.process)
 }
 
-// producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
+// (ADR-[[202606250159]])
 func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "payment.settled process",
 		trace.WithSpanKind(trace.SpanKindConsumer),
@@ -65,21 +65,21 @@ func (c *Consumer) process(ctx context.Context, values map[string]any) error {
 }
 
 func (c *Consumer) handle(ctx context.Context, values map[string]any) error {
-	if t, _ := values[paymentevent.FieldEvent].(string); t != paymentevent.TypeSettled {
+	ev, err := paymentevent.ParseSettled(values)
+	if errors.Is(err, paymentevent.ErrNotSettled) {
 		return nil
 	}
-	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
-		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
-		slog.ErrorContext(ctx, "shipping consumer: invalid orderId", "error", err)
+		// (ADR-[[202608150830]])
+		slog.ErrorContext(ctx, "shipping consumer: invalid payload", "error", err)
 		return err
 	}
 	// (ADR-[[202606301000]])
-	dest, err := c.order.FetchDestination(ctx, orderID)
+	dest, err := c.order.FetchDestination(ctx, ev.OrderID)
 	if err != nil {
 		return err
 	}
-	_, err = c.creator.CreateShipmentForOrder(ctx, orderID, dest)
+	_, err = c.creator.CreateShipmentForOrder(ctx, ev.OrderID, dest)
 	if errors.Is(err, dberr.ErrConflict) {
 		return nil
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/test/msgtest"
+	"github.com/rin2yh/study-architecture/server/internal/test/orderid"
 )
 
 type confirmerStub struct {
@@ -21,7 +22,7 @@ func (s *confirmerStub) ConfirmReservationsByOrder(_ context.Context, orderID or
 }
 
 func TestRun(t *testing.T) {
-	settled := map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "20"}
+	settled := paymentevent.Settled{PaymentID: 1, OrderID: orderid.Must(t, "20"), AmountCents: 300}.Values()
 	type args struct {
 		values map[string]any
 		err    error
@@ -44,6 +45,11 @@ func TestRun(t *testing.T) {
 		{
 			"準正常系 壊れた payload は ack せずブローカの隔離に委ねる",
 			args{map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "abc"}, nil},
+			want{nil, 0},
+		},
+		{
+			"準正常系 種別を名乗らない payload は素通しせず隔離に委ねる",
+			args{map[string]any{order.FieldID: "20"}, nil},
 			want{nil, 0},
 		},
 		{"異常系 確定が失敗した分は ack しない", args{settled, errors.New("db down")}, want{[]string{"20"}, 0}},

@@ -1,0 +1,12 @@
+{
+  "payment.settled": {
+    "event": { "type": "string" },
+    "paymentId": { "type": "int64" },
+    "orderId": { "type": "string" },
+    "amountCents": { "type": "int64" }
+  },
+  "order.cancelled": {
+    "event": { "type": "string" },
+    "orderId": { "type": "string" }
+  }
+}

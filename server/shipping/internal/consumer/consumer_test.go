@@ -9,6 +9,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/order"
 	"github.com/rin2yh/study-architecture/server/internal/paymentevent"
 	"github.com/rin2yh/study-architecture/server/internal/test/msgtest"
+	"github.com/rin2yh/study-architecture/server/internal/test/orderid"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/db"
 	"github.com/rin2yh/study-architecture/server/shipping/internal/gateway"
 )
@@ -37,7 +38,7 @@ func (s *orderStub) FetchDestination(_ context.Context, _ order.ID) (gateway.Des
 }
 
 func TestRun(t *testing.T) {
-	settled := map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "20"}
+	settled := paymentevent.Settled{PaymentID: 1, OrderID: orderid.Must(t, "20"), AmountCents: 300}.Values()
 	type args struct {
 		values    map[string]any
 		createErr error
@@ -61,6 +62,11 @@ func TestRun(t *testing.T) {
 		{
 			"準正常系 壊れた payload は ack せずブローカの隔離に委ねる",
 			args{map[string]any{paymentevent.FieldEvent: paymentevent.TypeSettled, order.FieldID: "abc"}, nil, nil},
+			want{nil, 0},
+		},
+		{
+			"準正常系 種別を名乗らない payload は素通しせず隔離に委ねる",
+			args{map[string]any{order.FieldID: "20"}, nil, nil},
 			want{nil, 0},
 		},
 		{

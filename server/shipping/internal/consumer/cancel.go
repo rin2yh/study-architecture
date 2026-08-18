@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"go.opentelemetry.io/otel/codes"
@@ -12,7 +13,7 @@ import (
 	"github.com/rin2yh/study-architecture/server/internal/orderevent"
 )
 
-// settled 受信とは別トピック・別キュー。滞留と再配送を独立させ、片方の詰まりが他方を止めない。
+// 滞留と再配送を settled 受信と独立させ、片方の詰まりが他方を止めない。
 const cancelQueue = "order-events-shipping"
 
 type ShipmentCanceller interface {
@@ -36,7 +37,7 @@ func (c *CancelConsumer) Run(ctx context.Context) error {
 	return messaging.Consume(ctx, cancelQueue, sub, c.process)
 }
 
-// producer の発行 trace とは親子でなく link で結ぶ (ADR-[[202606250159]])。
+// (ADR-[[202606250159]])
 func (c *CancelConsumer) process(ctx context.Context, values map[string]any) error {
 	ctx, span := tracer.Start(ctx, "order.cancelled process",
 		trace.WithSpanKind(trace.SpanKindConsumer),
@@ -54,14 +55,14 @@ func (c *CancelConsumer) process(ctx context.Context, values map[string]any) err
 }
 
 func (c *CancelConsumer) handle(ctx context.Context, values map[string]any) error {
-	if t, _ := values[orderevent.FieldEvent].(string); t != orderevent.TypeCancelled {
+	ev, err := orderevent.ParseCancelled(values)
+	if errors.Is(err, orderevent.ErrNotCancelled) {
 		return nil
 	}
-	orderID, err := order.ParseIDFromEvent(values)
 	if err != nil {
-		// 再配送しても直らない payload は上限超過でブローカが DLQ へ隔離する (ADR-[[202608150830]])。
-		slog.ErrorContext(ctx, "shipping cancel consumer: invalid orderId", "error", err)
+		// (ADR-[[202608150830]])
+		slog.ErrorContext(ctx, "shipping cancel consumer: invalid payload", "error", err)
 		return err
 	}
-	return c.canceller.CancelShipmentForOrder(ctx, orderID)
+	return c.canceller.CancelShipmentForOrder(ctx, ev.OrderID)
 }
